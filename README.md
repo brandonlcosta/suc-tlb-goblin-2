@@ -1,33 +1,100 @@
-# SUC: The Long Burn
+# SUC: The Long Burn — Roadmap Package
 
-This repository is the sandbox environment for an autonomous Codex game-building loop.
+This package is a planning starter kit for a separate experimental game repo.
 
-## Purpose
-- Initialize a clean seed repository for **SUC: The Long Burn**.
-- Keep game design grounded in `GAME.md`.
-- Keep automation behavior grounded in `docs/AI_DEVELOPMENT_RULES.md`.
-- Process implementation work through prompt queue files in `prompts/`.
+The game is a retro, pixelated, SUC-inspired third-person trail ultra survival game. The first playable mission is **Foresthill Heat Drop**: a brutal Western States-inspired trail section where the player manages heat, hydration, ice, pacing, and crew execution.
 
-## Current Status
-Initial scaffold only. No gameplay features have been implemented yet.
+This package is meant to guide an autonomous AI game-development loop without letting the automation sprawl.
 
-## Repository Layout
-- `GAME.md` — game design bible.
-- `ROADMAP.md` — phased implementation plan.
-- `docs/` — specifications and AI development constraints.
-- `prompts/` — queued and processed codex prompts.
-- `reports/` — run logs and playtest artifacts.
-- `src/` — source code (currently empty scaffold).
-- `tests/` — test suite scaffold.
+## Core Rule
 
-## Prompt Queue
-- Pending prompts live in `prompts/pending/`.
-- The first implementation prompt is kept as:
-  - `prompts/pending/001-minimal-prototype-shell.md`
+Build the smallest playable version first.
 
-## Non-goals for Seed Setup
-- No multiplayer.
-- No accounts/authentication.
-- No external APIs or online services.
-- No real GPX dependency.
-- No deployment setup.
+No open world.  
+No accounts.  
+No multiplayer.  
+No real APIs.  
+No real GPX dependency.  
+No massive simulation.  
+No asset-store dependency sprawl.
+
+Make the player feel the heat, the dirt, the descent, the crew stop, and the decision to keep moving.
+
+## Recommended Repo Name
+
+```txt
+C:\dev\game-lab
+```
+
+or
+
+```txt
+C:\dev\suc-the-long-burn
+```
+
+## Suggested Stack
+
+Recommended first stack:
+
+- Browser game
+- TypeScript
+- Vite
+- Canvas or lightweight 2.5D renderer
+- Pixel-art visual style
+- No external online services
+
+Do not start in a heavy engine unless there is a strong reason.
+
+## Package Contents
+
+```txt
+GAME.md
+ROADMAP.md
+docs/
+  FORESTHILL_HEAT_DROP.md
+  MECHANICS_SPEC.md
+  VISUAL_STYLE_GUIDE.md
+  AUDIO_STYLE_GUIDE.md
+  AI_DEVELOPMENT_RULES.md
+  BC_OS_INTEGRATION.md
+  REPO_STRUCTURE.md
+  PLAYTEST_CHECKLIST.md
+  DECISIONS.md
+  BACKLOG.md
+prompts/
+  pending/
+    001-minimal-prototype-shell.md
+    002-third-person-trail-corridor.md
+    003-runner-control-and-camera-feel.md
+    004-heat-and-hydration-bars.md
+    005-pace-modes.md
+    006-ice-and-cooling-system.md
+    007-crew-zone-triage.md
+    008-finish-line-and-run-report.md
+    009-retro-suc-hud-pass.md
+    010-first-balance-pass.md
+reports/
+  runs/
+  playtests/
+```
+
+## How BC-OS Should Use This
+
+BC-OS should treat this package as the seed plan.
+
+BC-OS can:
+- generate future implementation prompts
+- summarize run reports
+- maintain the backlog
+- flag scope creep
+- recommend the next smallest feature
+
+BC-OS should not:
+- edit itself for this experiment
+- auto-merge
+- auto-push
+- auto-deploy
+- let Codex consume multiple prompts at once
+- let the game become a giant open-world simulator
+
+Brandon remains the final reviewer.
