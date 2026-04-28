@@ -1,0 +1,62 @@
+:root {
+  color: #efe7cf;
+  background: #12100d;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo,
+    monospace;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(240, 90, 36, 0.16), transparent 32rem),
+    #12100d;
+}
+
+#app {
+  width: min(100vw, 960px);
+  padding: 16px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+#game-canvas {
+  width: min(100%, 960px);
+  aspect-ratio: 16 / 9;
+  border: 4px solid #080807;
+  background: #080807;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#restart-button {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 2px solid #efe7cf;
+  color: #efe7cf;
+  background: #080807;
+  font: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+#restart-button:focus-visible {
+  outline: 2px solid #9cff3a;
+  outline-offset: 3px;
+}
+
+#restart-button:hover {
+  color: #080807;
+  background: #efe7cf;
+}
+
