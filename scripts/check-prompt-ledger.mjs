@@ -168,7 +168,7 @@ for (const report of reports) {
 }
 
 for (const prompt of pending) {
-  if (/open the game|manual playtest|browser|interactive/i.test(prompt.text)) {
+  if (/open the game|manual playtest|playtest note|browser|interactive/i.test(prompt.text)) {
     reportIssue(
       "warning",
       `Pending prompt contains manual/browser playtest language; automation must treat it as Brandon-only: ${prompt.path}`,
@@ -201,4 +201,3 @@ if (errors.length > 0) {
 }
 
 console.log("\nLedger OK.");
-

@@ -7,14 +7,24 @@ These rules are for Codex, prompt runners, BC-OS, or any automation touching the
 Read these before every run:
 
 1. `GAME.md`
-2. active prompt in `prompts/pending/`
-3. most recent run report in `reports/runs/`, if present
+2. `README.md`
+3. `ROADMAP.md`
+4. `docs/REPO_STRUCTURE.md`
+5. `docs/BC_OS_INTEGRATION.md`
+6. oldest numbered active prompt in `prompts/pending/`
+7. most recent run report in `reports/runs/`, if present
+
+Run `npm run agent:check` before and after consuming a queued prompt.
 
 ## One Prompt Per Run
 
 The automation may consume only one pending prompt per run.
 
 Do not combine prompts.
+
+Always choose the oldest numbered prompt in `prompts/pending/` unless Brandon explicitly instructs otherwise.
+
+If validation fails, move the consumed prompt to `prompts/blocked/` and document the failure. Do not leave a consumed prompt in `prompts/pending/`.
 
 Do not “also fix” unrelated things unless required for the prompt to pass.
 
@@ -70,6 +80,12 @@ Report must include:
 - next recommended prompt
 
 If validation fails, write a blocked report.
+
+Automated Codex runs must not require manual browser playtesting. Use this exact report line:
+
+```txt
+Manual playtest: Not performed; requires Brandon to run locally.
+```
 
 ## No Automatic Git Finalization
 

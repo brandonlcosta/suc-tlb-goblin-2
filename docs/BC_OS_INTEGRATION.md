@@ -19,6 +19,7 @@ BC-OS can:
 - generate implementation prompts
 - read run reports
 - summarize what changed
+- summarize progress
 - recommend the next prompt
 - detect scope creep
 - prepare review summaries
@@ -39,6 +40,7 @@ BC-OS should not:
 - auto-deploy the game
 - let Codex run multiple prompts at once
 - directly rewrite the game without a prompt
+- directly edit STLB game source
 - let the repo become a giant simulator
 
 ## Game Repo Boundaries
@@ -57,7 +59,11 @@ or
 C:\dev\suc-the-long-burn
 ```
 
-BC-OS may write prompts into this repo, but game automation should not edit BC-OS.
+BC-OS may write new pending prompts into this repo and read run reports.
+
+STLB owns implementation, validation, prompt movement, and reports.
+
+BC-OS should not directly edit STLB game source. Game automation should not edit BC-OS.
 
 ## Prompt Flow
 
