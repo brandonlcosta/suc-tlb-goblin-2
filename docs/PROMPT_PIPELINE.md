@@ -74,6 +74,39 @@ Automation must refuse to commit if:
 
 Automation must not push, merge, deploy, rewrite history, or delete user work.
 
+## Local Full Goblin Mode
+
+`npm run goblin:pr` runs the full local one-prompt branch and PR loop. It uses the local Codex CLI through the existing `npm run agent:one` script, so it does not use the GitHub Codex Action and does not require an `OPENAI_API_KEY`.
+
+The command:
+
+1. Refuses to start from a dirty worktree.
+2. Checks out `main`.
+3. Pulls latest `origin main`.
+4. Runs `npm run agent:check`.
+5. Finds the oldest numbered pending prompt.
+6. Creates an `agent/<prompt-number>-<prompt-slug>` branch.
+7. Runs `npm run agent:one`.
+8. Runs `npm run build`.
+9. Runs `npm run agent:check`.
+10. Commits any validated uncommitted work if `agent:one` did not already commit it.
+11. Pushes the branch.
+12. Opens a PR into `main` with `gh pr create`.
+
+GitHub checks still protect `main`; the command opens a reviewable branch and PR instead of pushing directly to `main`. Direct-to-main automation is intentionally avoided so Brandon can inspect the changed files before merge.
+
+Auto-merge is optional and never the default. To request it explicitly, run:
+
+```bash
+npm run goblin:pr -- --auto-merge
+```
+
+If the target branch already exists, the command refuses to continue unless reuse is explicit:
+
+```bash
+npm run goblin:pr -- --reuse-branch
+```
+
 ## BC-OS Boundary
 
 BC-OS may:
@@ -92,4 +125,3 @@ STLB owns:
 - prompt movement
 - run reports
 - source changes inside this repo
-
