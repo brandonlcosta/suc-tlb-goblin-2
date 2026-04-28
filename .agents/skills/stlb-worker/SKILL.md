@@ -31,6 +31,18 @@ Use this skill only when consuming a queued implementation prompt from `prompts/
 8. Run `npm run agent:check` again.
 9. Stop after exactly one prompt.
 
+## Feature Scope Guard
+
+Normal feature prompts must not modify `package.json`, lockfiles, build scripts, GitHub workflows, agent scripts, `AGENTS.md`, or `.agents/**`.
+
+Only automation/tooling prompts may modify those files.
+
+If a feature prompt seems to require package/script changes, block the prompt and explain why in the run report instead of changing those files.
+
+Do not change the `build` script.
+
+Do not add `--emptyOutDir=false`.
+
 ## Report Template
 
 Every run report must use this structure:

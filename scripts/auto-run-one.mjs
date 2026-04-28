@@ -10,17 +10,48 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const commitEnabled = !process.argv.includes("--no-commit");
-const allowedChangedPathPatterns = [
+const baseAllowedChangedPathPatterns = [
   /^src\//,
   /^tests\//,
   /^docs\//,
   /^prompts\//,
   /^reports\//,
   /^index\.html$/,
-  /^package\.json$/,
-  /^package-lock\.json$/,
   /^tsconfig\.json$/,
   /^vite\.config\./,
+];
+const automationToolingChangedPathPatterns = [
+  /^package\.json$/,
+  /^package-lock\.json$/,
+  /^npm-shrinkwrap\.json$/,
+  /^pnpm-lock\.yaml$/,
+  /^yarn\.lock$/,
+  /^bun\.lockb?$/,
+  /^\.github\/workflows\//,
+  /^\.github\/codex\/prompts\//,
+  /^scripts\//,
+  /^AGENTS\.md$/,
+  /^\.agents\//,
+];
+const automationToolingPromptPatterns = [
+  /\bautomation\b/i,
+  /\btooling\b/i,
+  /\bagent\b/i,
+  /\bworker\b/i,
+  /\bprompt pipeline\b/i,
+  /\bpackage\.json\b/i,
+  /\bpackage-lock\.json\b/i,
+  /\blockfile\b/i,
+  /\bnpm script\b/i,
+  /\bpackage script\b/i,
+  /\bbuild script\b/i,
+  /\b(add|install|update|remove|change)\b.{0,40}\bdependency\b/i,
+  /\b(add|install|update|remove|change)\b.{0,40}\bdependencies\b/i,
+  /\bGitHub workflow\b/i,
+  /\.github\/workflows\//i,
+  /\.github\/codex\/prompts\//i,
+  /\.agents\//i,
+  /\bscripts\//i,
 ];
 
 function run(command, args, options = {}) {
@@ -81,17 +112,68 @@ function changedPaths() {
 
   return porcelain
     .split(/\r?\n/)
-    .map((line) => line.slice(3).replace(/\\/g, "/").replace(/^"|"$/g, ""))
+    .map((line) => parseStatusPath(line))
     .map((path) => path.split(" -> ").at(-1));
 }
 
-function assertChangedPathsInScope(paths) {
+function parseStatusPath(line) {
+  const normalized = line.replace(/\\/g, "/").replace(/^"|"$/g, "");
+  const porcelainMatch = normalized.match(/^.. (.+)$/);
+  if (porcelainMatch) {
+    return porcelainMatch[1].replace(/^"|"$/g, "");
+  }
+
+  const shortMatch = normalized.match(/^[ MADRCU?!] (.+)$/);
+  if (shortMatch) {
+    return shortMatch[1].replace(/^"|"$/g, "");
+  }
+
+  throw new Error(`Could not parse changed path from git status line: ${line}`);
+}
+
+function promptAllowsAutomationToolingChanges(promptText) {
+  return automationToolingPromptPatterns.some((pattern) => pattern.test(promptText));
+}
+
+function assertChangedPathsInScope(paths, promptText) {
+  const promptAllowsToolingChanges = promptAllowsAutomationToolingChanges(promptText);
   const outsideScope = paths.filter(
-    (path) => !allowedChangedPathPatterns.some((pattern) => pattern.test(path)),
+    (path) =>
+      !baseAllowedChangedPathPatterns.some((pattern) => pattern.test(path)) &&
+      !automationToolingChangedPathPatterns.some((pattern) => pattern.test(path)),
+  );
+  const restrictedForFeaturePrompt = paths.filter((path) =>
+    automationToolingChangedPathPatterns.some((pattern) => pattern.test(path)),
   );
 
   if (outsideScope.length > 0) {
     throw new Error(`Files outside expected repo scope changed: ${outsideScope.join(", ")}`);
+  }
+
+  if (!promptAllowsToolingChanges && restrictedForFeaturePrompt.length > 0) {
+    throw new Error(
+      [
+        "Normal feature prompts must not modify package, lockfile, workflow, agent, or automation files.",
+        `Restricted changes found: ${restrictedForFeaturePrompt.join(", ")}`,
+        "Move the prompt to blocked and explain why in the run report instead of changing those files.",
+      ].join(" "),
+    );
+  }
+}
+
+function readPackageJson() {
+  return JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+}
+
+function assertBuildScriptUnchanged(originalBuildScript) {
+  const currentBuildScript = readPackageJson().scripts?.build;
+
+  if (currentBuildScript !== originalBuildScript) {
+    throw new Error("Do not change the package.json build script during prompt automation.");
+  }
+
+  if (String(currentBuildScript).includes("--emptyOutDir=false")) {
+    throw new Error("Do not add --emptyOutDir=false to the package.json build script.");
   }
 }
 
@@ -142,6 +224,8 @@ if (pendingBefore.length === 0) {
 const promptFile = pendingBefore[0];
 const promptNumber = promptFile.match(/^(\d+)/)?.[1];
 const promptPath = `prompts/pending/${promptFile}`;
+const promptText = readFileSync(join(root, promptPath), "utf8");
+const originalBuildScript = readPackageJson().scripts?.build;
 const workerPrompt = `
 You are working in the suc-the-long-burn repo.
 
@@ -175,6 +259,7 @@ Run npm run build before marking the prompt completed.
 
 If validation passes, move ${promptPath} to prompts/completed/${promptFile}.
 If validation fails or the scope is unsafe, move it to prompts/blocked/${promptFile}.
+If the prompt appears to require package/script/dependency/tooling changes that are not clearly requested, block it and explain why in the run report instead of changing those files.
 
 Write a structured run report in reports/runs/ with:
 
@@ -201,12 +286,18 @@ Manual playtest: Not performed; requires Brandon to run locally.
 - Do not add accounts, servers, Strava, GPX, multiplayer, or real external APIs.
 - Do not consume multiple prompts.
 - Do not run an interactive browser session during automation.
+- Normal feature prompts must not modify package.json, lockfiles, build scripts, GitHub workflows, agent scripts, AGENTS.md, or .agents/**.
+- Only automation/tooling prompts may modify package.json, lockfiles, GitHub workflows, agent scripts, AGENTS.md, or .agents/**.
+- If a feature prompt seems to require package/script changes, move it to blocked and explain why in the run report instead of changing those files.
+- Do not change the build script.
+- Do not add --emptyOutDir=false.
 `;
 
 run("codex", ["exec", "--full-auto", "--sandbox", "workspace-write", "-"], {
   input: workerPrompt,
 });
 
+assertBuildScriptUnchanged(originalBuildScript);
 run("npm", ["run", "build"]);
 run("npm", ["run", "agent:check"]);
 
@@ -236,7 +327,8 @@ if (paths.length === 0) {
   throw new Error("Worker produced no tracked changes. Refusing to commit.");
 }
 
-assertChangedPathsInScope(paths);
+assertBuildScriptUnchanged(originalBuildScript);
+assertChangedPathsInScope(paths, promptText);
 
 if (!commitEnabled) {
   console.log("\nSafety checks passed. --no-commit was provided, so changes are left uncommitted.");

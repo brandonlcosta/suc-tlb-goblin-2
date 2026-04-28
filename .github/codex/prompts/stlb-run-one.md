@@ -34,6 +34,18 @@ If validation succeeds, move the consumed prompt to `prompts/completed/`.
 
 If validation fails or the prompt is blocked by scope, move the consumed prompt to `prompts/blocked/` and explain why in the run report.
 
+## Feature Scope Guard
+
+Normal feature prompts must not modify `package.json`, lockfiles, build scripts, GitHub workflows, agent scripts, `AGENTS.md`, or `.agents/**`.
+
+Only automation/tooling prompts may modify those files.
+
+If a feature prompt seems to require package/script changes, block the prompt and explain why in the run report instead of changing those files.
+
+Do not change the `build` script.
+
+Do not add `--emptyOutDir=false`.
+
 Write a run report in `reports/runs/` with:
 
 - prompt consumed

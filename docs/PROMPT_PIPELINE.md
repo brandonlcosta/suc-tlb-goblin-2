@@ -38,6 +38,14 @@ Every implementation run should read:
 - Never skip ahead unless Brandon explicitly says to.
 - Never edit later prompts while consuming the current prompt.
 
+## Feature Scope Guard
+
+- Normal feature prompts must not modify `package.json`, lockfiles, build scripts, GitHub workflows, agent scripts, `AGENTS.md`, or `.agents/**`.
+- Only automation/tooling prompts may modify those files.
+- If a feature prompt seems to require package/script changes, block the prompt and explain why in the run report instead of changing those files.
+- Do not change the `build` script.
+- Do not add `--emptyOutDir=false`.
+
 ## Validation Rules
 
 - `npm run build` must pass before a prompt is marked completed.
@@ -105,6 +113,74 @@ If the target branch already exists, the command refuses to continue unless reus
 
 ```bash
 npm run goblin:pr -- --reuse-branch
+```
+
+## Local Goblin Watcher
+
+`npm run goblin:watch` runs a local watcher on Brandon's machine. It polls GitHub with the authenticated `gh` CLI, waits for merged `agent/*` pull requests into `main`, pulls latest `main`, validates the repo, and then starts the next prompt by calling the existing local `npm run goblin:pr` workflow.
+
+The watcher uses local Codex indirectly through `npm run goblin:pr`. It does not use the GitHub Codex Action, does not require an `OPENAI_API_KEY`, does not push directly to `main`, and does not consume prompts directly.
+
+The watcher only runs while the computer is awake and the terminal process is alive. Stop it with `Ctrl+C`.
+
+Default startup only begins watching; it does not immediately start a prompt. To start a prompt immediately when the repo is clean, `main` is current, there is no open `agent/*` PR, and at least one pending prompt exists, run:
+
+```bash
+npm run goblin:watch -- --start-if-idle
+```
+
+By default, the watcher polls every 60 seconds. Use a custom interval with:
+
+```bash
+npm run goblin:watch -- --interval 30
+```
+
+Auto-merge remains opt-in. To pass `--auto-merge` through to `npm run goblin:pr` after the watcher starts a PR, run:
+
+```bash
+npm run goblin:watch:auto
+```
+
+or:
+
+```bash
+npm run goblin:watch -- --auto-merge
+```
+
+## Codex App Full Goblin Mode
+
+Codex app Automations should use the one-shot tick command, not an infinite loop:
+
+```bash
+npm run goblin:tick -- --generate-if-needed
+```
+
+Schedule the automation at a modest cadence, such as every 10 or 15 minutes at first. The Codex app automation start/pause control should be the normal operator control for the schedule.
+
+Each tick runs locally, validates the repo, checks GitHub with the authenticated `gh` CLI, and exits. If an `agent/*` PR is already open, the tick prints that PR and stops. If a pending prompt exists and no `agent/*` PR is open, the tick starts work only by calling `npm run goblin:pr`. It does not consume prompts directly, push directly to `main`, deploy, use the GitHub Codex Action, or require an `OPENAI_API_KEY`.
+
+GitHub checks still protect `main`. This mode builds through prompts and reviewable PRs, not direct self-mutation of game source.
+
+The repo also has a local pause switch. To pause scheduled ticks from inside the repo:
+
+```bash
+npm run goblin:pause
+```
+
+To resume:
+
+```bash
+npm run goblin:resume
+```
+
+This creates or removes `.goblin/PAUSED`. When that file exists, `npm run goblin:tick` prints `Goblin paused` and exits cleanly.
+
+When the queue is empty, `--generate-if-needed` lets the tick create exactly one small structured implementation prompt from the existing design docs, backlog, mechanics spec, completed prompt numbers, and recent run reports. Self-analysis prompt generation only happens when the queue is empty and no `agent/*` PR is open.
+
+Auto-merge is still opt-in. Only use it after several clean manual runs:
+
+```bash
+npm run goblin:tick:auto
 ```
 
 ## BC-OS Boundary
