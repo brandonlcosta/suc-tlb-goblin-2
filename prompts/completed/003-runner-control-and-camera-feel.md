@@ -1,4 +1,4 @@
-# Prompt 003 — Runner Control and Camera Feel
+# Prompt 003 â€” Runner Control and Camera Feel
 
 ## Goal
 

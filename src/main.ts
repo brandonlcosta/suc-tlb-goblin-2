@@ -9,8 +9,13 @@ const TRAIL_LENGTH = 420;
 const AUTO_SPEED = 26;
 const TRAIL_OBJECT_COUNT = 24;
 const TRAIL_LINE_COUNT = 18;
-const RUNNER_X = VIEW_WIDTH / 2;
 const RUNNER_BASE_Y = 143;
+const RUNNER_DEPTH = 0.92;
+const RUNNER_LATERAL_LIMIT = 0.72;
+const RUNNER_LATERAL_SCALE = 0.58;
+const STEER_SPEED = 1.9;
+const STEER_RESPONSE = 14;
+const CAMERA_LEAN_SCALE = 18;
 
 type RunPhase = "running" | "complete";
 
@@ -19,6 +24,14 @@ interface GameState {
   elapsed: number;
   lastTimestamp: number;
   phase: RunPhase;
+  runnerLine: number;
+  runnerVelocity: number;
+  cameraLean: number;
+}
+
+interface InputState {
+  left: boolean;
+  right: boolean;
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -35,13 +48,36 @@ if (!context) {
 }
 
 const ctx: CanvasRenderingContext2D = context;
+const input: InputState = {
+  left: false,
+  right: false,
+};
 
 let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
 window.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "r") {
+  const key = event.key.toLowerCase();
+
+  if (isLeftKey(key)) {
+    input.left = true;
+    event.preventDefault();
+  } else if (isRightKey(key)) {
+    input.right = true;
+    event.preventDefault();
+  } else if (key === "r") {
     restart();
+  }
+});
+window.addEventListener("keyup", (event) => {
+  const key = event.key.toLowerCase();
+
+  if (isLeftKey(key)) {
+    input.left = false;
+    event.preventDefault();
+  } else if (isRightKey(key)) {
+    input.right = false;
+    event.preventDefault();
   }
 });
 
@@ -53,6 +89,9 @@ function createInitialState(): GameState {
     elapsed: 0,
     lastTimestamp: performance.now(),
     phase: "running",
+    runnerLine: 0,
+    runnerVelocity: 0,
+    cameraLean: 0,
   };
 }
 
@@ -72,15 +111,43 @@ function tick(timestamp: number): void {
 
 function update(deltaSeconds: number): void {
   if (state.phase !== "running") {
+    easeCamera(deltaSeconds);
     return;
   }
 
   state.elapsed += deltaSeconds;
   state.distance = Math.min(state.distance + AUTO_SPEED * deltaSeconds, TRAIL_LENGTH);
+  updateRunnerControl(deltaSeconds);
+  easeCamera(deltaSeconds);
 
   if (state.distance >= TRAIL_LENGTH) {
     state.phase = "complete";
   }
+}
+
+function updateRunnerControl(deltaSeconds: number): void {
+  const steerDirection = Number(input.right) - Number(input.left);
+  const targetVelocity = steerDirection * STEER_SPEED;
+  const response = Math.min(1, deltaSeconds * STEER_RESPONSE);
+
+  state.runnerVelocity += (targetVelocity - state.runnerVelocity) * response;
+  state.runnerLine = clamp(
+    state.runnerLine + state.runnerVelocity * deltaSeconds,
+    -RUNNER_LATERAL_LIMIT,
+    RUNNER_LATERAL_LIMIT,
+  );
+
+  if (
+    (state.runnerLine <= -RUNNER_LATERAL_LIMIT && state.runnerVelocity < 0) ||
+    (state.runnerLine >= RUNNER_LATERAL_LIMIT && state.runnerVelocity > 0)
+  ) {
+    state.runnerVelocity = 0;
+  }
+}
+
+function easeCamera(deltaSeconds: number): void {
+  const targetLean = state.runnerLine * CAMERA_LEAN_SCALE;
+  state.cameraLean += (targetLean - state.cameraLean) * Math.min(1, deltaSeconds * 6);
 }
 
 function render(): void {
@@ -240,7 +307,9 @@ function drawTrailObjects(): void {
 
 function drawRunner(): void {
   const bob = Math.floor(Math.sin(state.elapsed * 13) * 2);
-  const x = RUNNER_X;
+  const center = trailCenter(RUNNER_DEPTH);
+  const halfWidth = trailHalfWidth(RUNNER_DEPTH);
+  const x = Math.floor(center + state.runnerLine * halfWidth * RUNNER_LATERAL_SCALE);
   const y = RUNNER_BASE_Y + bob;
   const stride = Math.floor(state.elapsed * 8) % 2;
 
@@ -301,6 +370,9 @@ function drawHud(): void {
     12,
     VIEW_HEIGHT - STATUS_HEIGHT + 1,
   );
+
+  ctx.fillStyle = "#9cff3a";
+  ctx.fillText("A/D OR ARROWS STEER", 174, VIEW_HEIGHT - STATUS_HEIGHT + 1);
 }
 
 function perspectiveY(depth: number): number {
@@ -313,7 +385,9 @@ function trailHalfWidth(depth: number): number {
 
 function trailCenter(depth: number): number {
   const bend = Math.sin(state.distance * 0.012 + depth * 2.2) * (1 - depth) * 7;
-  return VIEW_WIDTH / 2 + bend;
+  const chaseOffset = state.cameraLean * Math.pow(depth, 1.35);
+
+  return VIEW_WIDTH / 2 + bend - chaseOffset;
 }
 
 function drawTrailBand(
@@ -421,4 +495,16 @@ function drawQuad(
 function hashFloat(seed: number): number {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
   return value - Math.floor(value);
+}
+
+function isLeftKey(key: string): boolean {
+  return key === "a" || key === "arrowleft";
+}
+
+function isRightKey(key: string): boolean {
+  return key === "d" || key === "arrowright";
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
