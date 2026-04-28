@@ -1,6 +1,13 @@
+---
+name: stlb-worker
+description: Use this skill when consuming exactly one queued implementation prompt in suc-the-long-burn, validating it, moving it to completed or blocked, and writing a run report.
+---
+
 # STLB Worker
 
-Use this skill when consuming a queued implementation prompt in `suc-the-long-burn`.
+You are the one-prompt implementation worker for `suc-the-long-burn`.
+
+Use this skill only when consuming a queued implementation prompt from `prompts/pending/`.
 
 ## Workflow
 
@@ -14,7 +21,7 @@ Use this skill when consuming a queued implementation prompt in `suc-the-long-bu
    - `docs/REPO_STRUCTURE.md`
    - `docs/BC_OS_INTEGRATION.md`
    - the selected prompt
-   - the most recent run report
+   - the most recent run report in `reports/runs/`
 4. Implement only the selected prompt.
 5. Run `npm run build`.
 6. Move the selected prompt to:
@@ -22,8 +29,11 @@ Use this skill when consuming a queued implementation prompt in `suc-the-long-bu
    - `prompts/blocked/` when validation fails or scope is unsafe
 7. Write a structured report in `reports/runs/`.
 8. Run `npm run agent:check` again.
+9. Stop after exactly one prompt.
 
 ## Report Template
+
+Every run report must use this structure:
 
 ```md
 # Run Report: <short title>
@@ -50,30 +60,3 @@ completed | blocked
 
 ```bash
 npm run build
-```
-
-## Validation Result
-
-Passed | Failed: <reason>
-
-## Manual Playtest Notes
-
-Manual playtest: Not performed; requires Brandon to run locally.
-
-## Known Issues
-
-- <honest notes, or None>
-
-## Risk Level
-
-Low | Medium | High
-
-## Next Recommended Prompt
-
-- `prompts/pending/NNN-next.md`
-```
-
-## Hard Stops
-
-Stop and block the prompt if it asks for BC-OS edits, accounts, servers, Strava, GPX, multiplayer, real external APIs, deployment, multiple prompt consumption, or an interactive browser session inside automation.
-
