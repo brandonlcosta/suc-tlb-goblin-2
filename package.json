@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "agent:check": "node scripts/check-prompt-ledger.mjs",
+    "agent:one": "node scripts/auto-run-one.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
