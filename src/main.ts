@@ -2,11 +2,17 @@ import "./styles/base.css";
 
 const VIEW_WIDTH = 320;
 const VIEW_HEIGHT = 180;
-const HUD_HEIGHT = 28;
+const HUD_HEIGHT = 40;
 const STATUS_HEIGHT = 18;
 const HORIZON_Y = 52;
 const TRAIL_LENGTH = 420;
 const AUTO_SPEED = 26;
+const MAX_RESOURCE = 100;
+const STARTING_HEAT = 8;
+const STARTING_HYDRATION = 100;
+const HEAT_GAIN_PER_SECOND = 7.4;
+const LOW_HYDRATION_HEAT_MULTIPLIER = 1.3;
+const HYDRATION_DRAIN_PER_SECOND = 4.1;
 const TRAIL_OBJECT_COUNT = 24;
 const TRAIL_LINE_COUNT = 18;
 const RUNNER_BASE_Y = 143;
@@ -17,13 +23,15 @@ const STEER_SPEED = 1.9;
 const STEER_RESPONSE = 14;
 const CAMERA_LEAN_SCALE = 18;
 
-type RunPhase = "running" | "complete";
+type RunPhase = "running" | "complete" | "failed";
 
 interface GameState {
   distance: number;
   elapsed: number;
   lastTimestamp: number;
   phase: RunPhase;
+  heat: number;
+  hydration: number;
   runnerLine: number;
   runnerVelocity: number;
   cameraLean: number;
@@ -89,6 +97,8 @@ function createInitialState(): GameState {
     elapsed: 0,
     lastTimestamp: performance.now(),
     phase: "running",
+    heat: STARTING_HEAT,
+    hydration: STARTING_HYDRATION,
     runnerLine: 0,
     runnerVelocity: 0,
     cameraLean: 0,
@@ -117,12 +127,30 @@ function update(deltaSeconds: number): void {
 
   state.elapsed += deltaSeconds;
   state.distance = Math.min(state.distance + AUTO_SPEED * deltaSeconds, TRAIL_LENGTH);
+  updateResources(deltaSeconds);
   updateRunnerControl(deltaSeconds);
   easeCamera(deltaSeconds);
 
-  if (state.distance >= TRAIL_LENGTH) {
+  if (state.heat >= MAX_RESOURCE) {
+    state.phase = "failed";
+  } else if (state.distance >= TRAIL_LENGTH) {
     state.phase = "complete";
   }
+}
+
+function updateResources(deltaSeconds: number): void {
+  const hydrationHeatPenalty = state.hydration <= 35 ? LOW_HYDRATION_HEAT_MULTIPLIER : 1;
+
+  state.heat = clamp(
+    state.heat + HEAT_GAIN_PER_SECOND * hydrationHeatPenalty * deltaSeconds,
+    0,
+    MAX_RESOURCE,
+  );
+  state.hydration = clamp(
+    state.hydration - HYDRATION_DRAIN_PER_SECOND * deltaSeconds,
+    0,
+    MAX_RESOURCE,
+  );
 }
 
 function updateRunnerControl(deltaSeconds: number): void {
@@ -362,17 +390,69 @@ function drawHud(): void {
   ctx.fillStyle = "#efe7cf";
   ctx.fillText("R RESTART", 230, 17);
 
+  drawResourceBar("HEAT", state.heat, 8, 29, 140, "#f05a24");
+  drawResourceBar("HYD", state.hydration, 170, 29, 142, "#39d0ff");
+
   ctx.fillStyle = "#080807";
   ctx.fillRect(8, VIEW_HEIGHT - STATUS_HEIGHT, 304, 10);
   ctx.fillStyle = "#efe7cf";
-  ctx.fillText(
-    state.phase === "complete" ? "TRAIL SECTION COMPLETE" : "CANYON CORRIDOR V0",
-    12,
-    VIEW_HEIGHT - STATUS_HEIGHT + 1,
-  );
+  ctx.fillText(statusText(), 12, VIEW_HEIGHT - STATUS_HEIGHT + 1);
 
   ctx.fillStyle = "#9cff3a";
-  ctx.fillText("A/D OR ARROWS STEER", 174, VIEW_HEIGHT - STATUS_HEIGHT + 1);
+  ctx.fillText(
+    state.phase === "running" ? "A/D OR ARROWS STEER" : "R OR BUTTON RESTART",
+    174,
+    VIEW_HEIGHT - STATUS_HEIGHT + 1,
+  );
+}
+
+function drawResourceBar(
+  label: string,
+  value: number,
+  x: number,
+  y: number,
+  width: number,
+  fillColor: string,
+): void {
+  const labelWidth = 22;
+  const barX = x + labelWidth;
+  const barWidth = width - labelWidth;
+  const fillWidth = Math.floor((barWidth - 2) * (value / MAX_RESOURCE));
+
+  ctx.fillStyle = "#efe7cf";
+  ctx.fillText(label, x, y - 1);
+  ctx.fillStyle = "#211711";
+  ctx.fillRect(barX, y, barWidth, 7);
+  ctx.fillStyle = "#4f3b2e";
+  ctx.fillRect(barX + 1, y + 1, barWidth - 2, 5);
+  ctx.fillStyle = fillColor;
+  ctx.fillRect(barX + 1, y + 1, fillWidth, 5);
+  ctx.fillStyle = "#080807";
+  ctx.fillRect(barX + Math.max(1, fillWidth), y + 1, 1, 5);
+}
+
+function statusText(): string {
+  if (state.phase === "complete") {
+    return "TRAIL SECTION COMPLETE";
+  }
+
+  if (state.phase === "failed") {
+    return "HEAT COLLAPSE - RUN OVER";
+  }
+
+  if (state.heat >= 90) {
+    return "CRITICAL HEAT - BACK OFF";
+  }
+
+  if (state.heat >= 75) {
+    return "DANGER HEAT RISING";
+  }
+
+  if (state.hydration <= 30) {
+    return "HYDRATION LOW";
+  }
+
+  return "CANYON CORRIDOR V0";
 }
 
 function perspectiveY(depth: number): number {

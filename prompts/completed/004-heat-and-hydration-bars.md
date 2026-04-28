@@ -1,4 +1,4 @@
-# Prompt 004 — Heat and Hydration Bars
+# Prompt 004 â€” Heat and Hydration Bars
 
 ## Goal
 
