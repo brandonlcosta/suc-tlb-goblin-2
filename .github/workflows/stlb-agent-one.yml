@@ -1,0 +1,139 @@
+name: STLB Agent One
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run-one:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine oldest pending prompt
+        id: prompt
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          prompts=(prompts/pending/[0-9]*.md)
+          if [ "${#prompts[@]}" -eq 0 ]; then
+            echo "No pending prompt exists; exiting cleanly."
+            echo "has_prompt=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IFS=$'\n' sorted=($(printf '%s\n' "${prompts[@]}" | sort -V))
+          unset IFS
+
+          prompt_path="${sorted[0]}"
+          prompt_file="$(basename "$prompt_path")"
+          prompt_base="${prompt_file%.md}"
+          prompt_number="${prompt_base%%-*}"
+          prompt_slug="${prompt_base#*-}"
+          branch_name="agent/${prompt_number}-${prompt_slug}"
+
+          echo "has_prompt=true" >> "$GITHUB_OUTPUT"
+          echo "prompt_path=$prompt_path" >> "$GITHUB_OUTPUT"
+          echo "prompt_file=$prompt_file" >> "$GITHUB_OUTPUT"
+          echo "prompt_number=$prompt_number" >> "$GITHUB_OUTPUT"
+          echo "prompt_slug=$prompt_slug" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+
+      - name: Create worker branch
+        if: steps.prompt.outputs.has_prompt == 'true'
+        run: git switch -c "${{ steps.prompt.outputs.branch_name }}"
+
+      - name: Run Codex
+        if: steps.prompt.outputs.has_prompt == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/stlb-run-one.md
+          sandbox: workspace-write
+
+      - name: Detect Codex changes
+        if: steps.prompt.outputs.has_prompt == 'true'
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Codex made no changes; exiting cleanly."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        if: steps.changes.outputs.has_changes == 'true'
+        run: npm run build
+
+      - name: Check prompt ledger
+        if: steps.changes.outputs.has_changes == 'true'
+        run: npm run agent:check
+
+      - name: Commit changes
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "No staged changes; exiting cleanly."
+            exit 0
+          fi
+
+          git commit -m "Complete STLB prompt ${{ steps.prompt.outputs.prompt_number }}"
+
+      - name: Push worker branch
+        if: steps.changes.outputs.has_changes == 'true'
+        run: git push --set-upstream origin "${{ steps.prompt.outputs.branch_name }}"
+
+      - name: Open pull request
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMPT_PATH: ${{ steps.prompt.outputs.prompt_path }}
+          PROMPT_NUMBER: ${{ steps.prompt.outputs.prompt_number }}
+          PROMPT_SLUG: ${{ steps.prompt.outputs.prompt_slug }}
+          BRANCH_NAME: ${{ steps.prompt.outputs.branch_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "Complete STLB prompt ${PROMPT_NUMBER}: ${PROMPT_SLUG}" \
+            --body "$(cat <<EOF
+          Consumed prompt path: \`${PROMPT_PATH}\`
+
+          Validation:
+          - \`npm run build\`
+          - \`npm run agent:check\`
+
+          Manual playtest: Not performed; requires Brandon to run locally.
+          EOF
+          )"
