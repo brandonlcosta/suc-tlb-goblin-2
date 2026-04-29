@@ -356,6 +356,18 @@ body {
   color: #ffd15c;
 }
 
+#hud [data-zone-kind="steep"] {
+  color: #ff8b3d;
+}
+
+#hud [data-zone-kind="switchback"] {
+  color: #ffd15c;
+}
+
+#hud [data-zone-kind="uphill"] {
+  color: #ff4f4f;
+}
+
 #hud [data-zone-kind="mixed"] {
   color: #9cff3a;
 }

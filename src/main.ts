@@ -129,8 +129,14 @@ const CREW_ACTIONS = {
 
 type CrewSupportAction = keyof typeof CREW_ACTIONS;
 
-type RouteZoneKind = "mixed" | "exposed" | "technical" | "shade" | "finish";
-type RouteMarkerKind = "exposed" | "technical" | "shade" | "finish";
+type RouteZoneKind =
+  | "mixed"
+  | "steep"
+  | "switchback"
+  | "uphill"
+  | "exposed"
+  | "finish";
+type RouteMarkerKind = "steep" | "switchback" | "uphill" | "exposed" | "finish";
 
 interface RouteZone {
   start: number;
@@ -139,6 +145,14 @@ interface RouteZone {
   cue: string;
   kind: RouteZoneKind;
   markerKind?: RouteMarkerKind;
+  speedBonus: number;
+  downhillBoostFloor: number;
+  downhillBoostBonus: number;
+  heatMultiplier: number;
+  hydrationMultiplier: number;
+  quadMultiplier: number;
+  technicalPressure: number;
+  exposure: number;
 }
 
 interface RouteTransitionNotice {
@@ -151,49 +165,98 @@ interface RouteTransitionNotice {
 const ROUTE_ZONES: readonly RouteZone[] = [
   {
     start: 0,
-    end: 0.42,
-    shortLabel: "MIXED ROLL",
-    cue: "CONTROL EARLY",
+    end: 0.25,
+    shortLabel: "FAST ROLLOUT",
+    cue: "SPEED FEELS FREE",
     kind: "mixed",
+    speedBonus: 0.18,
+    downhillBoostFloor: 0.95,
+    downhillBoostBonus: 0.12,
+    heatMultiplier: 0.94,
+    hydrationMultiplier: 0.96,
+    quadMultiplier: 0.86,
+    technicalPressure: 0.18,
+    exposure: 0.48,
   },
   {
-    start: 0.42,
+    start: 0.25,
+    end: 0.43,
+    shortLabel: "STEEP DROP",
+    cue: "BRAKE BEFORE GRAVITY",
+    kind: "steep",
+    markerKind: "steep",
+    speedBonus: 0.48,
+    downhillBoostFloor: 2.05,
+    downhillBoostBonus: 0.62,
+    heatMultiplier: 1.12,
+    hydrationMultiplier: 1.05,
+    quadMultiplier: 1.55,
+    technicalPressure: 0.58,
+    exposure: 0.82,
+  },
+  {
+    start: 0.43,
     end: 0.62,
-    shortLabel: "EXPOSED SHELF",
-    cue: "HEAT AHEAD",
-    kind: "exposed",
-    markerKind: "exposed",
+    shortLabel: "SWITCHBACKS",
+    cue: "SET LINE BEFORE TURN",
+    kind: "switchback",
+    markerKind: "switchback",
+    speedBonus: -0.08,
+    downhillBoostFloor: 1.05,
+    downhillBoostBonus: 0.05,
+    heatMultiplier: 1.1,
+    hydrationMultiplier: 1.03,
+    quadMultiplier: 1.34,
+    technicalPressure: 0.92,
+    exposure: 0.74,
   },
   {
     start: 0.62,
-    end: 0.74,
-    shortLabel: "TECH HEAT",
-    cue: "BRAKE BEFORE ROCKS",
-    kind: "technical",
-    markerKind: "technical",
+    end: 0.72,
+    shortLabel: "UPHILL CHECK",
+    cue: "EFFORT RISES",
+    kind: "uphill",
+    markerKind: "uphill",
+    speedBonus: -1.18,
+    downhillBoostFloor: 0,
+    downhillBoostBonus: -0.34,
+    heatMultiplier: 1.36,
+    hydrationMultiplier: 1.18,
+    quadMultiplier: 0.72,
+    technicalPressure: 0.3,
+    exposure: 0.9,
   },
   {
-    start: 0.74,
-    end: 0.84,
-    shortLabel: "SHADE PINCH",
-    cue: "SHADE, STILL TECHNICAL",
-    kind: "shade",
-    markerKind: "shade",
-  },
-  {
-    start: 0.84,
+    start: 0.72,
     end: 0.9,
-    shortLabel: "SHADE EXIT",
-    cue: "RECOVER IF ABLE",
-    kind: "shade",
+    shortLabel: "HOT DESCENT",
+    cue: "CURVES KEEP BITING",
+    kind: "exposed",
+    markerKind: "exposed",
+    speedBonus: 0.2,
+    downhillBoostFloor: 1.28,
+    downhillBoostBonus: 0.24,
+    heatMultiplier: 1.18,
+    hydrationMultiplier: 1.08,
+    quadMultiplier: 1.12,
+    technicalPressure: 0.54,
+    exposure: 0.86,
   },
   {
     start: 0.9,
     end: 1.01,
-    shortLabel: "FINAL RUNOUT",
+    shortLabel: "FINAL PUSH",
     cue: "NO PANIC SEND",
     kind: "finish",
     markerKind: "finish",
+    speedBonus: 0.32,
+    downhillBoostFloor: 1.55,
+    downhillBoostBonus: 0.28,
+    heatMultiplier: 1.14,
+    hydrationMultiplier: 1.04,
+    quadMultiplier: 1.2,
+    technicalPressure: 0.5,
+    exposure: 0.76,
   },
 ];
 
@@ -253,8 +316,8 @@ const DEFAULT_RISK_LANE: RiskLaneEffect = {
 
 const RISK_LANE_CUES: readonly RiskLaneCue[] = [
   {
-    start: 0.18,
-    end: 0.32,
+    start: 0.12,
+    end: 0.24,
     minLateral: -1.75,
     maxLateral: -0.45,
     kind: "shade",
@@ -267,8 +330,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.1, 0.32, 0.2],
   },
   {
-    start: 0.43,
-    end: 0.59,
+    start: 0.27,
+    end: 0.42,
     minLateral: 0.42,
     maxLateral: 1.78,
     kind: "fast",
@@ -281,8 +344,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.86, 0.36, 0.09],
   },
   {
-    start: 0.58,
-    end: 0.72,
+    start: 0.44,
+    end: 0.6,
     minLateral: -1.68,
     maxLateral: -0.3,
     kind: "rocky",
@@ -295,8 +358,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.63, 0.46, 0.18],
   },
   {
-    start: 0.64,
-    end: 0.8,
+    start: 0.48,
+    end: 0.68,
     minLateral: -0.42,
     maxLateral: 0.48,
     kind: "safe",
@@ -309,8 +372,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.46, 0.58, 0.27],
   },
   {
-    start: 0.75,
-    end: 0.88,
+    start: 0.73,
+    end: 0.86,
     minLateral: -1.62,
     maxLateral: -0.36,
     kind: "shade",
@@ -323,8 +386,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.08, 0.36, 0.25],
   },
   {
-    start: 0.88,
-    end: 0.96,
+    start: 0.86,
+    end: 0.97,
     minLateral: 0.38,
     maxLateral: 1.54,
     kind: "fast",
@@ -707,8 +770,9 @@ const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
 const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
-const zoneTechnicalMesh = createCubeMesh([0.95, 0.73, 0.18]);
-const zoneShadeMesh = createCubeMesh([0.08, 0.42, 0.25]);
+const zoneSteepMesh = createCubeMesh([0.95, 0.25, 0.08]);
+const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
+const zoneUphillMesh = createCubeMesh([0.86, 0.12, 0.1]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
@@ -1247,16 +1311,24 @@ function update(deltaSeconds: number): void {
   const steeringResponse = Math.min(1, deltaSeconds * (input.brake ? 12 : 9));
   const downhillBoost = downhillMomentumAt(runnerZ);
   const pace = PACE_SETTINGS[state.paceMode];
+  const routeZone = routeZoneAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
   const laneSpeedBonus = input.brake
     ? Math.min(0, riskLane.speedBonus)
     : riskLane.speedBonus;
+  const routeSpeedBonus = input.brake
+    ? Math.min(0, routeZone.speedBonus)
+    : routeZone.speedBonus;
   const unbrakedTargetSpeed = clamp(
     BASE_RUN_SPEED * pace.speedMultiplier +
       downhillBoost * pace.downhillMultiplier +
-      laneSpeedBonus,
+      laneSpeedBonus +
+      routeSpeedBonus,
     MIN_RUN_SPEED,
-    Math.min(MAX_RUN_SPEED, pace.maxSpeed + Math.max(0, laneSpeedBonus)),
+    Math.min(
+      MAX_RUN_SPEED,
+      pace.maxSpeed + Math.max(0, laneSpeedBonus) + Math.max(0, routeSpeedBonus),
+    ),
   );
   const targetSpeed = input.brake
     ? Math.min(BRAKE_TARGET_SPEED, state.speed)
@@ -1542,6 +1614,7 @@ function updateHeatAudioWarning(): void {
 
 function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePressure {
   const pace = PACE_SETTINGS[state.paceMode];
+  const routeZone = routeZoneAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
   const exposure = exposureAt(state.progress);
   const speedPressure = speedPressureFor(state.speed);
@@ -1561,6 +1634,7 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
       lowHydrationPressure * HEAT_LOW_HYDRATION_GAIN) *
     pace.heatMultiplier *
     brakeRelief *
+    routeZone.heatMultiplier *
     riskLane.heatMultiplier;
   let hydrationDrain =
     (HYDRATION_PASSIVE_DRAIN +
@@ -1568,6 +1642,7 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
       speedPressure * HYDRATION_SPEED_DRAIN +
       heatPressure * HYDRATION_HEAT_DRAIN) *
     pace.hydrationMultiplier *
+    routeZone.hydrationMultiplier *
     riskLane.hydrationMultiplier;
   const technicalPressure = technicalPressureAt(runnerZ);
   const quadMultiplier = input.brake ? QUAD_BRAKE_RELIEF : 1;
@@ -1577,6 +1652,7 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
     QUAD_AGGRESSION_GAIN *
     pace.quadMultiplier *
     quadMultiplier *
+    routeZone.quadMultiplier *
     riskLane.quadMultiplier;
 
   if (state.gelSupportRemaining > 0) {
@@ -2662,15 +2738,7 @@ function heatTintForRun(): number {
 }
 
 function exposureAt(progress: number): number {
-  if (progress > 0.42 && progress < 0.72) {
-    return 1;
-  }
-
-  if (progress > 0.74 && progress < 0.9) {
-    return 0.38;
-  }
-
-  return 0.58;
+  return routeZoneAt(progress).exposure;
 }
 
 function speedPressureFor(speed: number): number {
@@ -2684,15 +2752,7 @@ function speedPressureFor(speed: number): number {
 function technicalPressureAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
 
-  if (depth > 0.62 && depth < 0.84) {
-    return 0.85;
-  }
-
-  if (depth > 0.88) {
-    return 0.48;
-  }
-
-  return 0.25;
+  return routeZoneAt(depth).technicalPressure;
 }
 
 function runnerPositionAt(progress: number, lateral: number): {
@@ -2748,8 +2808,9 @@ function createTrailMesh(): Mesh {
   const trailColorA: Vec3 = [0.38, 0.23, 0.13];
   const trailColorB: Vec3 = [0.5, 0.31, 0.15];
   const exposedColor: Vec3 = [0.72, 0.39, 0.15];
-  const shadeColor: Vec3 = [0.22, 0.22, 0.13];
-  const technicalColor: Vec3 = [0.56, 0.43, 0.18];
+  const steepColor: Vec3 = [0.66, 0.25, 0.1];
+  const switchbackColor: Vec3 = [0.56, 0.43, 0.18];
+  const uphillColor: Vec3 = [0.5, 0.19, 0.13];
   const edgeColor: Vec3 = [0.14, 0.09, 0.06];
   const shoulderColor: Vec3 = [0.35, 0.22, 0.09];
 
@@ -2762,16 +2823,17 @@ function createTrailMesh(): Mesh {
     const farWidth = trailWidthAt(farZ);
     const sectionProgress = index / segments;
     const routeZone = routeZoneAt(sectionProgress);
-    const color =
-      routeZone.kind === "technical"
-        ? technicalColor
-        : routeZone.kind === "exposed"
-        ? exposedColor
-        : routeZone.kind === "shade" && index % 2 === 0
-          ? shadeColor
-          : index % 2 === 0
-            ? trailColorA
-            : trailColorB;
+    let color = index % 2 === 0 ? trailColorA : trailColorB;
+
+    if (routeZone.kind === "switchback") {
+      color = switchbackColor;
+    } else if (routeZone.kind === "steep") {
+      color = steepColor;
+    } else if (routeZone.kind === "uphill") {
+      color = uphillColor;
+    } else if (routeZone.kind === "exposed") {
+      color = exposedColor;
+    }
 
     addQuad(
       positions,
@@ -3055,7 +3117,7 @@ function createCrewZoneObjects(): SceneObject[] {
 
 function createAtmosphereObjects(): SceneObject[] {
   const objects: SceneObject[] = [];
-  const signZones = [0.25, 0.49, 0.74] as const;
+  const signZones = [0.18, 0.31, 0.48, 0.64, 0.78] as const;
 
   objects.push({
     mesh: sunMesh,
@@ -3072,7 +3134,7 @@ function createAtmosphereObjects(): SceneObject[] {
     const z = -TRAIL_LENGTH * signZones[index];
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
-    const side = index === 1 ? 1 : -1;
+    const side = index % 2 === 0 ? -1 : 1;
     const x = center + side * (width + 0.88);
     const y = trailHeightAt(z);
 
@@ -3147,7 +3209,7 @@ function addRouteZoneMarkerGate(
   const width = trailWidthAt(z);
   const y = trailHeightAt(z);
   const mesh = routeMarkerMeshFor(kind);
-  const sideRotation = kind === "technical" ? 0.55 : 0.18;
+  const sideRotation = kind === "switchback" ? 0.55 : 0.18;
   const gateHeight = 2.16 * scaleMultiplier;
 
   markers.push(
@@ -3185,19 +3247,27 @@ function addRouteZoneMarkerGate(
 }
 
 function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
-  if (kind === "exposed") {
-    return zoneExposedMesh;
+  if (kind === "steep") {
+    return zoneSteepMesh;
   }
 
-  if (kind === "technical") {
-    return zoneTechnicalMesh;
+  if (kind === "switchback") {
+    return zoneSwitchbackMesh;
+  }
+
+  if (kind === "uphill") {
+    return zoneUphillMesh;
+  }
+
+  if (kind === "exposed") {
+    return zoneExposedMesh;
   }
 
   if (kind === "finish") {
     return finishTapeMesh;
   }
 
-  return zoneShadeMesh;
+  return zoneExposedMesh;
 }
 
 function createTrailMarkers(): SceneObject[] {
@@ -3455,21 +3525,39 @@ function requiredBuffer(): WebGLBuffer {
 }
 
 function trailHeightAt(z: number): number {
-  return z * 0.095 + Math.sin(z * 0.09) * 0.22;
+  const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+  const baseDrop = -depth * 34.5;
+  const steepDrop = -smoothRange(depth, 0.23, 0.43) * 8.2;
+  const switchbackDrop = -smoothRange(depth, 0.43, 0.62) * 3.7;
+  const uphillLift =
+    smoothRange(depth, 0.62, 0.7) * 5.4 - smoothRange(depth, 0.7, 0.78) * 5.4;
+  const finalDrop = -smoothRange(depth, 0.72, 1) * 6.2;
+  const roughness = Math.sin(z * 0.09) * 0.18;
+
+  return baseDrop + steepDrop + switchbackDrop + uphillLift + finalDrop + roughness;
 }
 
 function trailCenterAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+  const broadCurve = Math.sin(depth * Math.PI * 2) * 1.18;
+  const trailWander = Math.sin(depth * Math.PI * 5.1) * 0.62;
+  const switchbackTurn =
+    smoothRange(depth, 0.38, 0.46) * 2.15 -
+    smoothRange(depth, 0.46, 0.54) * 4.35 +
+    smoothRange(depth, 0.54, 0.62) * 2.35;
+  const finalBend = smoothRange(depth, 0.72, 0.9) * 1.2;
 
-  return Math.sin(depth * Math.PI * 2.2) * 2.2 + Math.sin(depth * Math.PI * 5.1) * 0.72;
+  return broadCurve + trailWander + switchbackTurn + finalBend;
 }
 
 function trailWidthAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
   const base = 3.1 - depth * 0.72;
-  const technicalPinch = depth > 0.62 && depth < 0.84 ? 0.52 : 0;
+  const switchbackPinch = depth > 0.43 && depth < 0.62 ? 0.48 : 0;
+  const uphillPinch = depth > 0.62 && depth < 0.72 ? 0.22 : 0;
+  const finalPinch = depth > 0.82 ? 0.18 : 0;
 
-  return base - technicalPinch;
+  return base - switchbackPinch - uphillPinch - finalPinch;
 }
 
 function playableLateralLimitAt(z: number): number {
@@ -3479,9 +3567,15 @@ function playableLateralLimitAt(z: number): number {
 function downhillMomentumAt(z: number): number {
   const currentHeight = trailHeightAt(z);
   const aheadHeight = trailHeightAt(z - 10);
+  const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+  const routeZone = routeZoneAt(depth);
   const drop = Math.max(0, currentHeight - aheadHeight);
 
-  return clamp(drop * 4.2, 0.8, STEADY_MAX_RUN_SPEED - BASE_RUN_SPEED);
+  return clamp(
+    drop * 4.2 + routeZone.downhillBoostBonus,
+    routeZone.downhillBoostFloor,
+    STEADY_MAX_RUN_SPEED - BASE_RUN_SPEED,
+  );
 }
 
 function identityMat4(): Float32Array {
@@ -3661,6 +3755,12 @@ function lerpVec3(from: Vec3, to: Vec3, amount: number): Vec3 {
 
 function radians(degrees: number): number {
   return (degrees * Math.PI) / 180;
+}
+
+function smoothRange(value: number, start: number, end: number): number {
+  const t = clamp((value - start) / (end - start), 0, 1);
+
+  return t * t * (3 - 2 * t);
 }
 
 function formatClock(seconds: number): string {
