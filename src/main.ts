@@ -42,6 +42,7 @@ const CREW_CALM_QUAD_MULTIPLIER = 0.64;
 const CREW_WATER_HEAT_DROP = 20;
 const LEAVE_FAST_HEAT_PENALTY = 6;
 const LEAVE_FAST_HYDRATION_PENALTY = 8;
+const ROUTE_MARKER_LEAD_PROGRESS = 0.035;
 
 const PACE_SETTINGS = {
   control: {
@@ -125,6 +126,66 @@ const CREW_ACTIONS = {
 
 type CrewSupportAction = keyof typeof CREW_ACTIONS;
 
+type RouteZoneKind = "mixed" | "exposed" | "technical" | "shade" | "finish";
+type RouteMarkerKind = "exposed" | "technical" | "shade";
+
+interface RouteZone {
+  start: number;
+  end: number;
+  shortLabel: string;
+  cue: string;
+  kind: RouteZoneKind;
+  markerKind?: RouteMarkerKind;
+}
+
+const ROUTE_ZONES: readonly RouteZone[] = [
+  {
+    start: 0,
+    end: 0.42,
+    shortLabel: "MIXED ROLL",
+    cue: "CONTROL EARLY",
+    kind: "mixed",
+  },
+  {
+    start: 0.42,
+    end: 0.62,
+    shortLabel: "EXPOSED SHELF",
+    cue: "HEAT AHEAD",
+    kind: "exposed",
+    markerKind: "exposed",
+  },
+  {
+    start: 0.62,
+    end: 0.74,
+    shortLabel: "TECH HEAT",
+    cue: "BRAKE BEFORE ROCKS",
+    kind: "technical",
+    markerKind: "technical",
+  },
+  {
+    start: 0.74,
+    end: 0.84,
+    shortLabel: "SHADE PINCH",
+    cue: "SHADE, STILL TECHNICAL",
+    kind: "shade",
+    markerKind: "shade",
+  },
+  {
+    start: 0.84,
+    end: 0.9,
+    shortLabel: "SHADE EXIT",
+    cue: "RECOVER IF ABLE",
+    kind: "shade",
+  },
+  {
+    start: 0.9,
+    end: 1.01,
+    shortLabel: "FINAL RUNOUT",
+    cue: "NO PANIC SEND",
+    kind: "finish",
+  },
+];
+
 type Vec3 = [number, number, number];
 
 interface Mesh {
@@ -185,6 +246,10 @@ const restartButton = document.querySelector<HTMLButtonElement>("#restart-button
 const progressText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-progress]"),
   "Missing progress HUD element.",
+);
+const zoneText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-zone]"),
+  "Missing zone HUD element.",
 );
 const paceText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-pace]"),
@@ -346,10 +411,14 @@ const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
+const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
+const zoneTechnicalMesh = createCubeMesh([0.95, 0.73, 0.18]);
+const zoneShadeMesh = createCubeMesh([0.08, 0.42, 0.25]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createAtmosphereObjects(),
+  ...createRouteZoneMarkers(),
   ...createTrailMarkers(),
   ...createFinishLineObjects(),
   ...createRocks(),
@@ -616,6 +685,7 @@ function updateHud(): void {
   const pace = PACE_SETTINGS[state.paceMode];
 
   progressText.textContent = `PROGRESS ${progress}%`;
+  setRouteZoneText();
   paceText.textContent = `PACE ${pace.key} ${pace.label}`;
   paceText.dataset.paceMode = state.paceMode;
   timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
@@ -768,6 +838,7 @@ function isRunTerminal(): boolean {
 
 function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
+  const zone = routeZoneAt(state.progress);
 
   if (state.crewActive) {
     return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
@@ -782,11 +853,11 @@ function statusLine(speed: string): string {
   }
 
   if (isCoolingActive()) {
-    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  HEAT SUPPRESSED  ${speed}`;
+    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ${zone.shortLabel}  ${speed}`;
   }
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
-    return `${crewChoiceSummary()}  DESCENT CONTROL ${speed}`;
+    return `${crewChoiceSummary()}  ${zone.shortLabel} ${speed}`;
   }
 
   if (state.heat >= 90) {
@@ -801,7 +872,32 @@ function statusLine(speed: string): string {
     return `QUADS COOKED  DESCENT TAX DUE  ${speed}`;
   }
 
-  return `${input.brake ? "BRAKING" : pace.label} ${speed}  CAL ST DROP`;
+  return `${input.brake ? "BRAKING" : pace.label} ${speed}  ${zone.cue}`;
+}
+
+function setRouteZoneText(): void {
+  const currentZone = routeZoneAt(state.progress);
+  const nextZone = nextRouteZoneAfter(state.progress);
+  const nextLabel = nextZone ? nextZone.shortLabel : "FINISH";
+
+  zoneText.textContent = `ZONE ${currentZone.shortLabel} / NEXT ${nextLabel}`;
+  zoneText.dataset.zoneKind = currentZone.kind;
+}
+
+function routeZoneAt(progress: number): RouteZone {
+  const clampedProgress = clamp(progress, 0, 1);
+
+  return (
+    ROUTE_ZONES.find(
+      (zone) => clampedProgress >= zone.start && clampedProgress < zone.end,
+    ) ?? ROUTE_ZONES[ROUTE_ZONES.length - 1]!
+  );
+}
+
+function nextRouteZoneAfter(progress: number): RouteZone | null {
+  const currentZone = routeZoneAt(progress);
+
+  return ROUTE_ZONES.find((zone) => zone.start > currentZone.start) ?? null;
 }
 
 function setCoolingText(): void {
@@ -1210,6 +1306,7 @@ function createTrailMesh(): Mesh {
   const trailColorB: Vec3 = [0.5, 0.31, 0.15];
   const exposedColor: Vec3 = [0.72, 0.39, 0.15];
   const shadeColor: Vec3 = [0.22, 0.22, 0.13];
+  const technicalColor: Vec3 = [0.56, 0.43, 0.18];
   const edgeColor: Vec3 = [0.14, 0.09, 0.06];
   const shoulderColor: Vec3 = [0.35, 0.22, 0.09];
 
@@ -1221,10 +1318,13 @@ function createTrailMesh(): Mesh {
     const nearWidth = trailWidthAt(nearZ);
     const farWidth = trailWidthAt(farZ);
     const sectionProgress = index / segments;
+    const routeZone = routeZoneAt(sectionProgress);
     const color =
-      sectionProgress > 0.42 && sectionProgress < 0.72
+      routeZone.kind === "technical"
+        ? technicalColor
+        : routeZone.kind === "exposed"
         ? exposedColor
-        : sectionProgress > 0.74 && index % 3 === 0
+        : routeZone.kind === "shade" && index % 2 === 0
           ? shadeColor
           : index % 2 === 0
             ? trailColorA
@@ -1503,6 +1603,71 @@ function createAtmosphereObjects(): SceneObject[] {
   }
 
   return objects;
+}
+
+function createRouteZoneMarkers(): SceneObject[] {
+  const markers: SceneObject[] = [];
+
+  for (const zone of ROUTE_ZONES) {
+    if (!zone.markerKind) {
+      continue;
+    }
+
+    const markerProgress = Math.max(0.02, zone.start - ROUTE_MARKER_LEAD_PROGRESS);
+    const z = -TRAIL_LENGTH * markerProgress;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+    const mesh = routeMarkerMeshFor(zone.markerKind);
+    const sideRotation = zone.markerKind === "technical" ? 0.55 : 0.18;
+
+    markers.push(
+      {
+        mesh,
+        position: [center - width - 0.42, y + 1.08, z],
+        scale: [0.2, 2.16, 0.2],
+        rotationY: -sideRotation,
+      },
+      {
+        mesh,
+        position: [center + width + 0.42, y + 1.08, z],
+        scale: [0.2, 2.16, 0.2],
+        rotationY: sideRotation,
+      },
+      {
+        mesh,
+        position: [center, y + 2.22, z],
+        scale: [width * 2.16, 0.16, 0.18],
+        rotationY: 0,
+      },
+      {
+        mesh,
+        position: [center - width * 0.48, y + 0.09, z + 0.5],
+        scale: [0.92, 0.05, 0.22],
+        rotationY: -0.18,
+      },
+      {
+        mesh,
+        position: [center + width * 0.48, y + 0.09, z + 0.5],
+        scale: [0.92, 0.05, 0.22],
+        rotationY: 0.18,
+      },
+    );
+  }
+
+  return markers;
+}
+
+function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
+  if (kind === "exposed") {
+    return zoneExposedMesh;
+  }
+
+  if (kind === "technical") {
+    return zoneTechnicalMesh;
+  }
+
+  return zoneShadeMesh;
 }
 
 function createTrailMarkers(): SceneObject[] {

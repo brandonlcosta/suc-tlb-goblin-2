@@ -211,6 +211,26 @@ body {
   color: #ff8b3d;
 }
 
+#hud [data-zone-kind="shade"] {
+  color: #8fd2ff;
+}
+
+#hud [data-zone-kind="exposed"] {
+  color: #ff8b3d;
+}
+
+#hud [data-zone-kind="technical"] {
+  color: #ffd15c;
+}
+
+#hud [data-zone-kind="mixed"] {
+  color: #9cff3a;
+}
+
+#hud [data-zone-kind="finish"] {
+  color: #efe7cf;
+}
+
 #game-shell[data-alert="danger"] {
   border-color: #5e2a12;
 }
