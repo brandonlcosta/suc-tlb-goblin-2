@@ -1,8 +1,8 @@
-# 017 — Playtest And Next Roadmap Report
+# 017 â€” Playtest And Next Roadmap Report
 
 ## Goal
 
-Review the current playable state after prompts 001 and 003–016 have been completed. Do not build a major new feature. Produce a clear playtest-style report and a next prompt roadmap so the project can continue safely.
+Review the current playable state after prompts 001 and 003â€“016 have been completed. Do not build a major new feature. Produce a clear playtest-style report and a next prompt roadmap so the project can continue safely.
 
 ## Context
 
@@ -40,7 +40,7 @@ This pass should evaluate where the game actually is now and propose the next sa
 4. Identify what feels complete, confusing, fragile, or missing.
 5. Determine whether blocked prompt 002 is still needed or whether later prompts already replaced its purpose.
 6. Create a playtest-style report.
-7. Create the next 8–12 small pending prompt files for future goblin runs.
+7. Create the next 8â€“12 small pending prompt files for future goblin runs.
 
 ## Output report
 
