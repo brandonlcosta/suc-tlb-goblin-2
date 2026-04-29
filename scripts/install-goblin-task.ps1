@@ -27,14 +27,17 @@ $Trigger = New-ScheduledTaskTrigger `
 $Settings = New-ScheduledTaskSettingsSet `
   -MultipleInstances IgnoreNew `
   -StartWhenAvailable `
-  -AllowStartIfOnBatteries `
-  -DisallowStartIfOnBatteries:$false `
   -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 
+# Battery settings are intentionally omitted because their cmdlet parameters
+# vary across Windows PowerShell / ScheduledTasks versions.
+
+# Use the broadly supported Limited run level. Some ScheduledTasks versions
+# reject LeastPrivilege even though it appears in examples elsewhere.
 $Principal = New-ScheduledTaskPrincipal `
   -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) `
   -LogonType Interactive `
-  -RunLevel LeastPrivilege
+  -RunLevel Limited
 
 $Task = New-ScheduledTask `
   -Action $Action `
