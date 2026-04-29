@@ -159,6 +159,15 @@ Schedule the automation at a modest cadence, such as every 10 or 15 minutes at f
 
 Each Codex app tick runs locally, validates the repo, trusts the automation prompt to check GitHub with the GitHub connector, and exits. If a pending prompt exists, the tick starts work only by calling `npm run goblin:pr -- --codex-app`. It does not consume prompts directly, push directly to `main`, deploy, use the GitHub Codex Action, require an `OPENAI_API_KEY`, or call the local `gh` CLI.
 
+Codex app scheduled automation should validate with:
+
+```bash
+npm run build:goblin
+npm run agent:check
+```
+
+`npm run build:goblin` writes to `.goblin/dist/` so automation can verify TypeScript and Vite output without deleting or rewriting the normal `dist/` directory. Terminal and manual validation may still use `npm run build`.
+
 Terminal mode can still use `gh` by omitting `--codex-app`. In normal terminal mode, the tick checks GitHub with the authenticated `gh` CLI and stops when an `agent/*` PR is already open.
 
 GitHub checks still protect `main`. This mode builds through prompts and reviewable PRs, not direct self-mutation of game source.
