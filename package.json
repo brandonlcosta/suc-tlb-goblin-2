@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:goblin": "tsc && vite build --outDir .goblin/dist --emptyOutDir",
+    "build:goblin": "tsc && vite build --outDir .goblin/dist --emptyOutDir=false",
     "agent:check": "node scripts/check-prompt-ledger.mjs",
     "agent:one": "node scripts/auto-run-one.mjs",
     "goblin:pr": "node scripts/local-goblin-pr.mjs",
