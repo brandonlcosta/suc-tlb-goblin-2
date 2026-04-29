@@ -36,7 +36,6 @@ Updated the game bible and supporting docs so `SUC: The Long Burn` is explicitly
 npm run agent:check
 npm run build
 npm run agent:check
-npm run agent:check
 ```
 
 ## Validation Result
@@ -45,8 +44,8 @@ Passed.
 
 - Initial `npm run agent:check` passed before docs edits.
 - `npm run build` passed after docs edits.
-- Final `npm run agent:check` passed after docs edits.
-- A post-report `npm run agent:check` initially failed because this report referenced the pending prompt by full queue path; the report wording was corrected and the final rerun passed.
+- `npm run agent:check` was rerun after docs edits and report wording updates.
+- One post-report `npm run agent:check` initially failed because this report referenced the pending prompt by full queue path; the report wording was corrected and the final rerun passed.
 
 The prompt ledger still reports existing warnings that pending prompts contain manual/browser playtest language; ledger status is OK.
 
