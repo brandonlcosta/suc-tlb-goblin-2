@@ -13,8 +13,8 @@ const LATERAL_LIMIT = 1.85;
 const RUNNER_EDGE_BUFFER = 0.48;
 const CAMERA_RESPONSE = 4.8;
 const RESOURCE_MAX = 100;
-const STARTING_HEAT = 18;
-const STARTING_HYDRATION = 100;
+const STARTING_HEAT = 28;
+const STARTING_HYDRATION = 78;
 const STARTING_QUAD_DAMAGE = 0;
 const HEAT_PASSIVE_GAIN = 1.55;
 const HEAT_EXPOSURE_GAIN = 2.15;
@@ -27,11 +27,16 @@ const HYDRATION_SPEED_DRAIN = 1.65;
 const HYDRATION_HEAT_DRAIN = 1.35;
 const QUAD_AGGRESSION_GAIN = 4.8;
 const QUAD_BRAKE_RELIEF = 0.38;
-const STARTING_COOLING_CHARGES = 1;
+const STARTING_COOLING_CHARGES = 0;
 const COOLING_DURATION_SECONDS = 8;
 const COOLING_HEAT_GAIN_MULTIPLIER = 0.38;
 const COOLING_HEAT_DROP_PER_SECOND = 2.25;
 const COOLING_IMMEDIATE_HEAT_DROP = 5;
+const CREW_ACTION_LIMIT = 2;
+const CREW_GEL_SUPPORT_SECONDS = 68;
+const CREW_CALM_SUPPORT_SECONDS = 54;
+const CREW_GEL_HYDRATION_MULTIPLIER = 0.9;
+const CREW_CALM_QUAD_MULTIPLIER = 0.76;
 
 const PACE_SETTINGS = {
   control: {
@@ -85,6 +90,36 @@ const PACE_BY_KEY: Record<string, PaceMode> = {
   "4": "send",
 };
 
+const CREW_ACTIONS = {
+  refill: {
+    label: "BOTTLES",
+    timeCost: 14,
+    shout: "Bottles full. Do not make us watch you cook.",
+  },
+  ice: {
+    label: "ICE",
+    timeCost: 12,
+    shout: "Bandana packed. Use it before the canyon owns you.",
+  },
+  water: {
+    label: "WATER",
+    timeCost: 8,
+    shout: "Water dump done. You get one calm minute.",
+  },
+  gels: {
+    label: "GELS",
+    timeCost: 10,
+    shout: "Gels in hand. Eat before the legs start bargaining.",
+  },
+  calm: {
+    label: "CALM",
+    timeCost: 9,
+    shout: "Breathe. Control early or pay late.",
+  },
+} as const;
+
+type CrewSupportAction = keyof typeof CREW_ACTIONS;
+
 type Vec3 = [number, number, number];
 
 interface Mesh {
@@ -101,6 +136,12 @@ interface SceneObject {
 }
 
 interface GameState {
+  crewActive: boolean;
+  crewActionsRemaining: number;
+  crewChoices: CrewSupportAction[];
+  crewTimeSeconds: number;
+  crewMessage: string;
+  elapsedSeconds: number;
   progress: number;
   lateral: number;
   lateralVelocity: number;
@@ -111,6 +152,8 @@ interface GameState {
   quadDamage: number;
   coolingCharges: number;
   coolingRemaining: number;
+  gelSupportRemaining: number;
+  calmSupportRemaining: number;
   failureReason: string | null;
   cameraPosition: Vec3;
   cameraTarget: Vec3;
@@ -140,6 +183,10 @@ const paceText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-pace]"),
   "Missing pace HUD element.",
 );
+const timeText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-time]"),
+  "Missing time HUD element.",
+);
 const heatText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-heat]"),
   "Missing heat HUD element.",
@@ -156,9 +203,28 @@ const quadText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-quad]"),
   "Missing quad HUD element.",
 );
+const crewText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-crew]"),
+  "Missing crew HUD element.",
+);
 const statusText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-status]"),
   "Missing status HUD element.",
+);
+const crewOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#crew-overlay"),
+  "Missing crew overlay.",
+);
+const crewMessageText = requiredElement(
+  document.querySelector<HTMLElement>("[data-crew-message]"),
+  "Missing crew message element.",
+);
+const crewCounterText = requiredElement(
+  document.querySelector<HTMLElement>("[data-crew-counter]"),
+  "Missing crew counter element.",
+);
+const crewButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-crew-action]"),
 );
 const gl = requiredWebGlContext(canvas);
 
@@ -200,8 +266,13 @@ const accentMesh = createCubeMesh([0.57, 1, 0.24]);
 const iceMesh = createCubeMesh([0.42, 0.86, 1]);
 const rockMesh = createLowPolyRockMesh();
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
+const crewTableMesh = createCubeMesh([0.46, 0.28, 0.15]);
+const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
+const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
+const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 
 const sceneObjects: SceneObject[] = [
+  ...createCrewZoneObjects(),
   ...createTrailMarkers(),
   ...createRocks(),
   ...createTrees(),
@@ -216,6 +287,15 @@ const input: InputState = {
 let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
+for (const button of crewButtons) {
+  button.addEventListener("click", () => {
+    const actionId = button.dataset.crewAction;
+
+    if (actionId) {
+      chooseCrewAction(actionId);
+    }
+  });
+}
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
 
@@ -259,6 +339,7 @@ gl.enableVertexAttribArray(colorLocation);
 gl.enable(gl.DEPTH_TEST);
 gl.disable(gl.CULL_FACE);
 
+updateCrewUi();
 requestAnimationFrame(tick);
 
 function createInitialState(): GameState {
@@ -266,16 +347,24 @@ function createInitialState(): GameState {
   const camera = desiredCameraFor(runner, 0);
 
   return {
+    crewActive: true,
+    crewActionsRemaining: CREW_ACTION_LIMIT,
+    crewChoices: [],
+    crewTimeSeconds: 0,
+    crewMessage: "Two quick crew calls. Then the canyon collects.",
+    elapsedSeconds: 0,
     progress: 0,
     lateral: 0,
     lateralVelocity: 0,
-    speed: BASE_RUN_SPEED,
+    speed: 0,
     paceMode: "steady",
     heat: STARTING_HEAT,
     hydration: STARTING_HYDRATION,
     quadDamage: STARTING_QUAD_DAMAGE,
     coolingCharges: STARTING_COOLING_CHARGES,
     coolingRemaining: 0,
+    gelSupportRemaining: 0,
+    calmSupportRemaining: 0,
     failureReason: null,
     cameraPosition: camera.position,
     cameraTarget: camera.target,
@@ -306,6 +395,7 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
 
 function restart(): void {
   state = createInitialState();
+  updateCrewUi();
 }
 
 function setPaceForKey(key: string): boolean {
@@ -330,10 +420,12 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
-  if (state.failureReason || state.progress >= 1) {
+  if (state.crewActive || state.failureReason || state.progress >= 1) {
     updateCamera(deltaSeconds);
     return;
   }
+
+  state.elapsedSeconds += deltaSeconds;
 
   const runnerZ = -state.progress * TRAIL_LENGTH;
   const lateralLimit = playableLateralLimitAt(runnerZ);
@@ -431,6 +523,7 @@ function updateHud(): void {
   progressText.textContent = `PROGRESS ${progress}%`;
   paceText.textContent = `PACE ${pace.key} ${pace.label}`;
   paceText.dataset.paceMode = state.paceMode;
+  timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
   setCoolingText();
   setResourceText(heatText, "HEAT", state.heat, heatLevel(state.heat));
   setResourceText(
@@ -440,6 +533,7 @@ function updateHud(): void {
     hydrationLevel(state.hydration),
   );
   setResourceText(quadText, "QUADS", state.quadDamage, quadLevel(state.quadDamage));
+  setCrewText();
   gameShell.dataset.alert = shellAlertLevel();
   gameShell.dataset.cooling = coolingLevel();
   statusText.textContent = statusLine(speed);
@@ -474,7 +568,7 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
       lowHydrationPressure * HEAT_LOW_HYDRATION_GAIN) *
     pace.heatMultiplier *
     brakeRelief;
-  const hydrationDrain =
+  let hydrationDrain =
     (HYDRATION_PASSIVE_DRAIN +
       exposure * HYDRATION_EXPOSURE_DRAIN +
       speedPressure * HYDRATION_SPEED_DRAIN +
@@ -482,12 +576,22 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     pace.hydrationMultiplier;
   const technicalPressure = technicalPressureAt(runnerZ);
   const quadMultiplier = input.brake ? QUAD_BRAKE_RELIEF : 1;
-  const quadGain =
+  let quadGain =
     speedPressure *
     (0.5 + downhillPressure * 0.7 + technicalPressure * 0.45) *
     QUAD_AGGRESSION_GAIN *
     pace.quadMultiplier *
     quadMultiplier;
+
+  if (state.gelSupportRemaining > 0) {
+    hydrationDrain *= CREW_GEL_HYDRATION_MULTIPLIER;
+    state.gelSupportRemaining = Math.max(0, state.gelSupportRemaining - deltaSeconds);
+  }
+
+  if (state.calmSupportRemaining > 0) {
+    quadGain *= CREW_CALM_QUAD_MULTIPLIER;
+    state.calmSupportRemaining = Math.max(0, state.calmSupportRemaining - deltaSeconds);
+  }
 
   const coolingHeatChange = isCoolingActive()
     ? heatGain * COOLING_HEAT_GAIN_MULTIPLIER - COOLING_HEAT_DROP_PER_SECOND
@@ -523,6 +627,7 @@ function updateCooling(deltaSeconds: number): void {
 
 function useCooling(): void {
   if (
+    state.crewActive ||
     state.failureReason ||
     state.progress >= 1 ||
     state.coolingCharges <= 0 ||
@@ -543,6 +648,10 @@ function isCoolingActive(): boolean {
 function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
 
+  if (state.crewActive) {
+    return `CREW WINDOW ${state.crewActionsRemaining} PICKS  TAP SUPPORT OR LEAVE FAST`;
+  }
+
   if (state.failureReason) {
     return `${state.failureReason} - PRESS R`;
   }
@@ -553,6 +662,10 @@ function statusLine(speed: string): string {
 
   if (isCoolingActive()) {
     return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S ${pace.label} ${speed}`;
+  }
+
+  if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
+    return `${crewChoiceSummary()} ${pace.label} ${speed}`;
   }
 
   if (state.heat >= 90) {
@@ -587,6 +700,129 @@ function setCoolingText(): void {
 
   coolingText.textContent = "ICE SPENT";
   coolingText.dataset.coolingLevel = "spent";
+}
+
+function setCrewText(): void {
+  if (state.crewActive) {
+    crewText.textContent = `CREW ${state.crewActionsRemaining} PICKS`;
+    crewText.dataset.crewLevel = "open";
+    return;
+  }
+
+  if (state.crewChoices.length === 0) {
+    crewText.textContent = "CREW LEFT FAST";
+    crewText.dataset.crewLevel = "risk";
+    return;
+  }
+
+  crewText.textContent = `CREW ${crewChoiceSummary()} +${formatClock(state.crewTimeSeconds)}`;
+  crewText.dataset.crewLevel = "set";
+}
+
+function chooseCrewAction(actionId: string): void {
+  if (!state.crewActive) {
+    return;
+  }
+
+  if (actionId === "leave") {
+    const message =
+      state.crewChoices.length === 0
+        ? "Left fast. No bottles topped. No ice. Brave or dumb."
+        : "Crew says go. No more standing around.";
+    startDescent(message, true);
+    return;
+  }
+
+  if (
+    !isCrewSupportAction(actionId) ||
+    state.crewActionsRemaining <= 0 ||
+    state.crewChoices.includes(actionId)
+  ) {
+    return;
+  }
+
+  state.crewChoices.push(actionId);
+  state.crewActionsRemaining -= 1;
+  applyCrewAction(actionId);
+
+  if (state.crewActionsRemaining <= 0) {
+    startDescent("Crew limit spent. Get moving before the heat finds you.", false);
+    return;
+  }
+
+  updateCrewUi();
+}
+
+function applyCrewAction(actionId: CrewSupportAction): void {
+  const action = CREW_ACTIONS[actionId];
+
+  state.elapsedSeconds += action.timeCost;
+  state.crewTimeSeconds += action.timeCost;
+  state.crewMessage = action.shout;
+
+  if (actionId === "refill") {
+    state.hydration = RESOURCE_MAX;
+  } else if (actionId === "ice") {
+    state.coolingCharges += 1;
+  } else if (actionId === "water") {
+    state.heat = clamp(state.heat - 16, 0, RESOURCE_MAX);
+  } else if (actionId === "gels") {
+    state.gelSupportRemaining = Math.max(
+      state.gelSupportRemaining,
+      CREW_GEL_SUPPORT_SECONDS,
+    );
+  } else if (actionId === "calm") {
+    state.calmSupportRemaining = Math.max(
+      state.calmSupportRemaining,
+      CREW_CALM_SUPPORT_SECONDS,
+    );
+  }
+}
+
+function startDescent(message: string, leaveFast: boolean): void {
+  state.crewActive = false;
+  state.crewMessage = message;
+  state.speed = BASE_RUN_SPEED + (leaveFast ? 1.05 : 0);
+
+  if (leaveFast && state.crewChoices.length === 0) {
+    state.heat = clamp(state.heat + 5, 0, RESOURCE_MAX);
+    state.hydration = clamp(state.hydration - 6, 0, RESOURCE_MAX);
+  }
+
+  updateCrewUi();
+}
+
+function updateCrewUi(): void {
+  crewOverlay.hidden = !state.crewActive;
+  crewMessageText.textContent = state.crewMessage;
+  crewCounterText.textContent = `${state.crewActionsRemaining} crew picks available  CREW +${formatClock(
+    state.crewTimeSeconds,
+  )}`;
+
+  for (const button of crewButtons) {
+    const actionId = button.dataset.crewAction;
+    const selected =
+      actionId !== undefined &&
+      isCrewSupportAction(actionId) &&
+      state.crewChoices.includes(actionId);
+
+    button.disabled =
+      !state.crewActive ||
+      (actionId !== "leave" && (selected || state.crewActionsRemaining <= 0));
+    button.dataset.selected = selected ? "true" : "false";
+  }
+}
+
+function isCrewSupportAction(actionId: string): actionId is CrewSupportAction {
+  return actionId in CREW_ACTIONS;
+}
+
+function crewChoiceSummary(): string {
+  if (state.crewChoices.length === 0) {
+    return "CREW SKIPPED";
+  }
+
+  return state.crewChoices.map((choice) => CREW_ACTIONS[choice].label).join("+");
 }
 
 function setResourceText(
@@ -835,6 +1071,109 @@ function createTerrainMesh(): Mesh {
   addQuad(positions, colors, [-46, trailHeightAt(-164), -164], [46, trailHeightAt(-164), -164], [34, trailHeightAt(-190) + 7, -190], [-34, trailHeightAt(-190) + 7, -190], farFog);
 
   return createMesh(positions, colors);
+}
+
+function createCrewZoneObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+  const tableZ = 1.2;
+  const tableCenter = trailCenterAt(tableZ) - 2.95;
+  const tableY = trailHeightAt(tableZ);
+  const coolerZ = -0.5;
+  const coolerCenter = trailCenterAt(coolerZ) + 3.2;
+  const coolerY = trailHeightAt(coolerZ);
+  const signZ = -2.6;
+  const signCenter = trailCenterAt(signZ);
+  const signY = trailHeightAt(signZ);
+
+  objects.push(
+    {
+      mesh: crewTableMesh,
+      position: [tableCenter, tableY + 0.82, tableZ],
+      scale: [1.95, 0.18, 0.8],
+      rotationY: 0.08,
+    },
+    {
+      mesh: crewTableMesh,
+      position: [tableCenter - 0.78, tableY + 0.42, tableZ - 0.28],
+      scale: [0.14, 0.7, 0.14],
+      rotationY: 0.08,
+    },
+    {
+      mesh: crewTableMesh,
+      position: [tableCenter + 0.78, tableY + 0.42, tableZ - 0.28],
+      scale: [0.14, 0.7, 0.14],
+      rotationY: 0.08,
+    },
+    {
+      mesh: crewTableMesh,
+      position: [tableCenter - 0.78, tableY + 0.42, tableZ + 0.28],
+      scale: [0.14, 0.7, 0.14],
+      rotationY: 0.08,
+    },
+    {
+      mesh: crewTableMesh,
+      position: [tableCenter + 0.78, tableY + 0.42, tableZ + 0.28],
+      scale: [0.14, 0.7, 0.14],
+      rotationY: 0.08,
+    },
+    {
+      mesh: iceMesh,
+      position: [tableCenter - 0.38, tableY + 1.03, tableZ],
+      scale: [0.42, 0.2, 0.32],
+      rotationY: 0.2,
+    },
+    {
+      mesh: accentMesh,
+      position: [tableCenter + 0.42, tableY + 1.01, tableZ + 0.12],
+      scale: [0.24, 0.34, 0.24],
+      rotationY: 0.4,
+    },
+    {
+      mesh: crewCoolerMesh,
+      position: [coolerCenter, coolerY + 0.46, coolerZ],
+      scale: [0.9, 0.72, 0.68],
+      rotationY: -0.24,
+    },
+    {
+      mesh: iceMesh,
+      position: [coolerCenter, coolerY + 0.86, coolerZ],
+      scale: [0.98, 0.14, 0.72],
+      rotationY: -0.24,
+    },
+    {
+      mesh: crewSignMesh,
+      position: [signCenter, signY + 1.72, signZ],
+      scale: [2.35, 0.7, 0.12],
+    },
+    {
+      mesh: cubeMesh,
+      position: [signCenter - 1.05, signY + 0.9, signZ],
+      scale: [0.14, 1.55, 0.14],
+    },
+    {
+      mesh: cubeMesh,
+      position: [signCenter + 1.05, signY + 0.9, signZ],
+      scale: [0.14, 1.55, 0.14],
+    },
+  );
+
+  for (const [xOffset, z] of [
+    [-2.35, 2.8],
+    [2.35, 2.8],
+    [-2.15, -3.7],
+    [2.15, -3.7],
+  ] as const) {
+    const center = trailCenterAt(z);
+
+    objects.push({
+      mesh: crewConeMesh,
+      position: [center + xOffset, trailHeightAt(z) + 0.42, z],
+      scale: [0.42, 0.84, 0.42],
+      rotationY: z,
+    });
+  }
+
+  return objects;
 }
 
 function createTrailMarkers(): SceneObject[] {
@@ -1270,6 +1609,14 @@ function lerpVec3(from: Vec3, to: Vec3, amount: number): Vec3 {
 
 function radians(degrees: number): number {
   return (degrees * Math.PI) / 180;
+}
+
+function formatClock(seconds: number): string {
+  const wholeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(wholeSeconds / 60).toString().padStart(2, "0");
+  const remainingSeconds = (wholeSeconds % 60).toString().padStart(2, "0");
+
+  return `${minutes}:${remainingSeconds}`;
 }
 
 function clamp(value: number, min: number, max: number): number {

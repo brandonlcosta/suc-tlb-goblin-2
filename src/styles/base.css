@@ -141,6 +141,18 @@ body {
   color: #837868;
 }
 
+#hud [data-crew-level="open"] {
+  color: #ffd15c;
+}
+
+#hud [data-crew-level="set"] {
+  color: #9cff3a;
+}
+
+#hud [data-crew-level="risk"] {
+  color: #ff8b3d;
+}
+
 #game-shell[data-alert="danger"] {
   border-color: #5e2a12;
 }
@@ -157,6 +169,105 @@ body {
 
 [data-hud-status] {
   text-align: right;
+}
+
+#crew-overlay {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  color: #efe7cf;
+  text-shadow: 2px 2px 0 #080807;
+}
+
+#crew-overlay[hidden] {
+  display: none;
+}
+
+.crew-panel {
+  border: 2px solid #efe7cf;
+  background: rgba(8, 8, 7, 0.88);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.crew-panel > strong,
+.crew-panel > span {
+  display: block;
+  line-height: 1.15;
+}
+
+.crew-panel > strong {
+  color: #9cff3a;
+  font-size: 0.78rem;
+}
+
+.crew-panel > span {
+  color: #efe7cf;
+  font-size: 0.68rem;
+}
+
+.crew-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.crew-actions button {
+  min-height: 56px;
+  padding: 6px;
+  border: 2px solid #5d513f;
+  color: #efe7cf;
+  background: #18130e;
+  font: inherit;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.crew-actions button strong,
+.crew-actions button span {
+  display: block;
+  line-height: 1.12;
+}
+
+.crew-actions button strong {
+  font-size: 0.66rem;
+  color: #ffd15c;
+}
+
+.crew-actions button span {
+  margin-top: 3px;
+  font-size: 0.52rem;
+  color: #c8bda3;
+}
+
+.crew-actions button[data-selected="true"] {
+  border-color: #9cff3a;
+  color: #9cff3a;
+  background: #111a0b;
+}
+
+.crew-actions button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.crew-actions button:focus-visible {
+  outline: 2px solid #9cff3a;
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .crew-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crew-actions button {
+    min-height: 52px;
+  }
 }
 
 #restart-button {
