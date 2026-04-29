@@ -47,4 +47,4 @@ Low. The change is limited to local automation command resolution and preserves 
 
 ## Next Recommended Prompt
 
-Resume the normal queue with `prompts/pending/006-ice-and-cooling-system.md` when ready.
+Resume the normal queue with the next pending game prompt when ready.
