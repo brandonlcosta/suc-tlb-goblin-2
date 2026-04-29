@@ -483,6 +483,10 @@ const pressureQuadText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-pressure-quad]"),
   "Missing quad pressure readout.",
 );
+const supportText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-support]"),
+  "Missing support HUD element.",
+);
 const titleOverlay = requiredElement(
   document.querySelector<HTMLElement>("#title-overlay"),
   "Missing title overlay.",
@@ -1292,17 +1296,23 @@ function updateTouchControlsUi(): void {
   touchCoolingButton.dataset.coolingState = coolingState;
 
   if (coolingState === "active") {
-    touchCoolingStatus.textContent = `Active ${Math.ceil(state.coolingRemaining)}s`;
-    touchCoolingButton.setAttribute("aria-label", "Ice cooling active");
+    touchCoolingStatus.textContent = `Heat relief ${Math.ceil(
+      state.coolingRemaining,
+    )}s`;
+    touchCoolingButton.setAttribute("aria-label", "Ice cooling active, heat relief running");
   } else if (coolingState === "ready") {
-    touchCoolingStatus.textContent = `Tap ready ${state.coolingCharges}`;
+    touchCoolingStatus.textContent = `Tap heat drop ${state.coolingCharges}`;
     touchCoolingButton.setAttribute(
       "aria-label",
       `Use ice cooling, ${state.coolingCharges} charge${state.coolingCharges === 1 ? "" : "s"} ready`,
     );
   } else {
-    touchCoolingStatus.textContent = "No charge";
-    touchCoolingButton.setAttribute("aria-label", "Ice cooling spent");
+    touchCoolingStatus.textContent =
+      state.decisionStats.coolingUses > 0 ? "Spent" : "No charge";
+    touchCoolingButton.setAttribute(
+      "aria-label",
+      state.decisionStats.coolingUses > 0 ? "Ice cooling spent" : "No ice charge",
+    );
   }
 }
 
@@ -1527,16 +1537,18 @@ function statusLine(speed: string): string {
 
   if (isCoolingActive()) {
     if (transition && transition.remainingProgress <= ROUTE_TRANSITION_CLOSE_PROGRESS) {
-      return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ENTER ${
+      return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  HEAT RELIEF  ENTER ${
         transition.zone.shortLabel
       }`;
     }
 
-    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ${riskLane.label}  ${speed}`;
+    return `ICE ACTIVE ${Math.ceil(
+      state.coolingRemaining,
+    )}S  HEAT GAIN CUT  ${riskLane.label}  ${speed}`;
   }
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
-    return `${crewChoiceSummary()}  ${zone.shortLabel} ${speed}`;
+    return `${activeSupportStatusLine()}  ${zone.shortLabel} ${speed}`;
   }
 
   if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
@@ -1550,12 +1562,27 @@ function statusLine(speed: string): string {
   }`;
 }
 
+function activeSupportStatusLine(): string {
+  const supportParts: string[] = [];
+
+  if (state.gelSupportRemaining > 0) {
+    supportParts.push(`GELS SAVING H2O ${Math.ceil(state.gelSupportRemaining)}S`);
+  }
+
+  if (state.calmSupportRemaining > 0) {
+    supportParts.push(`CALM STEADY LEGS ${Math.ceil(state.calmSupportRemaining)}S`);
+  }
+
+  return supportParts.join(" / ");
+}
+
 function setPressureReadout(runnerZ: number, downhillBoost: number): void {
   if (!isDescentControlAvailable()) {
     pressureRow.hidden = true;
     setPressureChip(pressureHeatText, "HEAT +", "calm");
     setPressureChip(pressureHydrationText, "H2O -", "calm");
     setPressureChip(pressureQuadText, "QUAD +", "calm");
+    setSupportChip("SUPPORT NONE", "none");
     return;
   }
 
@@ -1587,6 +1614,8 @@ function setPressureReadout(runnerZ: number, downhillBoost: number): void {
       pressureLevel(pressure.quadGain, 0.22, 0.55, 0.95),
     );
   }
+
+  setSupportReadout();
 }
 
 function pressureLabel(
@@ -1636,6 +1665,44 @@ function pressureLevel(
 function setPressureChip(element: HTMLElement, text: string, level: string): void {
   element.textContent = text;
   element.dataset.pressureLevel = level;
+}
+
+function setSupportReadout(): void {
+  if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
+    setSupportChip(`SUPPORT ${activeSupportSummary()}`, "active");
+    return;
+  }
+
+  if (state.crewChoices.includes("gels") || state.crewChoices.includes("calm")) {
+    setSupportChip("SUPPORT EXPIRED", "expired");
+    return;
+  }
+
+  if (state.crewChoices.length > 0) {
+    setSupportChip(`SUPPORT ${crewChoiceSummary()}`, "set");
+    return;
+  }
+
+  setSupportChip("SUPPORT NONE", "none");
+}
+
+function activeSupportSummary(): string {
+  const supportParts: string[] = [];
+
+  if (state.gelSupportRemaining > 0) {
+    supportParts.push(`GELS ${Math.ceil(state.gelSupportRemaining)}S`);
+  }
+
+  if (state.calmSupportRemaining > 0) {
+    supportParts.push(`CALM ${Math.ceil(state.calmSupportRemaining)}S`);
+  }
+
+  return supportParts.join(" / ");
+}
+
+function setSupportChip(text: string, level: string): void {
+  supportText.textContent = text;
+  supportText.dataset.supportLevel = level;
 }
 
 function setRouteZoneText(): void {
@@ -1717,18 +1784,26 @@ function setCoolingText(): void {
   const seconds = Math.ceil(state.coolingRemaining).toString().padStart(2, "0");
 
   if (isCoolingActive()) {
-    coolingText.textContent = `ICE ACTIVE ${seconds}`;
+    coolingText.textContent = `ICE ACTIVE ${seconds} HEAT RELIEF`;
     coolingText.dataset.coolingLevel = "active";
     return;
   }
 
   if (state.coolingCharges > 0) {
-    coolingText.textContent = `ICE READY ${state.coolingCharges}`;
+    coolingText.textContent = `ICE READY ${state.coolingCharges} TAP`;
     coolingText.dataset.coolingLevel = "ready";
     return;
   }
 
-  coolingText.textContent = "ICE SPENT";
+  if (state.decisionStats.coolingUses > 0) {
+    const useLabel = state.decisionStats.coolingUses === 1 ? "USE" : "USES";
+
+    coolingText.textContent = `ICE SPENT ${state.decisionStats.coolingUses} ${useLabel}`;
+    coolingText.dataset.coolingLevel = "spent";
+    return;
+  }
+
+  coolingText.textContent = "ICE EMPTY";
   coolingText.dataset.coolingLevel = "spent";
 }
 
@@ -1931,6 +2006,41 @@ function crewChoiceSummary(): string {
   return state.crewChoices.map((choice) => CREW_ACTIONS[choice].label).join("+");
 }
 
+function crewReportSummary(): string {
+  if (state.crewChoices.length === 0) {
+    return "CREW SKIPPED / LEFT FAST RISK";
+  }
+
+  const choiceLabels = state.crewChoices
+    .map((choice) => CREW_ACTIONS[choice].label)
+    .join(" + ");
+  const supportLabels = state.crewChoices.map(crewSupportReportLabel);
+
+  return `${choiceLabels} / +${formatClock(state.crewTimeSeconds)} / ${supportLabels.join(
+    ", ",
+  )}`;
+}
+
+function crewSupportReportLabel(choice: CrewSupportAction): string {
+  if (choice === "refill") {
+    return "bottles topped";
+  }
+
+  if (choice === "ice") {
+    return "ice charge packed";
+  }
+
+  if (choice === "water") {
+    return "water dump heat drop";
+  }
+
+  if (choice === "gels") {
+    return "gel support slowed H2O drain";
+  }
+
+  return "calm support protected quads";
+}
+
 function updateReportUi(): void {
   reportOverlay.hidden = !isRunTerminal();
 
@@ -1948,7 +2058,7 @@ function updateReportUi(): void {
   reportLowestHydrationText.textContent = formatReportValue(state.lowestHydration);
   reportFinalQuadsText.textContent = formatReportValue(state.quadDamage);
   reportFailureText.textContent = state.failureReason ?? "NONE";
-  reportCrewText.textContent = crewChoiceSummary();
+  reportCrewText.textContent = crewReportSummary();
   reportPaceMixText.textContent = paceMixSummary();
   reportBrakeTimeText.textContent = brakeTimeSummary();
   reportIceTimingText.textContent = iceTimingSummary();
