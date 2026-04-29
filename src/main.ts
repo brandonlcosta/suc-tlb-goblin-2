@@ -200,6 +200,8 @@ const ROUTE_ZONES: readonly RouteZone[] = [
 type Vec3 = [number, number, number];
 
 type RiskLaneKind = "main" | "shade" | "rocky" | "fast" | "safe";
+type ResourceKind = "heat" | "hydration" | "quad";
+type ResourceLevel = "safe" | "warning" | "danger" | "critical";
 
 interface RiskLaneEffect {
   kind: RiskLaneKind;
@@ -1223,19 +1225,36 @@ function updateHud(): void {
   paceText.dataset.paceMode = state.paceMode;
   timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
   setCoolingText();
-  setResourceText(heatText, "HEAT", state.heat, heatLevel(state.heat));
+  setResourceText(
+    heatText,
+    "heat",
+    "HEAT",
+    state.heat,
+    heatLevel(state.heat),
+    heatBandLabel(state.heat),
+  );
   setResourceText(
     hydrationText,
-    "HYDRATION",
+    "hydration",
+    "H2O",
     state.hydration,
     hydrationLevel(state.hydration),
+    hydrationBandLabel(state.hydration),
   );
-  setResourceText(quadText, "QUADS", state.quadDamage, quadLevel(state.quadDamage));
+  setResourceText(
+    quadText,
+    "quad",
+    "QUAD",
+    state.quadDamage,
+    quadLevel(state.quadDamage),
+    quadBandLabel(state.quadDamage),
+  );
   setCrewText();
   gameShell.dataset.alert = shellAlertLevel();
   gameShell.dataset.cooling = coolingLevel();
   setPressureReadout(runnerZ, downhillBoost);
   statusText.textContent = statusLine(speed);
+  statusText.dataset.statusLevel = resourceStatusLevel();
   updatePauseUi();
   updateTouchControlsUi();
 }
@@ -1500,6 +1519,12 @@ function statusLine(speed: string): string {
     return "FINISHED CAL STREET - RUN REPORT READY";
   }
 
+  const resourceWarning = resourceWarningStatusLine(speed);
+
+  if (resourceWarning) {
+    return resourceWarning;
+  }
+
   if (isCoolingActive()) {
     if (transition && transition.remainingProgress <= ROUTE_TRANSITION_CLOSE_PROGRESS) {
       return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ENTER ${
@@ -1512,18 +1537,6 @@ function statusLine(speed: string): string {
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
     return `${crewChoiceSummary()}  ${zone.shortLabel} ${speed}`;
-  }
-
-  if (state.heat >= 90) {
-    return `CANYON HEAT CRITICAL  CONTROL NOW  ${speed}`;
-  }
-
-  if (state.hydration <= 20) {
-    return `BOTTLES LOW  HEAT DEBT RISING  ${speed}`;
-  }
-
-  if (state.quadDamage >= 70) {
-    return `QUADS COOKED  DESCENT TAX DUE  ${speed}`;
   }
 
   if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
@@ -2110,11 +2123,16 @@ function verdictLine(): string {
 
 function setResourceText(
   element: HTMLElement,
+  kind: ResourceKind,
   label: string,
   value: number,
-  level: string,
+  level: ResourceLevel,
+  bandLabel: string,
 ): void {
-  element.textContent = `${label} ${Math.round(value).toString().padStart(3, "0")}`;
+  element.textContent = `${label} ${Math.round(value)
+    .toString()
+    .padStart(3, "0")} ${bandLabel}`;
+  element.dataset.resourceKind = kind;
   element.dataset.resourceLevel = level;
 }
 
@@ -2134,6 +2152,98 @@ function shellAlertLevel(): string {
   return "stable";
 }
 
+function resourceStatusLevel(): ResourceLevel {
+  if (state.heat >= 90 || state.hydration <= 9 || state.quadDamage >= 86) {
+    return "critical";
+  }
+
+  if (state.heat >= 75 || state.hydration <= 29 || state.quadDamage >= 66) {
+    return "danger";
+  }
+
+  if (state.heat >= 50 || state.hydration <= 59 || state.quadDamage >= 36) {
+    return "warning";
+  }
+
+  return "safe";
+}
+
+function resourceWarningStatusLine(speed: string): string | null {
+  const criticalWarnings: string[] = [];
+
+  if (state.heat >= 90) {
+    criticalWarnings.push("HEAT CRIT");
+  }
+
+  if (state.hydration <= 9) {
+    criticalWarnings.push("H2O DRY");
+  }
+
+  if (state.quadDamage >= 86) {
+    criticalWarnings.push("QUADS WRECKED");
+  }
+
+  if (criticalWarnings.length > 0) {
+    return `${resourceWarningSummary(
+      criticalWarnings,
+    )} - COLLAPSE NEAR - ${resourceWarningAction()} ${speed}`;
+  }
+
+  const dangerWarnings: string[] = [];
+
+  if (state.heat >= 75) {
+    dangerWarnings.push("HEAT DANGER");
+  }
+
+  if (state.hydration <= 29) {
+    dangerWarnings.push("H2O CRITICAL");
+  }
+
+  if (state.quadDamage >= 66) {
+    dangerWarnings.push("QUADS COOKED");
+  }
+
+  if (dangerWarnings.length > 0) {
+    return `${resourceWarningSummary(
+      dangerWarnings,
+    )} - FIX IT NOW - ${resourceWarningAction()} ${speed}`;
+  }
+
+  return null;
+}
+
+function resourceWarningSummary(warnings: string[]): string {
+  if (warnings.length <= 2) {
+    return warnings.join(" + ");
+  }
+
+  return "HEAT H2O QUAD REDLINE";
+}
+
+function resourceWarningAction(): string {
+  const actions: string[] = [];
+
+  if (state.heat >= 75) {
+    actions.push(state.coolingCharges > 0 && !isCoolingActive() ? "ICE" : "CONTROL");
+  }
+
+  if (state.hydration <= 29) {
+    actions.push("CONTROL");
+  }
+
+  if (state.quadDamage >= 66) {
+    actions.push("BRAKE");
+  }
+
+  const uniqueActions = Array.from(new Set(actions));
+
+  if (uniqueActions.length === 0) {
+    return "HOLD FORM";
+  }
+
+  return `${uniqueActions.join("+")} NOW`;
+}
+
 function coolingLevel(): string {
   if (isCoolingActive()) {
     return "active";
@@ -2142,7 +2252,7 @@ function coolingLevel(): string {
   return state.coolingCharges > 0 ? "ready" : "spent";
 }
 
-function heatLevel(value: number): string {
+function heatLevel(value: number): ResourceLevel {
   if (value >= 90) {
     return "critical";
   }
@@ -2158,7 +2268,23 @@ function heatLevel(value: number): string {
   return "safe";
 }
 
-function hydrationLevel(value: number): string {
+function heatBandLabel(value: number): string {
+  if (value >= 90) {
+    return "CRIT";
+  }
+
+  if (value >= 75) {
+    return "DANGER";
+  }
+
+  if (value >= 50) {
+    return "HOT";
+  }
+
+  return "OK";
+}
+
+function hydrationLevel(value: number): ResourceLevel {
   if (value <= 9) {
     return "critical";
   }
@@ -2174,7 +2300,23 @@ function hydrationLevel(value: number): string {
   return "safe";
 }
 
-function quadLevel(value: number): string {
+function hydrationBandLabel(value: number): string {
+  if (value <= 9) {
+    return "DRY";
+  }
+
+  if (value <= 29) {
+    return "CRIT";
+  }
+
+  if (value <= 59) {
+    return "LOW";
+  }
+
+  return "GOOD";
+}
+
+function quadLevel(value: number): ResourceLevel {
   if (value >= 86) {
     return "critical";
   }
@@ -2188,6 +2330,22 @@ function quadLevel(value: number): string {
   }
 
   return "safe";
+}
+
+function quadBandLabel(value: number): string {
+  if (value >= 86) {
+    return "WRECKED";
+  }
+
+  if (value >= 66) {
+    return "COOKED";
+  }
+
+  if (value >= 36) {
+    return "LOADED";
+  }
+
+  return "FRESH";
 }
 
 function fogColorForRun(): Vec3 {
