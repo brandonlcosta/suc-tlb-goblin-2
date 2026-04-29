@@ -46,6 +46,24 @@ const ROUTE_MARKER_LEAD_PROGRESS = 0.075;
 const ROUTE_MARKER_CLOSE_LEAD_PROGRESS = 0.03;
 const ROUTE_TRANSITION_PREVIEW_PROGRESS = 0.1;
 const ROUTE_TRANSITION_CLOSE_PROGRESS = 0.035;
+const RIVER_CROSSING_START = 0.58;
+const RIVER_CROSSING_END = 0.68;
+const RIVER_LOG_CHECK_PROGRESS = 0.635;
+const RIVER_FEEDBACK_SECONDS = 3.2;
+const WATER_ROUTE_SPEED_BONUS = -1.28;
+const WATER_HEAT_RELIEF_PER_SECOND = 0.38;
+const WATER_SPLASH_HEAT_DROP = 1.8;
+const LOG_ROUTE_SPEED_BONUS = 0.48;
+const LOG_LANE_MIN = 0.66;
+const LOG_LANE_MAX = 1.52;
+const LOG_CENTER = (LOG_LANE_MIN + LOG_LANE_MAX) / 2;
+const LOG_BASE_CLEAN_MARGIN = 0.24;
+const LOG_BRAKE_MARGIN_BONUS = 0.18;
+const LOG_CONTROL_MARGIN_BONUS = 0.08;
+const LOG_CLEAN_SPEED_LIMIT = 6.8;
+const LOG_MISS_SPEED = 2.45;
+const LOG_MISS_QUAD_PENALTY = 5.2;
+const LOG_MISS_HEAT_PENALTY = 1.2;
 
 const PACE_SETTINGS = {
   control: {
@@ -133,10 +151,17 @@ type RouteZoneKind =
   | "mixed"
   | "steep"
   | "switchback"
+  | "river"
   | "uphill"
   | "exposed"
   | "finish";
-type RouteMarkerKind = "steep" | "switchback" | "uphill" | "exposed" | "finish";
+type RouteMarkerKind =
+  | "steep"
+  | "switchback"
+  | "river"
+  | "uphill"
+  | "exposed"
+  | "finish";
 
 interface RouteZone {
   start: number;
@@ -196,7 +221,7 @@ const ROUTE_ZONES: readonly RouteZone[] = [
   },
   {
     start: 0.43,
-    end: 0.62,
+    end: RIVER_CROSSING_START,
     shortLabel: "SWITCHBACKS",
     cue: "SET LINE BEFORE TURN",
     kind: "switchback",
@@ -211,8 +236,24 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     exposure: 0.74,
   },
   {
-    start: 0.62,
-    end: 0.72,
+    start: RIVER_CROSSING_START,
+    end: RIVER_CROSSING_END,
+    shortLabel: "RIVER CROSSING",
+    cue: "WATER SAFE / LOG FAST",
+    kind: "river",
+    markerKind: "river",
+    speedBonus: -0.1,
+    downhillBoostFloor: 0.62,
+    downhillBoostBonus: -0.18,
+    heatMultiplier: 0.94,
+    hydrationMultiplier: 0.98,
+    quadMultiplier: 0.9,
+    technicalPressure: 0.7,
+    exposure: 0.5,
+  },
+  {
+    start: RIVER_CROSSING_END,
+    end: 0.76,
     shortLabel: "UPHILL CHECK",
     cue: "EFFORT RISES",
     kind: "uphill",
@@ -227,7 +268,7 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     exposure: 0.9,
   },
   {
-    start: 0.72,
+    start: 0.76,
     end: 0.9,
     shortLabel: "HOT DESCENT",
     cue: "CURVES KEEP BITING",
@@ -262,9 +303,17 @@ const ROUTE_ZONES: readonly RouteZone[] = [
 
 type Vec3 = [number, number, number];
 
-type RiskLaneKind = "main" | "shade" | "rocky" | "fast" | "safe";
+type RiskLaneKind =
+  | "main"
+  | "shade"
+  | "rocky"
+  | "fast"
+  | "safe"
+  | "water"
+  | "log";
 type ResourceKind = "heat" | "hydration" | "quad";
 type ResourceLevel = "safe" | "warning" | "danger" | "critical";
+type RiverCrossingOutcome = "unreached" | "water" | "log-clean" | "log-missed";
 
 interface RiskLaneEffect {
   kind: RiskLaneKind;
@@ -314,6 +363,26 @@ const DEFAULT_RISK_LANE: RiskLaneEffect = {
   speedBonus: 0,
 };
 
+const WATER_RISK_LANE: RiskLaneEffect = {
+  kind: "water",
+  label: "SAFE WATER",
+  status: "SAFE WATER - SLOW COOL SPLASH",
+  heatMultiplier: 0.78,
+  hydrationMultiplier: 0.96,
+  quadMultiplier: 0.68,
+  speedBonus: WATER_ROUTE_SPEED_BONUS,
+};
+
+const LOG_RISK_LANE: RiskLaneEffect = {
+  kind: "log",
+  label: "FAST LOG",
+  status: "FAST LOG - HOLD CENTER",
+  heatMultiplier: 1.02,
+  hydrationMultiplier: 0.98,
+  quadMultiplier: 1.28,
+  speedBonus: LOG_ROUTE_SPEED_BONUS,
+};
+
 const RISK_LANE_CUES: readonly RiskLaneCue[] = [
   {
     start: 0.12,
@@ -359,7 +428,7 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
   },
   {
     start: 0.48,
-    end: 0.68,
+    end: RIVER_CROSSING_START,
     minLateral: -0.42,
     maxLateral: 0.48,
     kind: "safe",
@@ -370,6 +439,22 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     quadMultiplier: 0.7,
     speedBonus: -0.22,
     color: [0.46, 0.58, 0.27],
+  },
+  {
+    start: RIVER_CROSSING_START,
+    end: RIVER_CROSSING_END,
+    minLateral: -1.78,
+    maxLateral: 0.52,
+    ...WATER_RISK_LANE,
+    color: [0.08, 0.42, 0.5],
+  },
+  {
+    start: RIVER_CROSSING_START,
+    end: RIVER_CROSSING_END,
+    minLateral: LOG_LANE_MIN,
+    maxLateral: LOG_LANE_MAX,
+    ...LOG_RISK_LANE,
+    color: [0.48, 0.28, 0.11],
   },
   {
     start: 0.73,
@@ -414,6 +499,8 @@ const RISK_LANE_REPORT_ORDER: readonly RiskLaneKind[] = [
   "rocky",
   "fast",
   "safe",
+  "water",
+  "log",
 ];
 const RISK_LANE_REPORT_LABELS: Record<RiskLaneKind, string> = {
   main: "MAIN TRAIL",
@@ -421,6 +508,8 @@ const RISK_LANE_REPORT_LABELS: Record<RiskLaneKind, string> = {
   rocky: "ROCKY LINE",
   fast: "FAST/EXPOSED",
   safe: "SAFE CENTER",
+  water: "SAFE WATER",
+  log: "FAST LOG",
 };
 
 interface Mesh {
@@ -461,6 +550,8 @@ interface GameState {
   coolingCharges: number;
   coolingRemaining: number;
   decisionStats: DecisionStats;
+  riverCrossingOutcome: RiverCrossingOutcome;
+  riverCrossingFeedbackSeconds: number;
   gelSupportRemaining: number;
   calmSupportRemaining: number;
   failureReason: string | null;
@@ -641,6 +732,10 @@ const reportPrimaryLineText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-primary-line]"),
   "Missing report primary line element.",
 );
+const reportCrossingText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-crossing]"),
+  "Missing report crossing element.",
+);
 const reportDisciplineText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-discipline]"),
   "Missing report discipline element.",
@@ -753,6 +848,7 @@ const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
 const riskLaneCueMesh = createRiskLaneCueMesh();
+const riverWaterMesh = createRiverWaterMesh();
 const terrainMesh = createTerrainMesh();
 const cubeMesh = createCubeMesh([0.05, 0.045, 0.04]);
 const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
@@ -769,15 +865,19 @@ const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
+const riverLogMesh = createCubeMesh([0.43, 0.22, 0.08]);
+const riverFoamMesh = createCubeMesh([0.66, 0.88, 0.84]);
 const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSteepMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
+const zoneRiverMesh = createCubeMesh([0.08, 0.5, 0.62]);
 const zoneUphillMesh = createCubeMesh([0.86, 0.12, 0.1]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createAtmosphereObjects(),
   ...createRouteZoneMarkers(),
+  ...createRiverCrossingObjects(),
   ...createTrailMarkers(),
   ...createFinishLineObjects(),
   ...createRocks(),
@@ -926,6 +1026,8 @@ function createInitialState(): GameState {
     coolingCharges: STARTING_COOLING_CHARGES,
     coolingRemaining: 0,
     decisionStats: createInitialDecisionStats(),
+    riverCrossingOutcome: "unreached",
+    riverCrossingFeedbackSeconds: 0,
     gelSupportRemaining: 0,
     calmSupportRemaining: 0,
     failureReason: null,
@@ -954,6 +1056,8 @@ function createInitialDecisionStats(): DecisionStats {
       rocky: 0,
       fast: 0,
       safe: 0,
+      water: 0,
+      log: 0,
     },
   };
 }
@@ -1304,6 +1408,7 @@ function update(deltaSeconds: number): void {
 
   state.elapsedSeconds += deltaSeconds;
 
+  const previousProgress = state.progress;
   const runnerZ = -state.progress * TRAIL_LENGTH;
   const lateralLimit = playableLateralLimitAt(runnerZ);
   const steerDirection = Number(input.right) - Number(input.left);
@@ -1355,6 +1460,7 @@ function update(deltaSeconds: number): void {
   }
 
   state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
+  updateRiverCrossing(previousProgress, deltaSeconds);
   updateResources(deltaSeconds, runnerZ, downhillBoost);
   updateCooling(deltaSeconds);
 
@@ -1373,6 +1479,75 @@ function recordDecisionStats(deltaSeconds: number, riskLane: RiskLaneEffect): vo
   if (input.brake) {
     state.decisionStats.brakeSeconds += deltaSeconds;
   }
+}
+
+function updateRiverCrossing(previousProgress: number, deltaSeconds: number): void {
+  if (state.riverCrossingFeedbackSeconds > 0) {
+    state.riverCrossingFeedbackSeconds = Math.max(
+      0,
+      state.riverCrossingFeedbackSeconds - deltaSeconds,
+    );
+  }
+
+  if (
+    state.riverCrossingOutcome !== "unreached" ||
+    previousProgress >= RIVER_LOG_CHECK_PROGRESS ||
+    state.progress < RIVER_LOG_CHECK_PROGRESS
+  ) {
+    return;
+  }
+
+  if (!isInLogLane(state.lateral)) {
+    state.riverCrossingOutcome = "water";
+    state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
+    state.heat = clamp(state.heat - WATER_SPLASH_HEAT_DROP, 0, RESOURCE_MAX);
+    recordRunExtremes();
+    return;
+  }
+
+  if (isCleanLogAttempt()) {
+    state.riverCrossingOutcome = "log-clean";
+    state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
+    return;
+  }
+
+  state.riverCrossingOutcome = "log-missed";
+  state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
+  state.speed = Math.min(state.speed, LOG_MISS_SPEED);
+  state.lateralVelocity *= 0.28;
+  state.quadDamage = clamp(
+    state.quadDamage + LOG_MISS_QUAD_PENALTY,
+    0,
+    RESOURCE_MAX,
+  );
+  state.heat = clamp(state.heat + LOG_MISS_HEAT_PENALTY, 0, RESOURCE_MAX);
+  recordRunExtremes();
+}
+
+function isInRiverCrossing(progress: number): boolean {
+  return progress >= RIVER_CROSSING_START && progress < RIVER_CROSSING_END;
+}
+
+function isInLogLane(lateral: number): boolean {
+  return lateral >= LOG_LANE_MIN && lateral <= LOG_LANE_MAX;
+}
+
+function isCleanLogAttempt(): boolean {
+  const centerDistance = Math.abs(state.lateral - LOG_CENTER);
+  const paceControl =
+    state.paceMode === "control"
+      ? LOG_CONTROL_MARGIN_BONUS
+      : state.paceMode === "steady"
+        ? LOG_CONTROL_MARGIN_BONUS * 0.5
+        : 0;
+  const brakeControl = input.brake ? LOG_BRAKE_MARGIN_BONUS : 0;
+  const speedPenalty = Math.max(0, state.speed - LOG_CLEAN_SPEED_LIMIT) * 0.04;
+  const cleanMargin = Math.max(
+    0.16,
+    LOG_BASE_CLEAN_MARGIN + paceControl + brakeControl - speedPenalty,
+  );
+
+  return centerDistance <= cleanMargin;
 }
 
 function render(): void {
@@ -1402,6 +1577,7 @@ function render(): void {
 
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
+  drawMesh(riverWaterMesh, identityMat4());
   drawMesh(riskLaneCueMesh, identityMat4());
 
   for (const object of sceneObjects) {
@@ -1663,10 +1839,14 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
     quadGain *= CREW_CALM_QUAD_MULTIPLIER;
   }
 
-  return {
-    heatChange: isCoolingActive()
+  const heatChange =
+    (isCoolingActive()
       ? heatGain * COOLING_HEAT_GAIN_MULTIPLIER - COOLING_HEAT_DROP_PER_SECOND
-      : heatGain,
+      : heatGain) -
+    (riskLane.kind === "water" ? WATER_HEAT_RELIEF_PER_SECOND : 0);
+
+  return {
+    heatChange,
     hydrationDrain,
     quadGain,
   };
@@ -1778,6 +1958,12 @@ function statusLine(speed: string): string {
     return "FINISHED CAL STREET - RUN REPORT READY";
   }
 
+  const crossingStatus = riverCrossingStatusLine(speed);
+
+  if (crossingStatus) {
+    return crossingStatus;
+  }
+
   const resourceWarning = resourceWarningStatusLine(speed);
 
   if (resourceWarning) {
@@ -1811,6 +1997,34 @@ function statusLine(speed: string): string {
   }`;
 }
 
+function riverCrossingStatusLine(speed: string): string | null {
+  if (state.riverCrossingFeedbackSeconds > 0) {
+    if (state.riverCrossingOutcome === "log-missed") {
+      return `LOG MISSED - SPLASHED IN  QUAD TAX  ${speed}`;
+    }
+
+    if (state.riverCrossingOutcome === "log-clean") {
+      return `LOG CLEAN - FAST CROSSING HELD  ${speed}`;
+    }
+
+    if (state.riverCrossingOutcome === "water") {
+      return `SAFE WATER - SLOW SPLASH / HEAT RELIEF  ${speed}`;
+    }
+  }
+
+  if (!isInRiverCrossing(state.progress)) {
+    return null;
+  }
+
+  const riskLane = riskLaneAt(state.progress, state.lateral);
+
+  if (riskLane.kind === "log") {
+    return `${input.brake ? "CONTROLLED" : "FAST"} LOG LINE - HOLD CENTER  ${speed}`;
+  }
+
+  return `WATER CROSSING - SAFE LINE SLOWS / COOL SPLASH  ${speed}`;
+}
+
 function activeSupportStatusLine(): string {
   const supportParts: string[] = [];
 
@@ -1836,10 +2050,15 @@ function setPressureReadout(runnerZ: number, downhillBoost: number): void {
   }
 
   const pressure = resourcePressureAt(runnerZ, downhillBoost);
+  const riskLane = riskLaneAt(state.progress, state.lateral);
   pressureRow.hidden = false;
 
   if (pressure.heatChange < -0.05) {
-    setPressureChip(pressureHeatText, "ICE RELIEF", "relief");
+    setPressureChip(
+      pressureHeatText,
+      riskLane.kind === "water" ? "WATER RELIEF" : "ICE RELIEF",
+      "relief",
+    );
   } else {
     setPressureChip(
       pressureHeatText,
@@ -1978,6 +2197,15 @@ function setRouteZoneText(): void {
 function setRiskLaneText(): void {
   const riskLane = riskLaneAt(state.progress, state.lateral);
 
+  if (
+    state.riverCrossingFeedbackSeconds > 0 &&
+    state.riverCrossingOutcome === "log-missed"
+  ) {
+    laneText.textContent = "LINE LOG MISSED";
+    laneText.dataset.laneKind = "log";
+    return;
+  }
+
   laneText.textContent = `LINE ${riskLane.label}`;
   laneText.dataset.laneKind = riskLane.kind;
 }
@@ -1994,6 +2222,10 @@ function routeZoneAt(progress: number): RouteZone {
 
 function riskLaneAt(progress: number, lateral: number): RiskLaneEffect {
   const clampedProgress = clamp(progress, 0, 1);
+
+  if (isInRiverCrossing(clampedProgress)) {
+    return isInLogLane(lateral) ? LOG_RISK_LANE : WATER_RISK_LANE;
+  }
 
   return (
     RISK_LANE_CUES.find(
@@ -2310,6 +2542,7 @@ function updateReportUi(): void {
   reportBrakeTimeText.textContent = brakeTimeSummary();
   reportIceTimingText.textContent = iceTimingSummary();
   reportPrimaryLineText.textContent = primaryLineSummary();
+  reportCrossingText.textContent = crossingSummary();
   reportDisciplineText.textContent = disciplineNote();
 }
 
@@ -2363,6 +2596,22 @@ function primaryLineSummary(): string {
     .padStart(3, "0")}%`;
 }
 
+function crossingSummary(): string {
+  if (state.riverCrossingOutcome === "log-clean") {
+    return "FAST LOG / CLEAN";
+  }
+
+  if (state.riverCrossingOutcome === "log-missed") {
+    return `FAST LOG / MISSED / +${LOG_MISS_QUAD_PENALTY.toFixed(1)} QUAD`;
+  }
+
+  if (state.riverCrossingOutcome === "water") {
+    return "SAFE WATER / SLOW / SMALL COOLING";
+  }
+
+  return "NOT REACHED";
+}
+
 function disciplineNote(): string {
   const totalSeconds = state.decisionStats.descentSeconds;
   const sendPercent = percentOf(state.decisionStats.paceSeconds.send, totalSeconds);
@@ -2403,6 +2652,14 @@ function disciplineNote(): string {
 
   if (fastLinePercent >= 25) {
     return "Discipline note: Fast exposed line was home base. Take shade or center sooner.";
+  }
+
+  if (state.riverCrossingOutcome === "log-missed") {
+    return "Discipline note: The log was not free speed. Brake and center it next time.";
+  }
+
+  if (state.riverCrossingOutcome === "water" && pushSendPercent >= 40) {
+    return "Discipline note: Water choice was conservative; risky pace gave time back.";
   }
 
   if (controlSteadyPercent >= 76 && brakePercent >= 8 && fastLinePercent <= 18) {
@@ -2449,6 +2706,10 @@ function verdictLine(): string {
       return "The descent took your quads and kept the receipt.";
     }
 
+    if (state.riverCrossingOutcome === "log-missed") {
+      return "The log was faster. Your quads disagree.";
+    }
+
     return "Good data. Bad execution.";
   }
 
@@ -2462,6 +2723,18 @@ function verdictLine(): string {
 
   if (state.quadDamage >= 76) {
     return "Cal Street took a chunk out of you.";
+  }
+
+  if (state.riverCrossingOutcome === "log-missed") {
+    return "The log was faster. Your quads disagree.";
+  }
+
+  if (
+    state.riverCrossingOutcome === "water" &&
+    state.maxHeat < 86 &&
+    state.quadDamage < 66
+  ) {
+    return "Water was slow. Still smarter than detonating.";
   }
 
   if (state.lowestHydration <= 20) {
@@ -2810,6 +3083,7 @@ function createTrailMesh(): Mesh {
   const exposedColor: Vec3 = [0.72, 0.39, 0.15];
   const steepColor: Vec3 = [0.66, 0.25, 0.1];
   const switchbackColor: Vec3 = [0.56, 0.43, 0.18];
+  const riverBankColor: Vec3 = [0.28, 0.28, 0.19];
   const uphillColor: Vec3 = [0.5, 0.19, 0.13];
   const edgeColor: Vec3 = [0.14, 0.09, 0.06];
   const shoulderColor: Vec3 = [0.35, 0.22, 0.09];
@@ -2829,6 +3103,8 @@ function createTrailMesh(): Mesh {
       color = switchbackColor;
     } else if (routeZone.kind === "steep") {
       color = steepColor;
+    } else if (routeZone.kind === "river") {
+      color = riverBankColor;
     } else if (routeZone.kind === "uphill") {
       color = uphillColor;
     } else if (routeZone.kind === "exposed") {
@@ -2906,6 +3182,42 @@ function createRiskLaneCueMesh(): Mesh {
         index,
       );
     }
+  }
+
+  return createMesh(positions, colors);
+}
+
+function createRiverWaterMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const slices = 9;
+  const waterA: Vec3 = [0.06, 0.36, 0.45];
+  const waterB: Vec3 = [0.08, 0.48, 0.56];
+
+  for (let index = 0; index < slices; index += 1) {
+    const nearProgress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * index) / slices;
+    const farProgress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 1)) / slices;
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const nearCenter = trailCenterAt(nearZ);
+    const farCenter = trailCenterAt(farZ);
+    const nearWidth = trailWidthAt(nearZ) + 1.16;
+    const farWidth = trailWidthAt(farZ) + 1.16;
+    const color = index % 2 === 0 ? waterA : waterB;
+
+    addQuad(
+      positions,
+      colors,
+      [nearCenter - nearWidth, trailHeightAt(nearZ) + 0.055, nearZ],
+      [nearCenter + nearWidth, trailHeightAt(nearZ) + 0.055, nearZ],
+      [farCenter + farWidth, trailHeightAt(farZ) + 0.055, farZ],
+      [farCenter - farWidth, trailHeightAt(farZ) + 0.055, farZ],
+      color,
+    );
   }
 
   return createMesh(positions, colors);
@@ -3173,6 +3485,54 @@ function createAtmosphereObjects(): SceneObject[] {
   return objects;
 }
 
+function createRiverCrossingObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+  const logSegments = 11;
+
+  for (let index = 0; index < logSegments; index += 1) {
+    const progress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 0.5)) /
+        logSegments;
+    const z = -TRAIL_LENGTH * progress;
+    const center = trailCenterAt(z);
+    const y = trailHeightAt(z);
+
+    objects.push({
+      mesh: riverLogMesh,
+      position: [center + LOG_CENTER, y + 0.22, z],
+      scale: [0.34, 0.18, 2.4],
+      rotationY: Math.sin(index * 0.7) * 0.08,
+    });
+  }
+
+  for (let index = 0; index < 7; index += 1) {
+    const progress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 0.5)) / 7;
+    const z = -TRAIL_LENGTH * progress;
+    const center = trailCenterAt(z);
+    const y = trailHeightAt(z);
+
+    objects.push(
+      {
+        mesh: riverFoamMesh,
+        position: [center - 0.92, y + 0.12, z],
+        scale: [0.36, 0.05, 0.42],
+        rotationY: index * 0.4,
+      },
+      {
+        mesh: riverFoamMesh,
+        position: [center + 0.18, y + 0.12, z + 0.55],
+        scale: [0.28, 0.05, 0.32],
+        rotationY: -index * 0.35,
+      },
+    );
+  }
+
+  return objects;
+}
+
 function createRouteZoneMarkers(): SceneObject[] {
   const markers: SceneObject[] = [];
 
@@ -3253,6 +3613,10 @@ function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
 
   if (kind === "switchback") {
     return zoneSwitchbackMesh;
+  }
+
+  if (kind === "river") {
+    return zoneRiverMesh;
   }
 
   if (kind === "uphill") {
@@ -3528,13 +3892,27 @@ function trailHeightAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
   const baseDrop = -depth * 34.5;
   const steepDrop = -smoothRange(depth, 0.23, 0.43) * 8.2;
-  const switchbackDrop = -smoothRange(depth, 0.43, 0.62) * 3.7;
+  const switchbackDrop = -smoothRange(depth, 0.43, RIVER_CROSSING_START) * 3.7;
+  const riverDip =
+    -smoothRange(depth, RIVER_CROSSING_START - 0.02, RIVER_LOG_CHECK_PROGRESS) *
+      1.05 +
+    smoothRange(depth, RIVER_LOG_CHECK_PROGRESS, RIVER_CROSSING_END + 0.02) *
+      1.05;
   const uphillLift =
-    smoothRange(depth, 0.62, 0.7) * 5.4 - smoothRange(depth, 0.7, 0.78) * 5.4;
-  const finalDrop = -smoothRange(depth, 0.72, 1) * 6.2;
+    smoothRange(depth, RIVER_CROSSING_END, 0.74) * 5.4 -
+    smoothRange(depth, 0.74, 0.82) * 5.4;
+  const finalDrop = -smoothRange(depth, 0.76, 1) * 6.2;
   const roughness = Math.sin(z * 0.09) * 0.18;
 
-  return baseDrop + steepDrop + switchbackDrop + uphillLift + finalDrop + roughness;
+  return (
+    baseDrop +
+    steepDrop +
+    switchbackDrop +
+    riverDip +
+    uphillLift +
+    finalDrop +
+    roughness
+  );
 }
 
 function trailCenterAt(z: number): number {
@@ -3544,20 +3922,23 @@ function trailCenterAt(z: number): number {
   const switchbackTurn =
     smoothRange(depth, 0.38, 0.46) * 2.15 -
     smoothRange(depth, 0.46, 0.54) * 4.35 +
-    smoothRange(depth, 0.54, 0.62) * 2.35;
-  const finalBend = smoothRange(depth, 0.72, 0.9) * 1.2;
+    smoothRange(depth, 0.54, RIVER_CROSSING_START) * 2.35;
+  const riverBend = smoothRange(depth, RIVER_CROSSING_START, RIVER_CROSSING_END) * 0.55;
+  const finalBend = smoothRange(depth, 0.76, 0.9) * 1.2;
 
-  return broadCurve + trailWander + switchbackTurn + finalBend;
+  return broadCurve + trailWander + switchbackTurn + riverBend + finalBend;
 }
 
 function trailWidthAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
   const base = 3.1 - depth * 0.72;
-  const switchbackPinch = depth > 0.43 && depth < 0.62 ? 0.48 : 0;
-  const uphillPinch = depth > 0.62 && depth < 0.72 ? 0.22 : 0;
+  const switchbackPinch =
+    depth > 0.43 && depth < RIVER_CROSSING_START ? 0.48 : 0;
+  const riverWiden = isInRiverCrossing(depth) ? 0.54 : 0;
+  const uphillPinch = depth > RIVER_CROSSING_END && depth < 0.76 ? 0.22 : 0;
   const finalPinch = depth > 0.82 ? 0.18 : 0;
 
-  return base - switchbackPinch - uphillPinch - finalPinch;
+  return base - switchbackPinch + riverWiden - uphillPinch - finalPinch;
 }
 
 function playableLateralLimitAt(z: number): number {

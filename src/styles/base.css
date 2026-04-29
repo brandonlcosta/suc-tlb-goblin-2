@@ -364,6 +364,10 @@ body {
   color: #ffd15c;
 }
 
+#hud [data-zone-kind="river"] {
+  color: #8fd2ff;
+}
+
 #hud [data-zone-kind="uphill"] {
   color: #ff4f4f;
 }
@@ -409,6 +413,18 @@ body {
 
 #hud [data-lane-kind="safe"] {
   color: #9cff3a;
+}
+
+#hud [data-lane-kind="water"] {
+  color: #8fd2ff;
+  border-color: rgba(143, 210, 255, 0.74);
+  background: rgba(8, 31, 41, 0.9);
+}
+
+#hud [data-lane-kind="log"] {
+  color: #ffd15c;
+  border-color: rgba(255, 209, 92, 0.78);
+  background: rgba(48, 28, 10, 0.9);
 }
 
 #hud [data-pressure-level="relief"] {
