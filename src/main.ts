@@ -1,9 +1,16 @@
 import "./styles/base.css";
 
 const TRAIL_LENGTH = 156;
-const RUN_SPEED = 7.5;
+const BASE_RUN_SPEED = 6.4;
+const MIN_RUN_SPEED = 3.4;
+const MAX_RUN_SPEED = 13.2;
+const BRAKE_TARGET_SPEED = 4.8;
+const MOMENTUM_ACCELERATION = 5.4;
+const BRAKE_DECELERATION = 9.6;
 const STEER_SPEED = 4.2;
 const LATERAL_LIMIT = 1.85;
+const RUNNER_EDGE_BUFFER = 0.48;
+const CAMERA_RESPONSE = 4.8;
 
 type Vec3 = [number, number, number];
 
@@ -24,12 +31,16 @@ interface GameState {
   progress: number;
   lateral: number;
   lateralVelocity: number;
+  speed: number;
+  cameraPosition: Vec3;
+  cameraTarget: Vec3;
   lastTimestamp: number;
 }
 
 interface InputState {
   left: boolean;
   right: boolean;
+  brake: boolean;
 }
 
 const canvas = requiredElement(
@@ -94,6 +105,7 @@ const sceneObjects: SceneObject[] = [
 const input: InputState = {
   left: false,
   right: false,
+  brake: false,
 };
 
 let state = createInitialState();
@@ -107,6 +119,9 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   } else if (key === "d" || key === "arrowright") {
     input.right = true;
+    event.preventDefault();
+  } else if (key === "s" || key === "arrowdown" || key === "shift") {
+    input.brake = true;
     event.preventDefault();
   } else if (key === "r") {
     restart();
@@ -122,6 +137,9 @@ window.addEventListener("keyup", (event) => {
   } else if (key === "d" || key === "arrowright") {
     input.right = false;
     event.preventDefault();
+  } else if (key === "s" || key === "arrowdown" || key === "shift") {
+    input.brake = false;
+    event.preventDefault();
   }
 });
 
@@ -134,10 +152,16 @@ gl.disable(gl.CULL_FACE);
 requestAnimationFrame(tick);
 
 function createInitialState(): GameState {
+  const runner = runnerPositionAt(0, 0);
+  const camera = desiredCameraFor(runner, 0);
+
   return {
     progress: 0,
     lateral: 0,
     lateralVelocity: 0,
+    speed: BASE_RUN_SPEED,
+    cameraPosition: camera.position,
+    cameraTarget: camera.target,
     lastTimestamp: performance.now(),
   };
 }
@@ -178,25 +202,37 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
+  const runnerZ = -state.progress * TRAIL_LENGTH;
+  const lateralLimit = playableLateralLimitAt(runnerZ);
   const steerDirection = Number(input.right) - Number(input.left);
   const targetVelocity = steerDirection * STEER_SPEED;
-  const response = Math.min(1, deltaSeconds * 9);
+  const steeringResponse = Math.min(1, deltaSeconds * (input.brake ? 12 : 9));
+  const downhillBoost = downhillMomentumAt(runnerZ);
+  const unbrakedTargetSpeed = BASE_RUN_SPEED + downhillBoost;
+  const targetSpeed = input.brake
+    ? Math.min(BRAKE_TARGET_SPEED, state.speed)
+    : unbrakedTargetSpeed;
+  const speedResponse = input.brake ? BRAKE_DECELERATION : MOMENTUM_ACCELERATION;
 
-  state.lateralVelocity += (targetVelocity - state.lateralVelocity) * response;
+  state.speed += (targetSpeed - state.speed) * Math.min(1, deltaSeconds * speedResponse);
+  state.speed = clamp(state.speed, MIN_RUN_SPEED, MAX_RUN_SPEED);
+
+  state.lateralVelocity += (targetVelocity - state.lateralVelocity) * steeringResponse;
   state.lateral = clamp(
     state.lateral + state.lateralVelocity * deltaSeconds,
-    -LATERAL_LIMIT,
-    LATERAL_LIMIT,
+    -lateralLimit,
+    lateralLimit,
   );
 
   if (
-    (state.lateral <= -LATERAL_LIMIT && state.lateralVelocity < 0) ||
-    (state.lateral >= LATERAL_LIMIT && state.lateralVelocity > 0)
+    (state.lateral <= -lateralLimit && state.lateralVelocity < 0) ||
+    (state.lateral >= lateralLimit && state.lateralVelocity > 0)
   ) {
     state.lateralVelocity = 0;
   }
 
-  state.progress = Math.min(1, state.progress + (RUN_SPEED / TRAIL_LENGTH) * deltaSeconds);
+  state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
+  updateCamera(deltaSeconds);
 }
 
 function render(): void {
@@ -205,27 +241,14 @@ function render(): void {
   gl.clearDepth(1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  const runnerZ = -state.progress * TRAIL_LENGTH;
-  const runnerY = trailHeightAt(runnerZ);
-  const runnerX = trailCenterAt(runnerZ) + state.lateral;
-  const lookAheadZ = runnerZ - 12;
-  const cameraPosition: Vec3 = [
-    trailCenterAt(runnerZ + 8) + state.lateral * 0.38,
-    runnerY + 4.7,
-    runnerZ + 10.4,
-  ];
-  const cameraTarget: Vec3 = [
-    trailCenterAt(lookAheadZ) + state.lateral * 0.24,
-    runnerY + 1,
-    lookAheadZ,
-  ];
+  const runner = runnerPositionAt(state.progress, state.lateral);
   const projection = perspective(
     radians(61),
     canvas.width / canvas.height,
     0.1,
     72,
   );
-  const view = lookAt(cameraPosition, cameraTarget, [0, 1, 0]);
+  const view = lookAt(state.cameraPosition, state.cameraTarget, [0, 1, 0]);
   const viewProjection = multiplyMat4(projection, view);
 
   gl.uniformMatrix4fv(viewProjectionLocation, false, viewProjection);
@@ -240,7 +263,7 @@ function render(): void {
     );
   }
 
-  drawRunner(runnerX, runnerY, runnerZ);
+  drawRunner(runner.x, runner.y, runner.z);
   updateHud();
 }
 
@@ -258,9 +281,56 @@ function drawRunner(x: number, groundY: number, z: number): void {
 
 function updateHud(): void {
   const progress = Math.floor(state.progress * 100).toString().padStart(3, "0");
+  const speed = state.speed.toFixed(1).padStart(4, "0");
   progressText.textContent = `PROGRESS ${progress}%`;
   statusText.textContent =
-    state.progress >= 1 ? "END OF PROTOTYPE SHELL - PRESS R" : "A/D STEER  R RESTART";
+    state.progress >= 1
+      ? "END OF PROTOTYPE SHELL - PRESS R"
+      : `${input.brake ? "CONTROL" : "DESCEND"} ${speed}  A/D STEER  S/SHIFT BRAKE`;
+}
+
+function updateCamera(deltaSeconds: number): void {
+  const runner = runnerPositionAt(state.progress, state.lateral);
+  const desired = desiredCameraFor(runner, state.lateral);
+  const response = Math.min(1, deltaSeconds * CAMERA_RESPONSE);
+
+  state.cameraPosition = lerpVec3(state.cameraPosition, desired.position, response);
+  state.cameraTarget = lerpVec3(state.cameraTarget, desired.target, response);
+}
+
+function runnerPositionAt(progress: number, lateral: number): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  const z = -progress * TRAIL_LENGTH;
+
+  return {
+    x: trailCenterAt(z) + lateral,
+    y: trailHeightAt(z),
+    z,
+  };
+}
+
+function desiredCameraFor(runner: { x: number; y: number; z: number }, lateral: number): {
+  position: Vec3;
+  target: Vec3;
+} {
+  const lookAheadZ = runner.z - 13;
+  const behindZ = runner.z + 10.5;
+
+  return {
+    position: [
+      trailCenterAt(behindZ) + lateral * 0.34,
+      runner.y + 4.9,
+      behindZ,
+    ],
+    target: [
+      trailCenterAt(lookAheadZ) + lateral * 0.26,
+      runner.y + 0.95,
+      lookAheadZ,
+    ],
+  };
 }
 
 function drawMesh(mesh: Mesh, model: Float32Array): void {
@@ -612,6 +682,18 @@ function trailWidthAt(z: number): number {
   return base - technicalPinch;
 }
 
+function playableLateralLimitAt(z: number): number {
+  return Math.min(LATERAL_LIMIT, trailWidthAt(z) - RUNNER_EDGE_BUFFER);
+}
+
+function downhillMomentumAt(z: number): number {
+  const currentHeight = trailHeightAt(z);
+  const aheadHeight = trailHeightAt(z - 10);
+  const drop = Math.max(0, currentHeight - aheadHeight);
+
+  return clamp(drop * 4.2, 0.8, MAX_RUN_SPEED - BASE_RUN_SPEED);
+}
+
 function identityMat4(): Float32Array {
   return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 }
@@ -776,6 +858,14 @@ function shade(color: Vec3, factor: number): Vec3 {
     clamp(color[0] * factor, 0, 1),
     clamp(color[1] * factor, 0, 1),
     clamp(color[2] * factor, 0, 1),
+  ];
+}
+
+function lerpVec3(from: Vec3, to: Vec3, amount: number): Vec3 {
+  return [
+    from[0] + (to[0] - from[0]) * amount,
+    from[1] + (to[1] - from[1]) * amount,
+    from[2] + (to[2] - from[2]) * amount,
   ];
 }
 
