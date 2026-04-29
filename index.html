@@ -7,12 +7,24 @@
   </head>
   <body>
     <main id="app">
-      <canvas
-        id="game-canvas"
-        width="320"
-        height="180"
-        aria-label="SUC: The Long Burn prototype canvas"
-      ></canvas>
+      <section id="game-shell" aria-label="SUC: The Long Burn prototype">
+        <canvas
+          id="game-canvas"
+          width="320"
+          height="180"
+          aria-label="SUC: The Long Burn prototype canvas"
+        ></canvas>
+        <div id="hud" aria-live="polite">
+          <div>
+            <strong>SUC: THE LONG BURN</strong>
+            <span>CAL STREET HEAT DROP</span>
+          </div>
+          <div>
+            <span data-hud-progress>PROGRESS 000%</span>
+            <span data-hud-status>A/D STEER  R RESTART</span>
+          </div>
+        </div>
+      </section>
       <button id="restart-button" type="button">Restart</button>
     </main>
     <script type="module" src="/src/main.ts"></script>

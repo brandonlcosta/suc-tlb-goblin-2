@@ -1,4 +1,4 @@
-# Prompt 001 — Minimal PS1 3D Prototype Shell
+# Prompt 001 â€” Minimal PS1 3D Prototype Shell
 
 ## Goal
 
@@ -52,3 +52,7 @@ npm run build
 ## Playtest Note
 
 Open the game and confirm it reads as a simple third-person low-poly trail scene.
+
+## Blocked Reason
+
+Validation failed after implementation because `npm run build` could not clear the existing `dist/assets` output directory. Vite reported `EPERM, Permission denied` during `prepare-out-dir`. Attempts to move the ignored `dist` output aside and stop the Vite process listening on port `5173` were also denied by the local Windows permission state. See `reports/runs/2026-04-28-1944-001-minimal-ps1-3d-prototype-shell-blocked.md` for the full validation result.
