@@ -1,4 +1,4 @@
-# Prompt 010 — First Balance Pass
+# Prompt 010 â€” First Balance Pass
 
 ## Goal
 

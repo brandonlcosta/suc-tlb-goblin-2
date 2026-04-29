@@ -1,53 +1,58 @@
 import "./styles/base.css";
 
-const TRAIL_LENGTH = 156;
-const BASE_RUN_SPEED = 6.4;
-const STEADY_MAX_RUN_SPEED = 13.2;
-const MIN_RUN_SPEED = 3.4;
-const MAX_RUN_SPEED = 16;
-const BRAKE_TARGET_SPEED = 4.8;
-const MOMENTUM_ACCELERATION = 5.4;
-const BRAKE_DECELERATION = 9.6;
+// Balance tuning for the single Cal Street Heat Drop mission.
+const TRAIL_LENGTH = 420;
+const BASE_RUN_SPEED = 4.2;
+const STEADY_MAX_RUN_SPEED = 7.8;
+const MIN_RUN_SPEED = 2.1;
+const MAX_RUN_SPEED = 9.2;
+const BRAKE_TARGET_SPEED = 2.7;
+const MOMENTUM_ACCELERATION = 3.6;
+const BRAKE_DECELERATION = 7.2;
 const STEER_SPEED = 4.2;
 const LATERAL_LIMIT = 1.85;
 const RUNNER_EDGE_BUFFER = 0.48;
 const CAMERA_RESPONSE = 4.8;
 const RESOURCE_MAX = 100;
-const STARTING_HEAT = 28;
-const STARTING_HYDRATION = 78;
+const STARTING_HEAT = 24;
+const STARTING_HYDRATION = 86;
 const STARTING_QUAD_DAMAGE = 0;
-const HEAT_PASSIVE_GAIN = 1.55;
-const HEAT_EXPOSURE_GAIN = 2.15;
-const HEAT_SPEED_GAIN = 3.4;
-const HEAT_DOWNHILL_GAIN = 0.9;
-const HEAT_LOW_HYDRATION_GAIN = 2.1;
-const HYDRATION_PASSIVE_DRAIN = 1.25;
-const HYDRATION_EXPOSURE_DRAIN = 1.05;
-const HYDRATION_SPEED_DRAIN = 1.65;
-const HYDRATION_HEAT_DRAIN = 1.35;
-const QUAD_AGGRESSION_GAIN = 4.8;
-const QUAD_BRAKE_RELIEF = 0.38;
+const HEAT_PASSIVE_GAIN = 0.2;
+const HEAT_EXPOSURE_GAIN = 0.58;
+const HEAT_SPEED_GAIN = 0.82;
+const HEAT_DOWNHILL_GAIN = 0.28;
+const HEAT_LOW_HYDRATION_GAIN = 0.95;
+const HYDRATION_PASSIVE_DRAIN = 0.18;
+const HYDRATION_EXPOSURE_DRAIN = 0.24;
+const HYDRATION_SPEED_DRAIN = 0.42;
+const HYDRATION_HEAT_DRAIN = 0.22;
+const QUAD_AGGRESSION_GAIN = 0.82;
+const BRAKE_HEAT_RELIEF = 0.62;
+const QUAD_BRAKE_RELIEF = 0.28;
 const STARTING_COOLING_CHARGES = 0;
-const COOLING_DURATION_SECONDS = 8;
-const COOLING_HEAT_GAIN_MULTIPLIER = 0.38;
-const COOLING_HEAT_DROP_PER_SECOND = 2.25;
-const COOLING_IMMEDIATE_HEAT_DROP = 5;
+const COOLING_DURATION_SECONDS = 13;
+const COOLING_HEAT_GAIN_MULTIPLIER = 0.28;
+const COOLING_HEAT_DROP_PER_SECOND = 1.05;
+const COOLING_IMMEDIATE_HEAT_DROP = 8;
 const CREW_ACTION_LIMIT = 2;
-const CREW_GEL_SUPPORT_SECONDS = 68;
-const CREW_CALM_SUPPORT_SECONDS = 54;
-const CREW_GEL_HYDRATION_MULTIPLIER = 0.9;
-const CREW_CALM_QUAD_MULTIPLIER = 0.76;
+const CREW_GEL_SUPPORT_SECONDS = 92;
+const CREW_CALM_SUPPORT_SECONDS = 78;
+const CREW_GEL_HYDRATION_MULTIPLIER = 0.82;
+const CREW_CALM_QUAD_MULTIPLIER = 0.64;
+const CREW_WATER_HEAT_DROP = 20;
+const LEAVE_FAST_HEAT_PENALTY = 6;
+const LEAVE_FAST_HYDRATION_PENALTY = 8;
 
 const PACE_SETTINGS = {
   control: {
     label: "CONTROL",
     key: "1",
-    speedMultiplier: 0.72,
-    downhillMultiplier: 0.58,
-    heatMultiplier: 0.72,
-    hydrationMultiplier: 0.78,
-    quadMultiplier: 0.58,
-    maxSpeed: 9.2,
+    speedMultiplier: 0.66,
+    downhillMultiplier: 0.5,
+    heatMultiplier: 0.58,
+    hydrationMultiplier: 0.68,
+    quadMultiplier: 0.46,
+    maxSpeed: 5.2,
   },
   steady: {
     label: "STEADY",
@@ -62,21 +67,21 @@ const PACE_SETTINGS = {
   push: {
     label: "PUSH",
     key: "3",
-    speedMultiplier: 1.08,
-    downhillMultiplier: 1.1,
-    heatMultiplier: 1.28,
-    hydrationMultiplier: 1.2,
-    quadMultiplier: 1.42,
-    maxSpeed: 14.4,
+    speedMultiplier: 1.1,
+    downhillMultiplier: 1.08,
+    heatMultiplier: 1.42,
+    hydrationMultiplier: 1.24,
+    quadMultiplier: 1.62,
+    maxSpeed: 8.5,
   },
   send: {
     label: "SEND",
     key: "4",
-    speedMultiplier: 1.18,
-    downhillMultiplier: 1.22,
-    heatMultiplier: 1.78,
-    hydrationMultiplier: 1.48,
-    quadMultiplier: 2.08,
+    speedMultiplier: 1.2,
+    downhillMultiplier: 1.2,
+    heatMultiplier: 1.72,
+    hydrationMultiplier: 1.58,
+    quadMultiplier: 2.22,
     maxSpeed: MAX_RUN_SPEED,
   },
 } as const;
@@ -649,7 +654,7 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
   );
   const heatPressure = state.heat / RESOURCE_MAX;
   const lowHydrationPressure = clamp((45 - state.hydration) / 45, 0, 1);
-  const brakeRelief = input.brake ? 0.72 : 1;
+  const brakeRelief = input.brake ? BRAKE_HEAT_RELIEF : 1;
   const heatGain =
     (HEAT_PASSIVE_GAIN +
       exposure * HEAT_EXPOSURE_GAIN +
@@ -881,7 +886,7 @@ function applyCrewAction(actionId: CrewSupportAction): void {
   } else if (actionId === "ice") {
     state.coolingCharges += 1;
   } else if (actionId === "water") {
-    state.heat = clamp(state.heat - 16, 0, RESOURCE_MAX);
+    state.heat = clamp(state.heat - CREW_WATER_HEAT_DROP, 0, RESOURCE_MAX);
   } else if (actionId === "gels") {
     state.gelSupportRemaining = Math.max(
       state.gelSupportRemaining,
@@ -903,8 +908,12 @@ function startDescent(message: string, leaveFast: boolean): void {
   state.speed = BASE_RUN_SPEED + (leaveFast ? 1.05 : 0);
 
   if (leaveFast && state.crewChoices.length === 0) {
-    state.heat = clamp(state.heat + 5, 0, RESOURCE_MAX);
-    state.hydration = clamp(state.hydration - 6, 0, RESOURCE_MAX);
+    state.heat = clamp(state.heat + LEAVE_FAST_HEAT_PENALTY, 0, RESOURCE_MAX);
+    state.hydration = clamp(
+      state.hydration - LEAVE_FAST_HYDRATION_PENALTY,
+      0,
+      RESOURCE_MAX,
+    );
     recordRunExtremes();
   }
 
@@ -1279,14 +1288,20 @@ function createTerrainMesh(): Mesh {
   const canyonRight: Vec3 = [0.62, 0.31, 0.13];
   const farFog: Vec3 = [0.58, 0.42, 0.25];
   const heatShelf: Vec3 = [0.78, 0.43, 0.13];
+  const terrainEndZ = -TRAIL_LENGTH - 8;
+  const terrainFarZ = -TRAIL_LENGTH - 34;
+  const heatShelfStartZ = -TRAIL_LENGTH * 0.5;
+  const heatShelfNearZ = -TRAIL_LENGTH * 0.57;
+  const heatShelfFarZ = -TRAIL_LENGTH * 0.82;
+  const heatShelfBackZ = -TRAIL_LENGTH * 0.78;
 
   addQuad(
     positions,
     colors,
     [-48, 0.08, 10],
     [48, 0.08, 10],
-    [46, trailHeightAt(-164), -164],
-    [-46, trailHeightAt(-164), -164],
+    [46, trailHeightAt(terrainEndZ), terrainEndZ],
+    [-46, trailHeightAt(terrainEndZ), terrainEndZ],
     ground,
   );
   addQuad(
@@ -1294,35 +1309,35 @@ function createTerrainMesh(): Mesh {
     colors,
     [-8, 0.05, 8],
     [-40, 3.6, 0],
-    [-36, trailHeightAt(-164) + 8, -164],
-    [-10, trailHeightAt(-164), -164],
+    [-36, trailHeightAt(terrainEndZ) + 8, terrainEndZ],
+    [-10, trailHeightAt(terrainEndZ), terrainEndZ],
     canyonLeft,
   );
   addQuad(
     positions,
     colors,
     [8, 0.05, 8],
-    [10, trailHeightAt(-164), -164],
-    [36, trailHeightAt(-164) + 7, -164],
+    [10, trailHeightAt(terrainEndZ), terrainEndZ],
+    [36, trailHeightAt(terrainEndZ) + 7, terrainEndZ],
     [40, 3.1, 0],
     canyonRight,
   );
   addQuad(
     positions,
     colors,
-    [-46, trailHeightAt(-164), -164],
-    [46, trailHeightAt(-164), -164],
-    [34, trailHeightAt(-190) + 7, -190],
-    [-34, trailHeightAt(-190) + 7, -190],
+    [-46, trailHeightAt(terrainEndZ), terrainEndZ],
+    [46, trailHeightAt(terrainEndZ), terrainEndZ],
+    [34, trailHeightAt(terrainFarZ) + 7, terrainFarZ],
+    [-34, trailHeightAt(terrainFarZ) + 7, terrainFarZ],
     farFog,
   );
   addQuad(
     positions,
     colors,
-    [-28, trailHeightAt(-78) + 4.2, -78],
-    [-9, trailHeightAt(-88) + 1.2, -88],
-    [-12, trailHeightAt(-124) + 0.8, -124],
-    [-35, trailHeightAt(-122) + 5.8, -122],
+    [-28, trailHeightAt(heatShelfStartZ) + 4.2, heatShelfStartZ],
+    [-9, trailHeightAt(heatShelfNearZ) + 1.2, heatShelfNearZ],
+    [-12, trailHeightAt(heatShelfFarZ) + 0.8, heatShelfFarZ],
+    [-35, trailHeightAt(heatShelfBackZ) + 5.8, heatShelfBackZ],
     heatShelf,
   );
 
@@ -1434,18 +1449,24 @@ function createCrewZoneObjects(): SceneObject[] {
 
 function createAtmosphereObjects(): SceneObject[] {
   const objects: SceneObject[] = [];
+  const signZones = [0.25, 0.49, 0.74] as const;
 
   objects.push({
     mesh: sunMesh,
-    position: [12.5, trailHeightAt(-62) + 16.8, -62],
+    position: [
+      12.5,
+      trailHeightAt(-TRAIL_LENGTH * 0.4) + 16.8,
+      -TRAIL_LENGTH * 0.4,
+    ],
     scale: [3.4, 3.4, 0.08],
     rotationY: -0.3,
   });
 
-  for (const z of [-38, -76, -116]) {
+  for (let index = 0; index < signZones.length; index += 1) {
+    const z = -TRAIL_LENGTH * signZones[index];
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
-    const side = z === -76 ? 1 : -1;
+    const side = index === 1 ? 1 : -1;
     const x = center + side * (width + 0.88);
     const y = trailHeightAt(z);
 
@@ -1464,8 +1485,7 @@ function createAtmosphereObjects(): SceneObject[] {
     );
   }
 
-  for (let index = 0; index < 30; index += 1) {
-    const z = -10 - index * 4.9;
+  for (let index = 0, z = -10; z > -TRAIL_LENGTH; index += 1, z -= 6.2) {
     const side = index % 2 === 0 ? -1 : 1;
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
@@ -1488,8 +1508,7 @@ function createAtmosphereObjects(): SceneObject[] {
 function createTrailMarkers(): SceneObject[] {
   const markers: SceneObject[] = [];
 
-  for (let index = 0; index < 22; index += 1) {
-    const z = -8 - index * 6.5;
+  for (let index = 0, z = -8; z > -TRAIL_LENGTH; index += 1, z -= 9.5) {
     const side = index % 2 === 0 ? -1 : 1;
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
@@ -1500,7 +1519,8 @@ function createTrailMarkers(): SceneObject[] {
     });
   }
 
-  for (const z of [-52, -96, -148]) {
+  for (const zone of [0.33, 0.62, 0.95]) {
+    const z = -TRAIL_LENGTH * zone;
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
     markers.push(
@@ -1558,8 +1578,7 @@ function createFinishLineObjects(): SceneObject[] {
 function createRocks(): SceneObject[] {
   const rocks: SceneObject[] = [];
 
-  for (let index = 0; index < 46; index += 1) {
-    const z = -6 - index * 3.4;
+  for (let index = 0, z = -6; z > -TRAIL_LENGTH; index += 1, z -= 5) {
     const side = index % 3 === 0 ? -1 : 1;
     const center = trailCenterAt(z);
     const offset = trailWidthAt(z) + 1.1 + ((index * 17) % 9) * 0.28;
@@ -1578,8 +1597,7 @@ function createRocks(): SceneObject[] {
 function createTrees(): SceneObject[] {
   const trees: SceneObject[] = [];
 
-  for (let index = 0; index < 18; index += 1) {
-    const z = -14 - index * 8.5;
+  for (let index = 0, z = -14; z > -TRAIL_LENGTH; index += 1, z -= 12.5) {
     const side = index % 4 < 2 ? -1 : 1;
     const center = trailCenterAt(z);
 
