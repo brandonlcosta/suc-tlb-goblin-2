@@ -42,6 +42,11 @@ const CREW_CALM_QUAD_MULTIPLIER = 0.64;
 const CREW_WATER_HEAT_DROP = 20;
 const LEAVE_FAST_HEAT_PENALTY = 6;
 const LEAVE_FAST_HYDRATION_PENALTY = 8;
+const SECOND_AID_PROGRESS = 0.765;
+const SECOND_AID_WATER_HEAT_DROP = 16;
+const SECOND_AID_FUEL_SUPPORT_SECONDS = 58;
+const SECOND_AID_STABILITY_SUPPORT_SECONDS = 44;
+const SECOND_AID_SKIP_FINAL_PRESSURE_MULTIPLIER = 1.1;
 const ROUTE_MARKER_LEAD_PROGRESS = 0.075;
 const ROUTE_MARKER_CLOSE_LEAD_PROGRESS = 0.03;
 const ROUTE_TRANSITION_PREVIEW_PROGRESS = 0.1;
@@ -149,12 +154,43 @@ const CREW_ACTIONS = {
 
 type CrewSupportAction = keyof typeof CREW_ACTIONS;
 
+const SECOND_AID_ACTIONS = {
+  hydrate: {
+    label: "H2O",
+    timeCost: 12,
+    shout: "Bottles topped. Final descent is still hot.",
+  },
+  ice: {
+    label: "ICE",
+    timeCost: 10,
+    shout: "Fresh ice packed. Spend it before redline.",
+  },
+  water: {
+    label: "WATER",
+    timeCost: 7,
+    shout: "Water dump bought a little headroom.",
+  },
+  fuel: {
+    label: "FUEL",
+    timeCost: 9,
+    shout: "Fuel grabbed. Legs and bottles get a short break.",
+  },
+  skip: {
+    label: "SKIP",
+    timeCost: 0,
+    shout: "Skipped aid. Saved time. Final push gets no mercy.",
+  },
+} as const;
+
+type SecondAidAction = keyof typeof SECOND_AID_ACTIONS;
+
 type RouteZoneKind =
   | "mixed"
   | "steep"
   | "switchback"
   | "river"
   | "uphill"
+  | "aid"
   | "exposed"
   | "finish";
 type RouteMarkerKind =
@@ -162,6 +198,7 @@ type RouteMarkerKind =
   | "switchback"
   | "river"
   | "uphill"
+  | "aid"
   | "exposed"
   | "finish";
 
@@ -255,7 +292,7 @@ const ROUTE_ZONES: readonly RouteZone[] = [
   },
   {
     start: RIVER_CROSSING_END,
-    end: 0.76,
+    end: SECOND_AID_PROGRESS,
     shortLabel: "UPHILL CHECK",
     cue: "EFFORT RISES",
     kind: "uphill",
@@ -270,7 +307,23 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     exposure: 0.9,
   },
   {
-    start: 0.76,
+    start: SECOND_AID_PROGRESS,
+    end: 0.8,
+    shortLabel: "SECOND AID",
+    cue: "RESET OR SKIP",
+    kind: "aid",
+    markerKind: "aid",
+    speedBonus: -0.2,
+    downhillBoostFloor: 0.4,
+    downhillBoostBonus: -0.22,
+    heatMultiplier: 0.88,
+    hydrationMultiplier: 0.94,
+    quadMultiplier: 0.84,
+    technicalPressure: 0.18,
+    exposure: 0.52,
+  },
+  {
+    start: 0.8,
     end: 0.9,
     shortLabel: "HOT DESCENT",
     cue: "CURVES KEEP BITING",
@@ -531,6 +584,7 @@ interface GameState {
   titleActive: boolean;
   routeIntelActive: boolean;
   crewActive: boolean;
+  secondAidActive: boolean;
   paused: boolean;
   restartConfirmationActive: boolean;
   resumeAfterRestartCancel: boolean;
@@ -538,6 +592,9 @@ interface GameState {
   crewChoices: CrewSupportAction[];
   crewTimeSeconds: number;
   crewMessage: string;
+  secondAidChoice: SecondAidAction | null;
+  secondAidTimeSeconds: number;
+  secondAidMessage: string;
   elapsedSeconds: number;
   progress: number;
   lateral: number;
@@ -682,6 +739,17 @@ const crewCounterText = requiredElement(
 const crewButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>("[data-crew-action]"),
 );
+const secondAidOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#second-aid-overlay"),
+  "Missing second aid overlay.",
+);
+const secondAidMessageText = requiredElement(
+  document.querySelector<HTMLElement>("[data-second-aid-message]"),
+  "Missing second aid message element.",
+);
+const secondAidButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-second-aid-action]"),
+);
 const reportOverlay = requiredElement(
   document.querySelector<HTMLElement>("#report-overlay"),
   "Missing report overlay.",
@@ -717,6 +785,10 @@ const reportFailureText = requiredElement(
 const reportCrewText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-crew]"),
   "Missing report crew element.",
+);
+const reportSecondAidText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-second-aid]"),
+  "Missing report second aid element.",
 );
 const reportPaceMixText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-pace-mix]"),
@@ -874,12 +946,14 @@ const zoneSteepMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
 const zoneRiverMesh = createCubeMesh([0.08, 0.5, 0.62]);
 const zoneUphillMesh = createCubeMesh([0.86, 0.12, 0.1]);
+const zoneAidMesh = createCubeMesh([0.57, 1, 0.24]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createAtmosphereObjects(),
   ...createRouteZoneMarkers(),
   ...createRiverCrossingObjects(),
+  ...createSecondAidStationObjects(),
   ...createTrailMarkers(),
   ...createFinishLineObjects(),
   ...createRocks(),
@@ -918,6 +992,15 @@ for (const button of crewButtons) {
 
     if (actionId) {
       chooseCrewAction(actionId);
+    }
+  });
+}
+for (const button of secondAidButtons) {
+  button.addEventListener("click", () => {
+    const actionId = button.dataset.secondAidAction;
+
+    if (actionId) {
+      chooseSecondAidAction(actionId);
     }
   });
 }
@@ -995,6 +1078,7 @@ gl.disable(gl.CULL_FACE);
 updateTitleUi();
 updateRouteIntelUi();
 updateCrewUi();
+updateSecondAidUi();
 updatePauseUi();
 updateTouchControlsUi();
 requestAnimationFrame(tick);
@@ -1007,6 +1091,7 @@ function createInitialState(): GameState {
     titleActive: true,
     routeIntelActive: false,
     crewActive: false,
+    secondAidActive: false,
     paused: false,
     restartConfirmationActive: false,
     resumeAfterRestartCancel: false,
@@ -1014,6 +1099,9 @@ function createInitialState(): GameState {
     crewChoices: [],
     crewTimeSeconds: 0,
     crewMessage: "Route intel: hot drop, exposed middle, no hero miles.",
+    secondAidChoice: null,
+    secondAidTimeSeconds: 0,
+    secondAidMessage: "Second aid ahead. Reset fast or skip and carry it.",
     elapsedSeconds: 0,
     progress: 0,
     lateral: 0,
@@ -1225,6 +1313,7 @@ function restart(): void {
   updateTitleUi();
   updateRouteIntelUi();
   updateCrewUi();
+  updateSecondAidUi();
   updatePauseUi();
   updateReportUi();
   updateTouchControlsUi();
@@ -1402,6 +1491,7 @@ function update(deltaSeconds: number): void {
     state.titleActive ||
     state.routeIntelActive ||
     state.crewActive ||
+    state.secondAidActive ||
     isRunTerminal()
   ) {
     updateCamera(deltaSeconds);
@@ -1468,6 +1558,13 @@ function update(deltaSeconds: number): void {
 
   state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
   updateRiverCrossing(previousProgress, deltaSeconds);
+
+  if (shouldEnterSecondAid(previousProgress)) {
+    enterSecondAid();
+    updateCamera(deltaSeconds);
+    return;
+  }
+
   updateResources(deltaSeconds, runnerZ, downhillBoost);
   updateCooling(deltaSeconds);
 
@@ -1476,6 +1573,29 @@ function update(deltaSeconds: number): void {
   }
 
   updateCamera(deltaSeconds);
+}
+
+function shouldEnterSecondAid(previousProgress: number): boolean {
+  return (
+    state.secondAidChoice === null &&
+    !state.secondAidActive &&
+    !state.failureReason &&
+    previousProgress < SECOND_AID_PROGRESS &&
+    state.progress >= SECOND_AID_PROGRESS
+  );
+}
+
+function enterSecondAid(): void {
+  state.progress = SECOND_AID_PROGRESS;
+  state.secondAidActive = true;
+  state.secondAidMessage =
+    "Second aid. One fast call before the final downhill pressure.";
+  state.speed = 0;
+  state.lateralVelocity = 0;
+  resetTouchHoldControls();
+  updateSecondAidUi();
+  updatePauseUi();
+  updateTouchControlsUi();
 }
 
 function recordDecisionStats(deltaSeconds: number, riskLane: RiskLaneEffect): void {
@@ -1722,6 +1842,7 @@ function isDescentControlAvailable(): boolean {
     !state.titleActive &&
     !state.routeIntelActive &&
     !state.crewActive &&
+    !state.secondAidActive &&
     !state.paused &&
     !state.restartConfirmationActive &&
     !isRunTerminal()
@@ -1733,6 +1854,7 @@ function isActiveDescentRun(): boolean {
     !state.titleActive &&
     !state.routeIntelActive &&
     !state.crewActive &&
+    !state.secondAidActive &&
     !isRunTerminal()
   );
 }
@@ -1809,7 +1931,7 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
   const heatPressure = state.heat / RESOURCE_MAX;
   const lowHydrationPressure = clamp((45 - state.hydration) / 45, 0, 1);
   const brakeRelief = input.brake ? BRAKE_HEAT_RELIEF : 1;
-  const heatGain =
+  let heatGain =
     (HEAT_PASSIVE_GAIN +
       exposure * HEAT_EXPOSURE_GAIN +
       speedPressure * HEAT_SPEED_GAIN +
@@ -1844,6 +1966,12 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
 
   if (state.calmSupportRemaining > 0) {
     quadGain *= CREW_CALM_QUAD_MULTIPLIER;
+  }
+
+  if (state.secondAidChoice === "skip" && state.progress >= SECOND_AID_PROGRESS) {
+    heatGain *= SECOND_AID_SKIP_FINAL_PRESSURE_MULTIPLIER;
+    hydrationDrain *= SECOND_AID_SKIP_FINAL_PRESSURE_MULTIPLIER;
+    quadGain *= SECOND_AID_SKIP_FINAL_PRESSURE_MULTIPLIER;
   }
 
   const heatChange =
@@ -1949,6 +2077,10 @@ function statusLine(speed: string): string {
     return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
   }
 
+  if (state.secondAidActive) {
+    return "SECOND AID OPEN  ONE QUICK CALL BEFORE FINAL PUSH";
+  }
+
   if (state.restartConfirmationActive) {
     return "RESTART CONFIRMATION OPEN  RUN HELD";
   }
@@ -1987,6 +2119,10 @@ function statusLine(speed: string): string {
     return `ICE ACTIVE ${Math.ceil(
       state.coolingRemaining,
     )}S  HEAT GAIN CUT  ${riskLane.label}  ${speed}`;
+  }
+
+  if (state.secondAidChoice === "skip" && state.progress >= SECOND_AID_PROGRESS) {
+    return `AID SKIPPED - FINAL PRESSURE UP  ${zone.shortLabel} ${speed}`;
   }
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
@@ -2148,8 +2284,22 @@ function setSupportReadout(): void {
     return;
   }
 
-  if (state.crewChoices.includes("gels") || state.crewChoices.includes("calm")) {
+  if (
+    state.crewChoices.includes("gels") ||
+    state.crewChoices.includes("calm") ||
+    state.secondAidChoice === "fuel"
+  ) {
     setSupportChip("SUP EXPIRED", "expired");
+    return;
+  }
+
+  if (state.secondAidChoice === "skip") {
+    setSupportChip("SUP AID SKIP RISK", "expired");
+    return;
+  }
+
+  if (state.secondAidChoice) {
+    setSupportChip(`SUP AID ${SECOND_AID_ACTIONS[state.secondAidChoice].label}`, "set");
     return;
   }
 
@@ -2312,6 +2462,12 @@ function setCrewText(): void {
     return;
   }
 
+  if (state.secondAidActive) {
+    crewText.textContent = "SECOND AID OPEN";
+    crewText.dataset.crewLevel = "open";
+    return;
+  }
+
   if (state.restartConfirmationActive) {
     crewText.textContent = "RESTART?";
     crewText.dataset.crewLevel = "risk";
@@ -2327,6 +2483,18 @@ function setCrewText(): void {
   if (state.crewChoices.length === 0) {
     crewText.textContent = "CREW LEFT FAST";
     crewText.dataset.crewLevel = "risk";
+    return;
+  }
+
+  if (state.secondAidChoice) {
+    const crewLabel =
+      state.crewChoices.length === 0
+        ? "CREW FAST"
+        : `CREW ${crewChoiceSummary()}`;
+    crewText.textContent = `${crewLabel} / AID ${secondAidChoiceSummary()} +${formatClock(
+      state.secondAidTimeSeconds,
+    )}`;
+    crewText.dataset.crewLevel = state.secondAidChoice === "skip" ? "risk" : "set";
     return;
   }
 
@@ -2414,6 +2582,50 @@ function startDescent(message: string, leaveFast: boolean): void {
   updateCrewUi();
 }
 
+function chooseSecondAidAction(actionId: string): void {
+  if (!state.secondAidActive || !isSecondAidAction(actionId)) {
+    return;
+  }
+
+  state.secondAidChoice = actionId;
+  applySecondAidAction(actionId);
+  state.secondAidActive = false;
+  state.speed =
+    actionId === "skip" ? BASE_RUN_SPEED + 0.75 : Math.max(MIN_RUN_SPEED, BASE_RUN_SPEED * 0.82);
+  state.lateralVelocity = 0;
+  resetTouchHoldControls();
+  updateSecondAidUi();
+  updatePauseUi();
+  updateTouchControlsUi();
+}
+
+function applySecondAidAction(actionId: SecondAidAction): void {
+  const action = SECOND_AID_ACTIONS[actionId];
+
+  state.elapsedSeconds += action.timeCost;
+  state.secondAidTimeSeconds += action.timeCost;
+  state.secondAidMessage = action.shout;
+
+  if (actionId === "hydrate") {
+    state.hydration = RESOURCE_MAX;
+  } else if (actionId === "ice") {
+    state.coolingCharges += 1;
+  } else if (actionId === "water") {
+    state.heat = clamp(state.heat - SECOND_AID_WATER_HEAT_DROP, 0, RESOURCE_MAX);
+  } else if (actionId === "fuel") {
+    state.gelSupportRemaining = Math.max(
+      state.gelSupportRemaining,
+      SECOND_AID_FUEL_SUPPORT_SECONDS,
+    );
+    state.calmSupportRemaining = Math.max(
+      state.calmSupportRemaining,
+      SECOND_AID_STABILITY_SUPPORT_SECONDS,
+    );
+  }
+
+  recordRunExtremes();
+}
+
 function continueFromRouteIntel(): void {
   if (!state.routeIntelActive) {
     return;
@@ -2424,6 +2636,7 @@ function continueFromRouteIntel(): void {
   state.crewMessage = "Two quick crew calls. Then the canyon collects.";
   updateRouteIntelUi();
   updateCrewUi();
+  updateSecondAidUi();
   updateTouchControlsUi();
 }
 
@@ -2438,6 +2651,7 @@ function startMissionIntel(): void {
   updateTitleUi();
   updateRouteIntelUi();
   updateCrewUi();
+  updateSecondAidUi();
   updateTouchControlsUi();
 }
 
@@ -2470,6 +2684,16 @@ function updateCrewUi(): void {
   }
 }
 
+function updateSecondAidUi(): void {
+  secondAidOverlay.hidden =
+    state.titleActive || state.routeIntelActive || state.crewActive || !state.secondAidActive;
+  secondAidMessageText.textContent = state.secondAidMessage;
+
+  for (const button of secondAidButtons) {
+    button.disabled = !state.secondAidActive;
+  }
+}
+
 function updatePauseUi(): void {
   const activeRun = isActiveDescentRun();
 
@@ -2482,6 +2706,10 @@ function updatePauseUi(): void {
 
 function isCrewSupportAction(actionId: string): actionId is CrewSupportAction {
   return actionId in CREW_ACTIONS;
+}
+
+function isSecondAidAction(actionId: string): actionId is SecondAidAction {
+  return actionId in SECOND_AID_ACTIONS;
 }
 
 function crewChoiceSummary(): string {
@@ -2527,6 +2755,50 @@ function crewSupportReportLabel(choice: CrewSupportAction): string {
   return "calm support protected quads";
 }
 
+function secondAidChoiceSummary(): string {
+  if (!state.secondAidChoice) {
+    return "NOT REACHED";
+  }
+
+  return SECOND_AID_ACTIONS[state.secondAidChoice].label;
+}
+
+function secondAidReportSummary(): string {
+  if (!state.secondAidChoice) {
+    return "NOT REACHED";
+  }
+
+  const action = SECOND_AID_ACTIONS[state.secondAidChoice];
+
+  if (state.secondAidChoice === "skip") {
+    return "SKIPPED / +00:00 / final pressure up";
+  }
+
+  return `${action.label} / +${formatClock(state.secondAidTimeSeconds)} / ${secondAidSupportReportLabel(
+    state.secondAidChoice,
+  )}`;
+}
+
+function secondAidSupportReportLabel(choice: SecondAidAction): string {
+  if (choice === "hydrate") {
+    return "hydration topped before final push";
+  }
+
+  if (choice === "ice") {
+    return "cooling charge reset";
+  }
+
+  if (choice === "water") {
+    return "water dump heat drop";
+  }
+
+  if (choice === "fuel") {
+    return "fuel support slowed H2O and steadied quads";
+  }
+
+  return "no support taken";
+}
+
 function updateReportUi(): void {
   reportOverlay.hidden = !isRunTerminal();
 
@@ -2545,6 +2817,7 @@ function updateReportUi(): void {
   reportFinalQuadsText.textContent = formatReportValue(state.quadDamage);
   reportFailureText.textContent = state.failureReason ?? "NONE";
   reportCrewText.textContent = crewReportSummary();
+  reportSecondAidText.textContent = secondAidReportSummary();
   reportPaceMixText.textContent = paceMixSummary();
   reportBrakeTimeText.textContent = brakeTimeSummary();
   reportIceTimingText.textContent = iceTimingSummary();
@@ -2657,6 +2930,13 @@ function disciplineNote(): string {
     return "Discipline note: Ice came late. Spend cooling before critical heat.";
   }
 
+  if (
+    state.secondAidChoice === "skip" &&
+    (state.maxHeat >= 84 || state.lowestHydration <= 30 || state.quadDamage >= 72)
+  ) {
+    return "Discipline note: Aid skip saved clock and raised the final bill.";
+  }
+
   if (fastLinePercent >= 25) {
     return "Discipline note: Fast exposed line was home base. Take shade or center sooner.";
   }
@@ -2701,6 +2981,10 @@ function percentOf(value: number, total: number): number {
 
 function verdictLine(): string {
   if (state.failureReason) {
+    if (state.secondAidChoice === "skip") {
+      return "Skipped aid and paid.";
+    }
+
     if (state.failureReason.includes("HEAT")) {
       return "Canyon tax collected.";
     }
@@ -2746,6 +3030,14 @@ function verdictLine(): string {
 
   if (state.lowestHydration <= 20) {
     return "Bottles nearly gone. Not pretty. Very SUC.";
+  }
+
+  if (
+    state.secondAidChoice &&
+    state.secondAidChoice !== "skip" &&
+    (state.maxHeat >= 82 || state.lowestHydration <= 35 || state.quadDamage >= 64)
+  ) {
+    return "The second aid stop saved the back half.";
   }
 
   if (
@@ -3434,6 +3726,92 @@ function createCrewZoneObjects(): SceneObject[] {
   return objects;
 }
 
+function createSecondAidStationObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+  const stationZ = -TRAIL_LENGTH * SECOND_AID_PROGRESS;
+  const stationCenter = trailCenterAt(stationZ);
+  const stationWidth = trailWidthAt(stationZ);
+  const stationY = trailHeightAt(stationZ);
+  const sideX = stationCenter + stationWidth + 1.25;
+  const leftMarkerX = stationCenter - stationWidth - 0.2;
+  const rightMarkerX = stationCenter + stationWidth + 0.2;
+
+  objects.push(
+    {
+      mesh: crewSignMesh,
+      position: [stationCenter, stationY + 2.18, stationZ],
+      scale: [2.15, 0.52, 0.12],
+      rotationY: -0.1,
+    },
+    {
+      mesh: zoneAidMesh,
+      position: [stationCenter, stationY + 0.06, stationZ + 0.34],
+      scale: [stationWidth * 1.5, 0.04, 0.42],
+      rotationY: 0,
+    },
+    {
+      mesh: cubeMesh,
+      position: [leftMarkerX, stationY + 1.02, stationZ],
+      scale: [0.16, 2.04, 0.16],
+    },
+    {
+      mesh: cubeMesh,
+      position: [rightMarkerX, stationY + 1.02, stationZ],
+      scale: [0.16, 2.04, 0.16],
+    },
+    {
+      mesh: crewTableMesh,
+      position: [sideX, stationY + 0.78, stationZ - 0.15],
+      scale: [1.5, 0.16, 0.66],
+      rotationY: -0.2,
+    },
+    {
+      mesh: crewCoolerMesh,
+      position: [sideX + 0.86, stationY + 0.42, stationZ + 0.55],
+      scale: [0.68, 0.62, 0.54],
+      rotationY: -0.26,
+    },
+    {
+      mesh: iceMesh,
+      position: [sideX + 0.86, stationY + 0.78, stationZ + 0.55],
+      scale: [0.72, 0.12, 0.58],
+      rotationY: -0.26,
+    },
+    {
+      mesh: iceMesh,
+      position: [sideX - 0.34, stationY + 0.99, stationZ - 0.16],
+      scale: [0.34, 0.18, 0.28],
+      rotationY: 0.14,
+    },
+    {
+      mesh: accentMesh,
+      position: [sideX + 0.28, stationY + 0.96, stationZ + 0.06],
+      scale: [0.22, 0.32, 0.2],
+      rotationY: 0.34,
+    },
+  );
+
+  for (const [xOffset, zOffset] of [
+    [-stationWidth - 0.45, 1.45],
+    [stationWidth + 0.45, 1.45],
+    [-stationWidth - 0.38, -1.2],
+    [stationWidth + 0.38, -1.2],
+  ] as const) {
+    objects.push({
+      mesh: crewConeMesh,
+      position: [
+        stationCenter + xOffset,
+        trailHeightAt(stationZ + zOffset) + 0.38,
+        stationZ + zOffset,
+      ],
+      scale: [0.36, 0.72, 0.36],
+      rotationY: zOffset,
+    });
+  }
+
+  return objects;
+}
+
 function createAtmosphereObjects(): SceneObject[] {
   const objects: SceneObject[] = [];
   const signZones = [0.18, 0.31, 0.48, 0.64, 0.78] as const;
@@ -3628,6 +4006,10 @@ function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
 
   if (kind === "uphill") {
     return zoneUphillMesh;
+  }
+
+  if (kind === "aid") {
+    return zoneAidMesh;
   }
 
   if (kind === "exposed") {

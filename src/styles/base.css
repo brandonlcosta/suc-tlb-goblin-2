@@ -368,6 +368,10 @@ body {
   color: #8fd2ff;
 }
 
+#hud [data-zone-kind="aid"] {
+  color: #9cff3a;
+}
+
 #hud [data-zone-kind="uphill"] {
   color: #ff4f4f;
 }
@@ -871,7 +875,8 @@ body {
   outline-offset: 2px;
 }
 
-#crew-overlay {
+#crew-overlay,
+#second-aid-overlay {
   position: absolute;
   left: 10px;
   right: 10px;
@@ -881,7 +886,8 @@ body {
   text-shadow: 2px 2px 0 #080807;
 }
 
-#crew-overlay[hidden] {
+#crew-overlay[hidden],
+#second-aid-overlay[hidden] {
   display: none;
 }
 
@@ -959,6 +965,28 @@ body {
 .crew-actions button:focus-visible {
   outline: 2px solid #9cff3a;
   outline-offset: 2px;
+}
+
+.second-aid-panel {
+  border-color: #9cff3a;
+  background: rgba(7, 12, 8, 0.9);
+}
+
+.second-aid-panel > strong,
+.second-aid-actions button strong {
+  color: #8fd2ff;
+}
+
+.second-aid-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.second-aid-actions [data-second-aid-action="skip"] strong {
+  color: #ff8b3d;
+}
+
+.second-aid-actions [data-second-aid-action="skip"] {
+  grid-column: 1 / -1;
 }
 
 #report-overlay {

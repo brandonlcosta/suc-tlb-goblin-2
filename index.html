@@ -121,7 +121,7 @@
               </div>
               <div>
                 <strong>Crew</strong>
-                <span>Two calls at Foresthill. No help after exit.</span>
+                <span>Foresthill start plus one second aid reset after the uphill.</span>
               </div>
               <div>
                 <strong>Strategy</strong>
@@ -169,6 +169,36 @@
             <span data-crew-counter>2 crew picks available</span>
           </div>
         </div>
+        <div id="second-aid-overlay" aria-label="Second aid station" hidden>
+          <div class="crew-panel second-aid-panel">
+            <strong>SECOND AID STATION</strong>
+            <span data-second-aid-message
+              >One quick call before the final downhill pressure.</span
+            >
+            <div class="crew-actions second-aid-actions" aria-label="Second aid actions">
+              <button type="button" data-second-aid-action="hydrate">
+                <strong>Top off H2O</strong>
+                <span>Hydration bump. Costs time.</span>
+              </button>
+              <button type="button" data-second-aid-action="ice">
+                <strong>Quick ice</strong>
+                <span>Adds cooling charge. Costs time.</span>
+              </button>
+              <button type="button" data-second-aid-action="water">
+                <strong>Water dump</strong>
+                <span>Drops heat now. Small time cost.</span>
+              </button>
+              <button type="button" data-second-aid-action="fuel">
+                <strong>Grab fuel</strong>
+                <span>Short support for the final push.</span>
+              </button>
+              <button type="button" data-second-aid-action="skip">
+                <strong>Skip aid</strong>
+                <span>Save time. Carry the risk.</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <div id="report-overlay" aria-label="Run report" hidden>
           <div class="report-panel">
             <span data-report-result>FINISHED</span>
@@ -198,6 +228,10 @@
               <div>
                 <dt>Crew</dt>
                 <dd data-report-crew>CREW SKIPPED</dd>
+              </div>
+              <div>
+                <dt>Second aid</dt>
+                <dd data-report-second-aid>NOT REACHED</dd>
               </div>
               <div>
                 <dt>Pace mix</dt>
