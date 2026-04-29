@@ -50,9 +50,11 @@ const RIVER_CROSSING_START = 0.58;
 const RIVER_CROSSING_END = 0.68;
 const RIVER_LOG_CHECK_PROGRESS = 0.635;
 const RIVER_FEEDBACK_SECONDS = 3.2;
-const WATER_ROUTE_SPEED_BONUS = -1.28;
-const WATER_HEAT_RELIEF_PER_SECOND = 0.38;
-const WATER_SPLASH_HEAT_DROP = 1.8;
+const WATER_ROUTE_SPEED_BONUS = -2.05;
+const WATER_ROUTE_MAX_SPEED = 3.55;
+const WATER_DRAG_DECELERATION = 7.4;
+const WATER_HEAT_RELIEF_PER_SECOND = 0.28;
+const WATER_SPLASH_HEAT_DROP = 1.4;
 const LOG_ROUTE_SPEED_BONUS = 0.48;
 const LOG_LANE_MIN = 0.66;
 const LOG_LANE_MAX = 1.52;
@@ -366,10 +368,10 @@ const DEFAULT_RISK_LANE: RiskLaneEffect = {
 const WATER_RISK_LANE: RiskLaneEffect = {
   kind: "water",
   label: "SAFE WATER",
-  status: "SAFE WATER - SLOW COOL SPLASH",
-  heatMultiplier: 0.78,
+  status: "SAFE WATER - HARD DRAG / LIGHT COOLING",
+  heatMultiplier: 0.84,
   hydrationMultiplier: 0.96,
-  quadMultiplier: 0.68,
+  quadMultiplier: 0.6,
   speedBonus: WATER_ROUTE_SPEED_BONUS,
 };
 
@@ -1432,13 +1434,18 @@ function update(deltaSeconds: number): void {
     MIN_RUN_SPEED,
     Math.min(
       MAX_RUN_SPEED,
+      riskLane.kind === "water" ? WATER_ROUTE_MAX_SPEED : MAX_RUN_SPEED,
       pace.maxSpeed + Math.max(0, laneSpeedBonus) + Math.max(0, routeSpeedBonus),
     ),
   );
   const targetSpeed = input.brake
     ? Math.min(BRAKE_TARGET_SPEED, state.speed)
     : unbrakedTargetSpeed;
-  const speedResponse = input.brake ? BRAKE_DECELERATION : MOMENTUM_ACCELERATION;
+  const speedResponse = input.brake
+    ? BRAKE_DECELERATION
+    : riskLane.kind === "water"
+      ? WATER_DRAG_DECELERATION
+      : MOMENTUM_ACCELERATION;
 
   recordDecisionStats(deltaSeconds, riskLane);
 
@@ -2008,7 +2015,7 @@ function riverCrossingStatusLine(speed: string): string | null {
     }
 
     if (state.riverCrossingOutcome === "water") {
-      return `SAFE WATER - SLOW SPLASH / HEAT RELIEF  ${speed}`;
+      return `SAFE WATER - DRAGGED PACE / LIGHT COOLING  ${speed}`;
     }
   }
 
@@ -2022,7 +2029,7 @@ function riverCrossingStatusLine(speed: string): string | null {
     return `${input.brake ? "CONTROLLED" : "FAST"} LOG LINE - HOLD CENTER  ${speed}`;
   }
 
-  return `WATER CROSSING - SAFE LINE SLOWS / COOL SPLASH  ${speed}`;
+  return `WATER CROSSING - HARD DRAG / LIGHT COOLING  ${speed}`;
 }
 
 function activeSupportStatusLine(): string {
@@ -2606,7 +2613,7 @@ function crossingSummary(): string {
   }
 
   if (state.riverCrossingOutcome === "water") {
-    return "SAFE WATER / SLOW / SMALL COOLING";
+    return "SAFE WATER / HARD DRAG / LIGHT COOLING";
   }
 
   return "NOT REACHED";
