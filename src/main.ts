@@ -188,6 +188,123 @@ const ROUTE_ZONES: readonly RouteZone[] = [
 
 type Vec3 = [number, number, number];
 
+type RiskLaneKind = "main" | "shade" | "rocky" | "fast" | "safe";
+
+interface RiskLaneEffect {
+  kind: RiskLaneKind;
+  label: string;
+  status: string;
+  heatMultiplier: number;
+  hydrationMultiplier: number;
+  quadMultiplier: number;
+  speedBonus: number;
+}
+
+interface RiskLaneCue extends RiskLaneEffect {
+  start: number;
+  end: number;
+  minLateral: number;
+  maxLateral: number;
+  color: Vec3;
+}
+
+const DEFAULT_RISK_LANE: RiskLaneEffect = {
+  kind: "main",
+  label: "MAIN TRAIL",
+  status: "MAIN TRAIL - HOLD FORM",
+  heatMultiplier: 1,
+  hydrationMultiplier: 1,
+  quadMultiplier: 1,
+  speedBonus: 0,
+};
+
+const RISK_LANE_CUES: readonly RiskLaneCue[] = [
+  {
+    start: 0.18,
+    end: 0.32,
+    minLateral: -1.75,
+    maxLateral: -0.45,
+    kind: "shade",
+    label: "SHADE CUT",
+    status: "SHADE CUT - HEAT RELIEF",
+    heatMultiplier: 0.72,
+    hydrationMultiplier: 0.94,
+    quadMultiplier: 1.04,
+    speedBonus: -0.08,
+    color: [0.1, 0.32, 0.2],
+  },
+  {
+    start: 0.43,
+    end: 0.59,
+    minLateral: 0.42,
+    maxLateral: 1.78,
+    kind: "fast",
+    label: "FAST OUTSIDE",
+    status: "FAST OUTSIDE - SPEED HEAT",
+    heatMultiplier: 1.22,
+    hydrationMultiplier: 1.08,
+    quadMultiplier: 1.14,
+    speedBonus: 0.52,
+    color: [0.86, 0.36, 0.09],
+  },
+  {
+    start: 0.58,
+    end: 0.72,
+    minLateral: -1.68,
+    maxLateral: -0.3,
+    kind: "rocky",
+    label: "ROCKY INSIDE",
+    status: "ROCKY INSIDE - QUAD TAX",
+    heatMultiplier: 1.02,
+    hydrationMultiplier: 1,
+    quadMultiplier: 1.5,
+    speedBonus: -0.16,
+    color: [0.63, 0.46, 0.18],
+  },
+  {
+    start: 0.64,
+    end: 0.8,
+    minLateral: -0.42,
+    maxLateral: 0.48,
+    kind: "safe",
+    label: "SAFE CENTER",
+    status: "SAFE CENTER - QUAD RELIEF",
+    heatMultiplier: 0.98,
+    hydrationMultiplier: 1,
+    quadMultiplier: 0.74,
+    speedBonus: -0.22,
+    color: [0.46, 0.58, 0.27],
+  },
+  {
+    start: 0.75,
+    end: 0.88,
+    minLateral: -1.62,
+    maxLateral: -0.36,
+    kind: "shade",
+    label: "SHADE STRIP",
+    status: "SHADE STRIP - HEAT RELIEF",
+    heatMultiplier: 0.68,
+    hydrationMultiplier: 0.9,
+    quadMultiplier: 1.06,
+    speedBonus: -0.12,
+    color: [0.08, 0.36, 0.25],
+  },
+  {
+    start: 0.88,
+    end: 0.96,
+    minLateral: 0.38,
+    maxLateral: 1.54,
+    kind: "fast",
+    label: "EXPOSED RUNOUT",
+    status: "EXPOSED RUNOUT - SPEED HEAT",
+    heatMultiplier: 1.18,
+    hydrationMultiplier: 1.06,
+    quadMultiplier: 1.2,
+    speedBonus: 0.42,
+    color: [0.9, 0.42, 0.12],
+  },
+];
+
 interface Mesh {
   positionBuffer: WebGLBuffer;
   colorBuffer: WebGLBuffer;
@@ -252,6 +369,10 @@ const progressText = requiredElement(
 const zoneText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-zone]"),
   "Missing zone HUD element.",
+);
+const laneText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-lane]"),
+  "Missing lane HUD element.",
 );
 const paceText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-pace]"),
@@ -415,6 +536,7 @@ const fogFarLocation = requiredUniform(program, "uFogFar");
 const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
+const riskLaneCueMesh = createRiskLaneCueMesh();
 const terrainMesh = createTerrainMesh();
 const cubeMesh = createCubeMesh([0.05, 0.045, 0.04]);
 const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
@@ -702,9 +824,16 @@ function update(deltaSeconds: number): void {
   const steeringResponse = Math.min(1, deltaSeconds * (input.brake ? 12 : 9));
   const downhillBoost = downhillMomentumAt(runnerZ);
   const pace = PACE_SETTINGS[state.paceMode];
-  const unbrakedTargetSpeed = Math.min(
-    pace.maxSpeed,
-    BASE_RUN_SPEED * pace.speedMultiplier + downhillBoost * pace.downhillMultiplier,
+  const riskLane = riskLaneAt(state.progress, state.lateral);
+  const laneSpeedBonus = input.brake
+    ? Math.min(0, riskLane.speedBonus)
+    : riskLane.speedBonus;
+  const unbrakedTargetSpeed = clamp(
+    BASE_RUN_SPEED * pace.speedMultiplier +
+      downhillBoost * pace.downhillMultiplier +
+      laneSpeedBonus,
+    MIN_RUN_SPEED,
+    Math.min(MAX_RUN_SPEED, pace.maxSpeed + Math.max(0, laneSpeedBonus)),
   );
   const targetSpeed = input.brake
     ? Math.min(BRAKE_TARGET_SPEED, state.speed)
@@ -766,6 +895,7 @@ function render(): void {
 
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
+  drawMesh(riskLaneCueMesh, identityMat4());
 
   for (const object of sceneObjects) {
     drawMesh(
@@ -803,6 +933,7 @@ function updateHud(): void {
 
   progressText.textContent = `PROGRESS ${progress}%`;
   setRouteZoneText();
+  setRiskLaneText();
   paceText.textContent = `PACE ${pace.key} ${pace.label}`;
   paceText.dataset.paceMode = state.paceMode;
   timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
@@ -878,6 +1009,7 @@ function updateCamera(deltaSeconds: number): void {
 
 function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: number): void {
   const pace = PACE_SETTINGS[state.paceMode];
+  const riskLane = riskLaneAt(state.progress, state.lateral);
   const exposure = exposureAt(state.progress);
   const speedPressure = speedPressureFor(state.speed);
   const downhillPressure = clamp(
@@ -895,13 +1027,15 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
       downhillPressure * HEAT_DOWNHILL_GAIN +
       lowHydrationPressure * HEAT_LOW_HYDRATION_GAIN) *
     pace.heatMultiplier *
-    brakeRelief;
+    brakeRelief *
+    riskLane.heatMultiplier;
   let hydrationDrain =
     (HYDRATION_PASSIVE_DRAIN +
       exposure * HYDRATION_EXPOSURE_DRAIN +
       speedPressure * HYDRATION_SPEED_DRAIN +
       heatPressure * HYDRATION_HEAT_DRAIN) *
-    pace.hydrationMultiplier;
+    pace.hydrationMultiplier *
+    riskLane.hydrationMultiplier;
   const technicalPressure = technicalPressureAt(runnerZ);
   const quadMultiplier = input.brake ? QUAD_BRAKE_RELIEF : 1;
   let quadGain =
@@ -909,7 +1043,8 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     (0.5 + downhillPressure * 0.7 + technicalPressure * 0.45) *
     QUAD_AGGRESSION_GAIN *
     pace.quadMultiplier *
-    quadMultiplier;
+    quadMultiplier *
+    riskLane.quadMultiplier;
 
   if (state.gelSupportRemaining > 0) {
     hydrationDrain *= CREW_GEL_HYDRATION_MULTIPLIER;
@@ -1004,6 +1139,7 @@ function isRunTerminal(): boolean {
 function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
   const zone = routeZoneAt(state.progress);
+  const riskLane = riskLaneAt(state.progress, state.lateral);
 
   if (state.crewActive) {
     return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
@@ -1018,7 +1154,7 @@ function statusLine(speed: string): string {
   }
 
   if (isCoolingActive()) {
-    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ${zone.shortLabel}  ${speed}`;
+    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ${riskLane.label}  ${speed}`;
   }
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
@@ -1037,7 +1173,9 @@ function statusLine(speed: string): string {
     return `QUADS COOKED  DESCENT TAX DUE  ${speed}`;
   }
 
-  return `${input.brake ? "BRAKING" : pace.label} ${speed}  ${zone.cue}`;
+  return `${input.brake ? "BRAKING" : pace.label} ${speed}  ${
+    riskLane.kind === "main" ? zone.cue : riskLane.status
+  }`;
 }
 
 function setRouteZoneText(): void {
@@ -1049,6 +1187,13 @@ function setRouteZoneText(): void {
   zoneText.dataset.zoneKind = currentZone.kind;
 }
 
+function setRiskLaneText(): void {
+  const riskLane = riskLaneAt(state.progress, state.lateral);
+
+  laneText.textContent = `LINE ${riskLane.label}`;
+  laneText.dataset.laneKind = riskLane.kind;
+}
+
 function routeZoneAt(progress: number): RouteZone {
   const clampedProgress = clamp(progress, 0, 1);
 
@@ -1056,6 +1201,20 @@ function routeZoneAt(progress: number): RouteZone {
     ROUTE_ZONES.find(
       (zone) => clampedProgress >= zone.start && clampedProgress < zone.end,
     ) ?? ROUTE_ZONES[ROUTE_ZONES.length - 1]!
+  );
+}
+
+function riskLaneAt(progress: number, lateral: number): RiskLaneEffect {
+  const clampedProgress = clamp(progress, 0, 1);
+
+  return (
+    RISK_LANE_CUES.find(
+      (cue) =>
+        clampedProgress >= cue.start &&
+        clampedProgress < cue.end &&
+        lateral >= cue.minLateral &&
+        lateral <= cue.maxLateral,
+    ) ?? DEFAULT_RISK_LANE
   );
 }
 
@@ -1543,6 +1702,69 @@ function createTrailMesh(): Mesh {
   }
 
   return createMesh(positions, colors);
+}
+
+function createRiskLaneCueMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+
+  for (const cue of RISK_LANE_CUES) {
+    const slices = Math.max(2, Math.ceil((cue.end - cue.start) * 54));
+
+    for (let index = 0; index < slices; index += 1) {
+      const sliceStart = cue.start + ((cue.end - cue.start) * index) / slices;
+      const sliceEnd =
+        cue.start + ((cue.end - cue.start) * (index + 0.76)) / slices;
+
+      addRiskLaneCueSlice(
+        positions,
+        colors,
+        cue,
+        sliceStart,
+        Math.min(cue.end, sliceEnd),
+        index,
+      );
+    }
+  }
+
+  return createMesh(positions, colors);
+}
+
+function addRiskLaneCueSlice(
+  positions: number[],
+  colors: number[],
+  cue: RiskLaneCue,
+  nearProgress: number,
+  farProgress: number,
+  index: number,
+): void {
+  const nearZ = -TRAIL_LENGTH * nearProgress;
+  const farZ = -TRAIL_LENGTH * farProgress;
+  const nearWidth = trailWidthAt(nearZ) - 0.16;
+  const farWidth = trailWidthAt(farZ) - 0.16;
+  const nearMin = clamp(cue.minLateral, -nearWidth, nearWidth);
+  const nearMax = clamp(cue.maxLateral, -nearWidth, nearWidth);
+  const farMin = clamp(cue.minLateral, -farWidth, farWidth);
+  const farMax = clamp(cue.maxLateral, -farWidth, farWidth);
+
+  if (nearMax <= nearMin || farMax <= farMin) {
+    return;
+  }
+
+  const nearCenter = trailCenterAt(nearZ);
+  const farCenter = trailCenterAt(farZ);
+  const lift = 0.04 + (index % 2) * 0.004;
+  const color = index % 2 === 0 ? cue.color : shade(cue.color, 0.78);
+
+  addQuad(
+    positions,
+    colors,
+    [nearCenter + nearMin, trailHeightAt(nearZ) + lift, nearZ],
+    [nearCenter + nearMax, trailHeightAt(nearZ) + lift, nearZ],
+    [farCenter + farMax, trailHeightAt(farZ) + lift, farZ],
+    [farCenter + farMin, trailHeightAt(farZ) + lift, farZ],
+    color,
+  );
 }
 
 function createTerrainMesh(): Mesh {

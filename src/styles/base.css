@@ -231,6 +231,26 @@ body {
   color: #efe7cf;
 }
 
+#hud [data-lane-kind="main"] {
+  color: #c8bda3;
+}
+
+#hud [data-lane-kind="shade"] {
+  color: #8fd2ff;
+}
+
+#hud [data-lane-kind="rocky"] {
+  color: #ffd15c;
+}
+
+#hud [data-lane-kind="fast"] {
+  color: #ff8b3d;
+}
+
+#hud [data-lane-kind="safe"] {
+  color: #9cff3a;
+}
+
 #game-shell[data-alert="danger"] {
   border-color: #5e2a12;
 }
