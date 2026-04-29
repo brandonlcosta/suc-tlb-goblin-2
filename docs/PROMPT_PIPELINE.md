@@ -198,6 +198,51 @@ Block STLB prompt <number>: <slug>
 
 Use `git log --oneline` to inspect direct-main history. If a run is bad, use a revert commit rather than rewriting history.
 
+## Full Goblin Automation via Windows Task Scheduler
+
+This mode is for sandbox automation only. It should not be used for serious production repos.
+
+The Windows scheduled task is named `STLB Full Goblin Main`. It runs every 15 minutes and calls `scripts/run-goblin-main.ps1`. Each scheduled tick runs one direct-main attempt by calling `npm run goblin:main`; it consumes at most one oldest pending prompt, validates the result, commits directly to `main`, pushes to `origin main`, and stops.
+
+Direct-main scheduled automation validates with:
+
+```bash
+npm run build:goblin
+npm run agent:check
+```
+
+The wrapper writes timestamped logs under:
+
+```txt
+.goblin/logs/
+```
+
+Install the scheduled task with:
+
+```bash
+npm run goblin:install-task
+```
+
+Pause the scheduled task and create the repo pause file with:
+
+```bash
+npm run goblin:pause-task
+```
+
+Resume by removing the pause file and enabling the task with:
+
+```bash
+npm run goblin:resume-task
+```
+
+Uninstall the scheduled task without removing repo files or logs with:
+
+```bash
+npm run goblin:uninstall-task
+```
+
+Bad direct-main runs should be repaired with normal Git revert commits. Do not rewrite history for this sandbox loop.
+
 The repo also has a local pause switch. To pause scheduled ticks from inside the repo:
 
 ```bash

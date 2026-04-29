@@ -115,8 +115,12 @@ function output(command, args) {
   return run(command, args, { capture: true }).stdout.trim();
 }
 
+function outputRaw(command, args) {
+  return run(command, args, { capture: true }).stdout;
+}
+
 function assertCleanWorktree(context) {
-  const status = output("git", ["status", "--porcelain"]);
+  const status = output("git", ["status", "--porcelain=v1"]);
 
   if (status) {
     throw new Error(`Working tree is dirty ${context}. Refusing to continue.`);
@@ -205,19 +209,40 @@ function terminalQueue(promptFile) {
   return completed ? "completed" : "blocked";
 }
 
-function parseStatusPath(line) {
-  const normalized = line.replace(/\\/g, "/").replace(/^"|"$/g, "");
-  const porcelainMatch = normalized.match(/^.. (.+)$/);
-  if (porcelainMatch) return porcelainMatch[1].replace(/^"|"$/g, "").split(" -> ").at(-1);
-
-  throw new Error(`Could not parse changed path from git status line: ${line}`);
+function normalizeGitPath(path) {
+  return path.replace(/\\/g, "/").replace(/^"|"$/g, "");
 }
 
 function changedPaths() {
-  const status = output("git", ["status", "--porcelain"]);
+  const status = outputRaw("git", ["status", "--porcelain=v1", "-z"]);
   if (!status) return [];
 
-  return status.split(/\r?\n/).filter(Boolean).map(parseStatusPath);
+  const entries = status.split("\0");
+  const paths = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!entry) continue;
+
+    if (entry.length < 4 || entry[2] !== " ") {
+      throw new Error(`Could not parse git porcelain entry: ${JSON.stringify(entry)}`);
+    }
+
+    const statusCode = entry.slice(0, 2);
+    const path = normalizeGitPath(entry.slice(3));
+    paths.push(path);
+
+    if (statusCode.includes("R") || statusCode.includes("C")) {
+      index += 1;
+      const originalPath = entries[index];
+      if (!originalPath) {
+        throw new Error(`Missing original path for git porcelain rename/copy entry: ${entry}`);
+      }
+      paths.push(normalizeGitPath(originalPath));
+    }
+  }
+
+  return [...new Set(paths)];
 }
 
 function promptAllowsAutomationToolingChanges(promptText) {
@@ -246,6 +271,14 @@ function changedNonLedgerPaths(paths) {
   return paths.filter(
     (path) => !/^prompts\/(?:completed|blocked|pending)\//.test(path) && !/^reports\/runs\//.test(path),
   );
+}
+
+function changedPromptFiles(paths) {
+  return paths.filter((path) => /^prompts\/(?:pending|completed|blocked)\/\d+-.*\.md$/.test(path));
+}
+
+function changedPromptBasenames(paths) {
+  return new Set(changedPromptFiles(paths).map((path) => path.split("/").at(-1)));
 }
 
 function commitMessage(prompt, queue) {
@@ -329,8 +362,17 @@ function main() {
     throw new Error("Worker produced no tracked changes. Refusing to commit.");
   }
 
+  const changedPrompts = changedPromptBasenames(paths);
+  if (changedPrompts.size !== 1 || !changedPrompts.has(prompt.promptFile)) {
+    throw new Error(
+      `Expected changes for exactly one prompt (${prompt.promptFile}); found ${
+        [...changedPrompts].join(", ") || "none"
+      }.`,
+    );
+  }
+
   const nonLedgerPaths = changedNonLedgerPaths(paths);
-  if (nonLedgerPaths.length > 0 && (!reportFile || movedPrompts.length !== 1)) {
+  if (nonLedgerPaths.length > 0 && (!reportFile || movedPrompts.length !== 1 || !changedPrompts.has(prompt.promptFile))) {
     throw new Error("Source changes were made without prompt movement and a matching report.");
   }
 
