@@ -6,13 +6,10 @@ const HUD_HEIGHT = 40;
 const STATUS_HEIGHT = 18;
 const HORIZON_Y = 52;
 const TRAIL_LENGTH = 420;
-const AUTO_SPEED = 26;
 const MAX_RESOURCE = 100;
 const STARTING_HEAT = 8;
 const STARTING_HYDRATION = 100;
-const HEAT_GAIN_PER_SECOND = 7.4;
 const LOW_HYDRATION_HEAT_MULTIPLIER = 1.3;
-const HYDRATION_DRAIN_PER_SECOND = 4.1;
 const TRAIL_OBJECT_COUNT = 24;
 const TRAIL_LINE_COUNT = 18;
 const RUNNER_BASE_Y = 143;
@@ -24,6 +21,46 @@ const STEER_RESPONSE = 14;
 const CAMERA_LEAN_SCALE = 18;
 
 type RunPhase = "running" | "complete" | "failed";
+type PaceMode = "easy" | "steady" | "push" | "send";
+
+interface PaceConfig {
+  label: string;
+  speed: number;
+  heatGain: number;
+  hydrationDrain: number;
+  strideRate: number;
+}
+
+const PACE_CONFIG: Record<PaceMode, PaceConfig> = {
+  easy: {
+    label: "EASY",
+    speed: 21,
+    heatGain: 4.2,
+    hydrationDrain: 2.5,
+    strideRate: 6.2,
+  },
+  steady: {
+    label: "STEADY",
+    speed: 27,
+    heatGain: 6.1,
+    hydrationDrain: 3.7,
+    strideRate: 8,
+  },
+  push: {
+    label: "PUSH",
+    speed: 34,
+    heatGain: 9.4,
+    hydrationDrain: 5.4,
+    strideRate: 10,
+  },
+  send: {
+    label: "SEND",
+    speed: 43,
+    heatGain: 14.2,
+    hydrationDrain: 8.2,
+    strideRate: 12.5,
+  },
+};
 
 interface GameState {
   distance: number;
@@ -32,6 +69,7 @@ interface GameState {
   phase: RunPhase;
   heat: number;
   hydration: number;
+  pace: PaceMode;
   runnerLine: number;
   runnerVelocity: number;
   cameraLean: number;
@@ -73,6 +111,9 @@ window.addEventListener("keydown", (event) => {
   } else if (isRightKey(key)) {
     input.right = true;
     event.preventDefault();
+  } else if (isPaceKey(key)) {
+    setPaceFromKey(key);
+    event.preventDefault();
   } else if (key === "r") {
     restart();
   }
@@ -99,6 +140,7 @@ function createInitialState(): GameState {
     phase: "running",
     heat: STARTING_HEAT,
     hydration: STARTING_HYDRATION,
+    pace: "steady",
     runnerLine: 0,
     runnerVelocity: 0,
     cameraLean: 0,
@@ -126,7 +168,10 @@ function update(deltaSeconds: number): void {
   }
 
   state.elapsed += deltaSeconds;
-  state.distance = Math.min(state.distance + AUTO_SPEED * deltaSeconds, TRAIL_LENGTH);
+  state.distance = Math.min(
+    state.distance + currentPaceConfig().speed * deltaSeconds,
+    TRAIL_LENGTH,
+  );
   updateResources(deltaSeconds);
   updateRunnerControl(deltaSeconds);
   easeCamera(deltaSeconds);
@@ -140,14 +185,15 @@ function update(deltaSeconds: number): void {
 
 function updateResources(deltaSeconds: number): void {
   const hydrationHeatPenalty = state.hydration <= 35 ? LOW_HYDRATION_HEAT_MULTIPLIER : 1;
+  const pace = currentPaceConfig();
 
   state.heat = clamp(
-    state.heat + HEAT_GAIN_PER_SECOND * hydrationHeatPenalty * deltaSeconds,
+    state.heat + pace.heatGain * hydrationHeatPenalty * deltaSeconds,
     0,
     MAX_RESOURCE,
   );
   state.hydration = clamp(
-    state.hydration - HYDRATION_DRAIN_PER_SECOND * deltaSeconds,
+    state.hydration - pace.hydrationDrain * deltaSeconds,
     0,
     MAX_RESOURCE,
   );
@@ -334,12 +380,13 @@ function drawTrailObjects(): void {
 }
 
 function drawRunner(): void {
-  const bob = Math.floor(Math.sin(state.elapsed * 13) * 2);
+  const pace = currentPaceConfig();
+  const bob = Math.floor(Math.sin(state.elapsed * pace.strideRate * 1.6) * 2);
   const center = trailCenter(RUNNER_DEPTH);
   const halfWidth = trailHalfWidth(RUNNER_DEPTH);
   const x = Math.floor(center + state.runnerLine * halfWidth * RUNNER_LATERAL_SCALE);
   const y = RUNNER_BASE_Y + bob;
-  const stride = Math.floor(state.elapsed * 8) % 2;
+  const stride = Math.floor(state.elapsed * pace.strideRate) % 2;
 
   ctx.fillStyle = "#1c130e";
   ctx.fillRect(x - 16, y + 6, 32, 4);
@@ -374,6 +421,7 @@ function drawRunner(): void {
 
 function drawHud(): void {
   const progress = Math.floor((state.distance / TRAIL_LENGTH) * 100);
+  const pace = currentPaceConfig();
 
   ctx.fillStyle = "#080807";
   ctx.fillRect(0, 0, VIEW_WIDTH, HUD_HEIGHT);
@@ -386,9 +434,11 @@ function drawHud(): void {
   ctx.fillText("FORESTHILL HEAT DROP", 8, 17);
 
   ctx.fillStyle = "#f05a24";
-  ctx.fillText(`PROGRESS ${progress.toString().padStart(3, "0")}%`, 196, 6);
+  ctx.fillText(`PACE ${pace.label}`, 188, 6);
   ctx.fillStyle = "#efe7cf";
-  ctx.fillText("R RESTART", 230, 17);
+  ctx.fillText(`PROGRESS ${progress.toString().padStart(3, "0")}%`, 188, 17);
+  ctx.fillStyle = "#9cff3a";
+  ctx.fillText("1-4", 288, 17);
 
   drawResourceBar("HEAT", state.heat, 8, 29, 140, "#f05a24");
   drawResourceBar("HYD", state.hydration, 170, 29, 142, "#39d0ff");
@@ -400,7 +450,7 @@ function drawHud(): void {
 
   ctx.fillStyle = "#9cff3a";
   ctx.fillText(
-    state.phase === "running" ? "A/D OR ARROWS STEER" : "R OR BUTTON RESTART",
+    state.phase === "running" ? "A/D STEER  1-4 PACE" : "R OR BUTTON RESTART",
     174,
     VIEW_HEIGHT - STATUS_HEIGHT + 1,
   );
@@ -448,11 +498,38 @@ function statusText(): string {
     return "DANGER HEAT RISING";
   }
 
+  if (state.pace === "send") {
+    return "SEND IS BORROWED TIME";
+  }
+
+  if (state.pace === "push") {
+    return "PUSHING THE DESCENT";
+  }
+
   if (state.hydration <= 30) {
     return "HYDRATION LOW";
   }
 
-  return "CANYON CORRIDOR V0";
+  if (state.pace === "easy") {
+    return "EASY PACE - STAY COOL";
+  }
+
+  return "STEADY CANYON RHYTHM";
+}
+
+function currentPaceConfig(): PaceConfig {
+  return PACE_CONFIG[state.pace];
+}
+
+function setPaceFromKey(key: string): void {
+  const paceByKey: Record<string, PaceMode> = {
+    "1": "easy",
+    "2": "steady",
+    "3": "push",
+    "4": "send",
+  };
+
+  state.pace = paceByKey[key];
 }
 
 function perspectiveY(depth: number): number {
@@ -583,6 +660,10 @@ function isLeftKey(key: string): boolean {
 
 function isRightKey(key: string): boolean {
   return key === "d" || key === "arrowright";
+}
+
+function isPaceKey(key: string): boolean {
+  return key === "1" || key === "2" || key === "3" || key === "4";
 }
 
 function clamp(value: number, min: number, max: number): number {
