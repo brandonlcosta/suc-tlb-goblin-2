@@ -15,17 +15,19 @@
           aria-label="SUC: The Long Burn prototype canvas"
         ></canvas>
         <div id="hud" aria-live="polite">
-          <div>
-            <strong>SUC FIELD OPS</strong>
-            <span>ROUTE: CAL ST HEAT DROP / EXPOSED MID</span>
+          <div class="hud-mission-row">
+            <strong>SUC OPS</strong>
+            <span>CAL ST HEAT DROP</span>
           </div>
           <div class="meter-row" aria-label="Survival resources">
-            <span data-hud-pace>PACE STEADY / KEY 2</span>
-            <span data-hud-time>TIME 00:00</span>
             <span data-hud-heat>HEAT 018</span>
+            <span data-hud-hydration>H2O 100</span>
+            <span data-hud-quad>QUAD 000</span>
+          </div>
+          <div class="hud-run-row" aria-label="Run state">
+            <span data-hud-pace>PACE STEADY</span>
+            <span data-hud-time>TIME 00:00</span>
             <span data-hud-cooling>ICE READY 1</span>
-            <span data-hud-hydration>HYDRATION 100</span>
-            <span data-hud-quad>QUADS 000</span>
             <span data-hud-crew>CREW OPEN</span>
           </div>
           <div
@@ -37,11 +39,11 @@
             <span data-hud-pressure-heat>HEAT +</span>
             <span data-hud-pressure-hydration>H2O -</span>
             <span data-hud-pressure-quad>QUAD +</span>
-            <span data-hud-support>SUPPORT NONE</span>
+            <span data-hud-support>SUP NONE</span>
           </div>
-          <div>
-            <span data-hud-progress>PROGRESS 000%</span>
-            <span data-hud-zone>ZONE CREW ROLL / NEXT EXPOSED SHELF</span>
+          <div class="hud-route-row" aria-label="Route state">
+            <span data-hud-progress>PROG 000%</span>
+            <span data-hud-zone>ZONE CREW ROLL > NEXT EXPOSED SHELF</span>
             <span data-hud-lane>LINE MAIN TRAIL</span>
             <span data-hud-status>ROUTE INTEL: CONTROL EARLY</span>
           </div>

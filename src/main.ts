@@ -1368,10 +1368,10 @@ function updateHud(): void {
   const runnerZ = -state.progress * TRAIL_LENGTH;
   const downhillBoost = downhillMomentumAt(runnerZ);
 
-  progressText.textContent = `PROGRESS ${progress}%`;
+  progressText.textContent = `PROG ${progress}%`;
   setRouteZoneText();
   setRiskLaneText();
-  paceText.textContent = `PACE ${pace.label} / KEY ${pace.key}`;
+  paceText.textContent = `PACE ${pace.label}`;
   paceText.dataset.paceMode = state.paceMode;
   timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
   setCoolingText();
@@ -1755,7 +1755,7 @@ function setPressureReadout(runnerZ: number, downhillBoost: number): void {
     setPressureChip(pressureHeatText, "HEAT +", "calm");
     setPressureChip(pressureHydrationText, "H2O -", "calm");
     setPressureChip(pressureQuadText, "QUAD +", "calm");
-    setSupportChip("SUPPORT NONE", "none");
+    setSupportChip("SUP NONE", "none");
     return;
   }
 
@@ -1779,7 +1779,7 @@ function setPressureReadout(runnerZ: number, downhillBoost: number): void {
   );
 
   if (input.brake && pressure.quadGain < 0.32) {
-    setPressureChip(pressureQuadText, "BRAKE SAVING LEGS", "relief");
+    setPressureChip(pressureQuadText, "BRAKE SAVES QUAD", "relief");
   } else {
     setPressureChip(
       pressureQuadText,
@@ -1842,21 +1842,21 @@ function setPressureChip(element: HTMLElement, text: string, level: string): voi
 
 function setSupportReadout(): void {
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
-    setSupportChip(`SUPPORT ${activeSupportSummary()}`, "active");
+    setSupportChip(`SUP ${activeSupportSummary()}`, "active");
     return;
   }
 
   if (state.crewChoices.includes("gels") || state.crewChoices.includes("calm")) {
-    setSupportChip("SUPPORT EXPIRED", "expired");
+    setSupportChip("SUP EXPIRED", "expired");
     return;
   }
 
   if (state.crewChoices.length > 0) {
-    setSupportChip(`SUPPORT ${crewChoiceSummary()}`, "set");
+    setSupportChip(`SUP ${crewChoiceSummary()}`, "set");
     return;
   }
 
-  setSupportChip("SUPPORT NONE", "none");
+  setSupportChip("SUP NONE", "none");
 }
 
 function activeSupportSummary(): string {
@@ -1884,7 +1884,7 @@ function setRouteZoneText(): void {
 
   if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
     const transitionPrefix = transition.isClose ? "ENTER" : "NEXT";
-    zoneText.textContent = `ZONE ${currentZone.shortLabel} / ${transitionPrefix} ${
+    zoneText.textContent = `ZONE ${currentZone.shortLabel} > ${transitionPrefix} ${
       transition.zone.shortLabel
     } ${transition.percentText}`;
     zoneText.dataset.zoneKind = transition.zone.kind;
@@ -1894,7 +1894,7 @@ function setRouteZoneText(): void {
 
   const nextLabel = transition ? transition.zone.shortLabel : "FINISH";
 
-  zoneText.textContent = `ZONE ${currentZone.shortLabel} / NEXT ${nextLabel}`;
+  zoneText.textContent = `ZONE ${currentZone.shortLabel} > NEXT ${nextLabel}`;
   zoneText.dataset.zoneKind = currentZone.kind;
   zoneText.dataset.zoneTransition = "steady";
 }
@@ -1957,21 +1957,19 @@ function setCoolingText(): void {
   const seconds = Math.ceil(state.coolingRemaining).toString().padStart(2, "0");
 
   if (isCoolingActive()) {
-    coolingText.textContent = `ICE ACTIVE ${seconds} HEAT RELIEF`;
+    coolingText.textContent = `ICE ON ${seconds}S`;
     coolingText.dataset.coolingLevel = "active";
     return;
   }
 
   if (state.coolingCharges > 0) {
-    coolingText.textContent = `ICE READY ${state.coolingCharges} TAP`;
+    coolingText.textContent = `ICE READY ${state.coolingCharges}`;
     coolingText.dataset.coolingLevel = "ready";
     return;
   }
 
   if (state.decisionStats.coolingUses > 0) {
-    const useLabel = state.decisionStats.coolingUses === 1 ? "USE" : "USES";
-
-    coolingText.textContent = `ICE SPENT ${state.decisionStats.coolingUses} ${useLabel}`;
+    coolingText.textContent = `ICE SPENT ${state.decisionStats.coolingUses}`;
     coolingText.dataset.coolingLevel = "spent";
     return;
   }
@@ -2000,7 +1998,7 @@ function setCrewText(): void {
   }
 
   if (state.restartConfirmationActive) {
-    crewText.textContent = "CONFIRM RESTART";
+    crewText.textContent = "RESTART?";
     crewText.dataset.crewLevel = "risk";
     return;
   }
