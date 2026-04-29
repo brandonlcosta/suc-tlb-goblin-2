@@ -1,80 +1,78 @@
 # Decisions Log
 
-This file records important product/design decisions so the repo does not forget why things are shaped this way.
-
-## 001 — Mission-Based, Not Open World
+## 001 — PS1-Style 3D
 
 Decision:
-`SUC: The Long Burn` will be mission-based.
+`SUC: The Long Burn` is now a PS1-style low-poly 3D game.
 
 Reason:
-The game needs to be playable early and AI-buildable in small chunks. An open world would explode scope.
+The third-person downhill fantasy is stronger than the earlier pixel-loop arcade direction. PS1 style keeps asset scope low while giving the game a serious, weird identity.
 
 Implication:
-Each mission is a contained trail corridor with a start, finish, route intel, resource pressure, and report.
+Use low-poly, fog, simple terrain, and retro HUD. Do not chase modern realism.
 
-## 002 — Foresthill Heat Drop Is the First Mission
+## 002 — Cal Street Heat Drop Is the First Mission
 
 Decision:
-The first mission is `Foresthill Heat Drop`.
+The first mission is `Cal Street Heat Drop`, inspired by the Cal Street / Foresthill energy of Western States.
 
 Reason:
-It captures the core fantasy immediately: iconic trail, heat, descent, crew, and survival.
+It captures the strongest player fantasy: leaving crew, descending hard, managing heat, and avoiding late-race damage.
 
 Implication:
-All early systems should support this mission before adding any others.
+All early systems should serve this mission.
 
-## 003 — Retro Pixel Style
+## 003 — Mission-Based, Not Open World
 
 Decision:
-Use retro/pixelated visuals.
+The game is mission-based.
 
 Reason:
-This fits SUC grit, keeps asset needs low, and helps avoid realism scope creep.
+Open world would explode scope and break the autonomous build loop.
 
 Implication:
-Readable low-res visuals beat realism.
+Build one corridor at a time.
 
-## 004 — Heat Is the Main Boss
+## 004 — Downhill Momentum Is Core
 
 Decision:
-Heat is the primary threat system.
+Downhill speed and restraint are central mechanics.
 
 Reason:
-It is specific, personal, tactical, and different from most running games.
+A serious downhill section needs a tactical cost to speed.
 
 Implication:
-Every major mechanic should interact with heat, cooling, hydration, or pacing.
+Add pace, braking, quad damage, line choice, and heat pressure.
 
-## 005 — Crew Is Tactical, Not a Full Management Sim
+## 005 — Quad Damage Added
 
 Decision:
-Crew stops are quick triage moments.
+Quad damage is now a core resource.
 
 Reason:
-Crew is essential to the ultra fantasy, but a full management sim is too much for V1.
+It makes the downhill specific and serious.
 
 Implication:
-Crew actions should be fast, limited, and clear.
+Players can go fast early, but bad descending damages the late mission.
 
-## 006 — No External APIs
+## 006 — Crew Starts the Mission
 
 Decision:
-No external APIs in V1.
+The first mission starts at a Foresthill-style crew zone.
 
 Reason:
-The game should be stable, offline-friendly, and simple for autonomous implementation.
+Crew execution is part of the ultra fantasy and sets up the descent.
 
 Implication:
-No Strava, no real maps, no online leaderboards, no accounts.
+Crew choices affect the whole run but remain quick and contained.
 
-## 007 — BC-OS Is the Operator, Not the Game
+## 007 — No Exact Course Recreation
 
 Decision:
-BC-OS writes prompts, reads reports, and helps plan. It does not become part of the game runtime.
+The game is inspired by Cal Street / Foresthill, not an exact map.
 
 Reason:
-Keep the game repo clean and separate.
+Exact recreation adds unnecessary legal, data, and scope complexity.
 
 Implication:
-Game automation must not edit BC-OS.
+Use fictionalized terrain and names while preserving the feeling.

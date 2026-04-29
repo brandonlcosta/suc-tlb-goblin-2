@@ -1,289 +1,288 @@
-# SUC: The Long Burn — Roadmap
+# SUC: The Long Burn — PS1 Cal Street Roadmap
 
 ## Roadmap Philosophy
 
-This game should be built like an ultra.
+This is now a serious low-poly 3D downhill ultra survival game.
 
-Do not sprint into a giant open-world mess.
+Do not build a huge race simulator.
 
-Build the trail one section at a time. Get the core survival loop working. Then make it feel better. Then make it more SUC. Then add depth.
+Do not build all of Western States.
 
-The first target is not “complete game.”
+Build one section that feels dangerous:
 
-The first target is:
+# Cal Street Heat Drop
 
-> A playable Foresthill Heat Drop prototype where heat, hydration, pace, ice, and crew decisions already matter.
+The first mission should make the player think:
 
-## Phase 0 — Repo Setup and Design Lock
+> I can fly downhill right now, but if I do, I may not survive the last third.
+
+That is the heart of the game.
+
+## Phase 0 — Direction Lock
 
 ### Goal
 
-Create the planning foundation and prevent scope creep before coding begins.
+Lock the revised identity.
 
 ### Deliverables
 
 - `GAME.md`
-- `README.md`
-- `docs/FORESTHILL_HEAT_DROP.md`
+- `ROADMAP.md`
+- `docs/CAL_STREET_HEAT_DROP.md`
 - `docs/MECHANICS_SPEC.md`
-- `docs/VISUAL_STYLE_GUIDE.md`
-- `docs/AI_DEVELOPMENT_RULES.md`
-- prompt queue folders
-- report folders
+- `docs/PS1_3D_STYLE_GUIDE.md`
+- `docs/LEVEL_DESIGN_GUIDE.md`
+- AI rules
+- BC-OS integration plan
+- prompt queue
 
 ### Done When
 
-- The game direction is clear.
-- BC-OS can generate prompts from the docs.
-- Codex has strict rules.
-- There is no ambiguity that this is mission-based, not open-world.
+- Everyone understands this is PS1-style 3D.
+- The first mission is Cal Street / Foresthill-inspired.
+- The core loop is downhill survival, not loop arcade.
+- Scope boundaries are clear.
 
 ---
 
-## Phase 1 — Minimal Playable Shell
+## Phase 1 — Minimal PS1 3D Shell
 
 ### Goal
 
-Make the game exist.
+Make the game exist as a 3D scene.
 
 ### Player Experience
 
-The player opens the game and sees a retro trail-running prototype. A runner moves forward along a trail. The player can steer. There is a clear start and restart flow.
+The player opens the game and sees a low-poly runner on a simple downhill trail.
 
 ### Features
 
 - browser app
-- canvas or lightweight renderer
-- pixelated visual baseline
-- runner sprite/placeholder
-- trail corridor
-- auto-forward movement
-- basic steering
-- basic HUD shell
+- lightweight 3D renderer
+- low-poly scene
+- third-person camera
+- runner placeholder
+- simple downhill plane/trail
+- basic HUD
 - restart
 
 ### Not Included
 
-- no crew yet
-- no route intel yet
-- no complex heat model
-- no menus beyond bare minimum
-- no fancy art
+- no full heat model
+- no crew system
+- no real assets
+- no complex animation
+- no big terrain
 
 ### Done When
 
-- The game starts.
-- The runner moves.
-- The player has control.
+- 3D scene loads.
+- Runner is visible.
+- Camera follows.
 - Build passes.
 
 ---
 
-## Phase 2 — Foresthill Heat Drop V0
+## Phase 2 — Downhill Trail Feel
 
 ### Goal
 
-Turn the shell into a real mission.
-
-### Player Experience
-
-The player runs the Foresthill-inspired descent, tries to reach the finish, and begins to feel heat/hydration pressure.
+Make it feel like descending a serious trail section.
 
 ### Features
 
-- mission length/progress bar
-- finish line
-- lap/segment completion logic
+- trail corridor
+- downhill slope
+- simple turns
+- limited draw distance / fog
+- line boundaries
+- left/right steering
+- basic braking/control
+- speed changes by slope/pace
+- rocks or simple obstacles
+
+### Done When
+
+- The player can steer.
+- Downhill speed feels tempting.
+- Braking/control matters.
+- The section feels like a descent.
+
+---
+
+## Phase 3 — Heat, Hydration, Quad Damage
+
+### Goal
+
+Add the survival layer.
+
+### Features
+
 - heat meter
 - hydration meter
-- simple failure state
-- run timer
-- route name display
-- game-over and restart
+- quad damage meter
+- heat failure
+- hydration pressure
+- quad damage penalty
+- basic warning states
 
 ### Done When
 
-- The player can start, run, fail, finish, and restart.
-- Heat and hydration are visible and affect the run.
+- Sending downhill has consequences.
+- Poor hydration makes heat worse.
+- Quad damage creates late-section cost.
 
 ---
 
-## Phase 3 — Pace and Resource Strategy
+## Phase 4 — Pace and Braking Strategy
 
 ### Goal
 
-Make player decisions matter.
-
-### Player Experience
-
-The player chooses whether to run easy, steady, push, or send. Bad pacing makes heat and hydration spiral.
+Make descent management tactical.
 
 ### Features
 
-- pace modes
-- speed changes
+- Control / Steady / Push / Send pace modes
+- braking input
 - heat gain by pace
 - hydration drain by pace
-- fatigue meter
-- warning states
-- first balance constants
+- quad damage by pace and speed
+- improved HUD feedback
 
 ### Done When
 
-- “Send” is obviously dangerous.
-- “Easy” is safer but slower.
-- The player can feel the tradeoff.
+- “Send” is fun but dangerous.
+- “Control” is slower but smart.
+- The game rewards patience.
 
 ---
 
-## Phase 4 — Ice and Cooling
+## Phase 5 — Ice and Cooling
 
 ### Goal
 
-Add the signature mechanic.
-
-### Player Experience
-
-The player survives heat by using ice/cooling at the right time. Cooling too early or too late has consequences.
+Add the signature SUC heat-management mechanic.
 
 ### Features
 
+- cooling charge
 - ice active meter
-- cooling pickups or cooling charges
-- spacebar cooling use
+- spacebar cooling
 - heat reduction / heat gain reduction
-- cooling feedback
-- heat warning visuals
+- visual feedback
+- heat shimmer reduction when cooling works
 
 ### Done When
 
-- Cooling feels powerful but limited.
-- Heat management becomes the main gameplay hook.
+- Cooling feels like a tactical survival tool.
+- Bad cooling timing can ruin a run.
 
 ---
 
-## Phase 5 — Crew Zone Triage
+## Phase 6 — Foresthill Crew Start
 
 ### Goal
 
-Make SUC crew matter.
-
-### Player Experience
-
-The player reaches a crew point and has to make fast decisions. Each choice costs time but helps survival.
+Make crew part of the mission identity.
 
 ### Features
 
-- visible crew zone
-- interaction prompt
-- quick choice menu
-- limited action count
-- refill hydration
-- apply ice
-- grab fuel or morale boost
-- crew flavor text
+- start/crew zone
+- quick crew action menu
+- limited support choices
+- hydration refill
+- ice bandana
+- water dump
+- gels/fuel optional
 - crew efficiency stat
+- SUC crew text
 
 ### Done When
 
-- Crew stop changes the outcome of the run.
-- The player understands that seconds spent at crew can save the race.
+- The run feels shaped by crew choices.
+- Starting underprepared has consequences.
 
 ---
 
-## Phase 6 — Retro SUC Identity Pass
+## Phase 7 — Finish and Run Report
 
 ### Goal
 
-Make the game feel like SUC, not a generic runner.
-
-### Player Experience
-
-The game has a gritty pixel trail vibe, tactical HUD, heat warnings, and funny/direct SUC flavor.
+Make the mission complete.
 
 ### Features
 
-- title screen
-- route intel card
-- SUC-style HUD
-- pixel font or pixel-like typography
-- dusty/canyon palette
-- crew shout text
-- verdict lines
-- warning text
-- basic screen shake / heat shimmer
-
-### Done When
-
-- A screenshot feels like its own game.
-- The tone is clear without explanation.
-
----
-
-## Phase 7 — Run Report and Playtest Loop
-
-### Goal
-
-Make every run produce useful feedback.
-
-### Player Experience
-
-After finishing or failing, the player sees a report that makes them want to try again.
-
-### Features
-
-- finish/fail report
-- time
+- finish line
+- success state
+- failure state
+- elapsed time
 - max heat
-- hydration low point
-- pace usage
+- lowest hydration
+- quad damage
 - crew choices
-- cause of failure
 - verdict
-- replay button
+- restart
 
 ### Done When
 
-- The report is readable.
-- The report feels like race analysis.
-- The next run feels motivated.
+- The player can finish or fail.
+- The report makes the run feel meaningful.
+- Replay is immediate.
 
 ---
 
-## Phase 8 — Balance and Fun Pass
+## Phase 8 — PS1 Atmosphere Pass
 
 ### Goal
 
-Make Foresthill Heat Drop worth replaying.
+Make the game visually and emotionally distinct.
 
-### Player Experience
+### Features
 
-A good player can finish. A reckless player gets cooked. A cautious player survives but may be slow.
+- low-res render mode if practical
+- pixelated textures
+- fog / limited draw distance
+- angular props
+- canyon color palette
+- harsh sun
+- retro HUD
+- serious warning text
+- subtle screen effects
+
+### Done When
+
+- A screenshot says “lost PS1 ultra-running game.”
+- It feels SUC-coded without needing explanation.
+
+---
+
+## Phase 9 — Balance and Playtest
+
+### Goal
+
+Make Cal Street Heat Drop replayable.
 
 ### Features
 
 - tuning constants
-- hazard timing
-- resource drain adjustments
-- mission length adjustments
-- better feedback
-- maybe first shade/exposure zone pass
+- 3–7 minute mission target
+- multiple play styles viable
+- reckless play punishable
+- smart crew/cooling rewarded
+- manual playtest reports
 
 ### Done When
 
-- Three different play styles produce different outcomes.
-- The mission is playable for 3–7 minutes.
-- It is fun enough to show someone.
+- Cautious play can finish.
+- Reckless play can fail.
+- Skilled play can finish faster without total collapse.
+- It is worth showing someone.
 
 ---
 
-## Phase 9 — Second Mission Candidate
+## Phase 10 — Second Mission Only After First Works
 
-### Goal
-
-Only after Foresthill works, add another mission.
-
-### Candidate Missions
+Candidate second missions:
 
 - Auburn Final Grind
 - No Hands Bridge Push
@@ -292,40 +291,46 @@ Only after Foresthill works, add another mission.
 - Crew Missed the Aid Station
 - Saturday SUC Long Run
 
-### Done When
+Do not start these until Cal Street Heat Drop is fun.
 
-- The first mission is stable.
-- Shared mission config exists.
-- Adding a mission does not require rewriting the game.
+## Milestones
 
----
+### Milestone A — “It Exists in 3D”
 
-## Milestone Targets
+Runner, camera, trail, build pass.
 
-### Milestone A — “It Moves”
+### Milestone B — “It Descends”
 
-A playable runner moves down a retro trail.
+Downhill movement, steering, braking, trail corridor.
 
-### Milestone B — “It Cooks You”
+### Milestone C — “It Punishes Greed”
 
-Heat and hydration can end the run.
+Heat, hydration, and quad damage make bad pacing hurt.
 
-### Milestone C — “Crew Saves You”
+### Milestone D — “Crew Matters”
 
-Crew decisions affect survival.
+Start support choices affect the run.
 
-### Milestone D — “It Feels Like SUC”
+### Milestone E — “It Feels Like a Lost PS1 Ultra Game”
 
-The visuals, copy, and report feel specific.
+Low-poly, serious, hot, weird, SUC.
 
-### Milestone E — “Foresthill Is Replayable”
+### Milestone F — “Cal Street Is Replayable”
 
-The mission has enough balance to replay multiple times.
+The mission has enough feel, risk, and feedback to replay.
 
-## The Actual North Star
+## North Star Moment
 
-The first great moment should be:
+The player is halfway down the descent.
 
-> You are overheating, hydration is low, the screen is flashing, crew is 0.2 miles away, and you have to decide whether to push or back off.
+Heat is climbing.  
+Quads are damaged.  
+Hydration is low.  
+The trail opens into an exposed section.  
+The finish is still far enough away to scare them.
 
-If the game creates that moment, the concept works.
+They can send it.
+
+They should not.
+
+That decision is the game.

@@ -2,43 +2,43 @@
 
 ## Goal
 
-Make Cal Street Heat Drop completeable and replayable.
+Make the mission completeable and replayable.
 
 ## Files / Directories to Inspect
 
 - `GAME.md`
-- `docs/CAL_STREET_HEAT_DROP.md`
+- `docs/FORESTHILL_HEAT_DROP.md`
 - `src/`
 
 ## Implementation Scope
 
 - Add mission progress.
-- Add a finish line/checkpoint.
-- Trigger success at finish.
-- Add run report screen for success and failure.
+- Add a finish line.
+- Trigger success when the player reaches the finish.
+- Add run report screen for both success and failure.
 - Report should show:
   - result
   - elapsed time
   - max heat
   - lowest hydration
-  - final quad damage
-  - failure cause if failed
+  - final pace or pace usage if available
+  - cause of failure if failed
   - verdict line
 - Add restart from report.
 
 ## Out of Scope
 
 - No saved stats.
-- No leaderboard.
-- No account system.
+- No online leaderboard.
 - No share feature.
+- No accounts.
 
 ## Acceptance Criteria
 
 - Player can finish.
 - Player can fail.
-- Report appears for both.
-- Report stats are readable.
+- Report appears in both cases.
+- Report stats are understandable.
 - Restart works.
 - Build passes.
 
@@ -50,4 +50,4 @@ npm run build
 
 ## Playtest Note
 
-Finish once and fail once. Confirm the report describes what happened.
+Complete one run and intentionally fail one run. Confirm both reports make sense.

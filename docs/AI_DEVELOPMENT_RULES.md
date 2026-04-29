@@ -1,36 +1,26 @@
 # AI Development Rules
 
-These rules are for Codex, prompt runners, BC-OS, or any automation touching the game repo.
+These rules apply to Codex, prompt runners, BC-OS, and any automation touching the game repo.
 
 ## Source of Truth
 
-Read these before every run:
+Before every run, read:
 
 1. `GAME.md`
-2. `README.md`
-3. `ROADMAP.md`
-4. `docs/REPO_STRUCTURE.md`
-5. `docs/BC_OS_INTEGRATION.md`
-6. oldest numbered active prompt in `prompts/pending/`
-7. most recent run report in `reports/runs/`, if present
-
-Run `npm run agent:check` before and after consuming a queued prompt.
+2. active prompt in `prompts/pending/`
+3. most recent run report in `reports/runs/`, if present
 
 ## One Prompt Per Run
 
-The automation may consume only one pending prompt per run.
+Consume only one pending prompt per run.
 
-Do not combine prompts.
+No batching.
 
-Always choose the oldest numbered prompt in `prompts/pending/` unless Brandon explicitly instructs otherwise.
-
-If validation fails, move the consumed prompt to `prompts/blocked/` and document the failure. Do not leave a consumed prompt in `prompts/pending/`.
-
-Do not “also fix” unrelated things unless required for the prompt to pass.
+No “while I’m here” feature work.
 
 ## Fresh Worktree
 
-Every run should happen in a fresh branch or worktree.
+Every implementation run should happen in a fresh branch or worktree.
 
 No direct work on main.
 
@@ -40,25 +30,32 @@ Implement the requested feature only.
 
 Do not:
 - rewrite the architecture
-- change stack
+- switch engines
 - add unrelated systems
 - add dependencies without approval
-- create new game modes unless prompted
-- convert the game into a different genre
+- build a second mission early
+- turn the game into an open world
+- chase realistic graphics
 
-## Playability Over Architecture
+## Playable Feel Over Architecture
 
-Prefer changes that make the game more playable.
+The highest priority is:
 
-Do not overbuild:
-- ECS frameworks
-- plugin systems
-- data pipelines
-- generic engines
-- editor tooling
-- abstractions for future features
+> Does the downhill mission feel better?
 
-Build the game.
+Prefer:
+- camera feel
+- controls
+- heat pressure
+- resource feedback
+- crew choice clarity
+- report clarity
+
+Avoid:
+- generic engine abstractions
+- premature ECS
+- large refactors
+- unused systems
 
 ## Reports Required
 
@@ -81,12 +78,6 @@ Report must include:
 
 If validation fails, write a blocked report.
 
-Automated Codex runs must not require manual browser playtesting. Use this exact report line:
-
-```txt
-Manual playtest: Not performed; requires Brandon to run locally.
-```
-
 ## No Automatic Git Finalization
 
 Automation must never:
@@ -100,28 +91,28 @@ Brandon reviews and decides.
 
 ## Design Bible Protection
 
-Do not edit `GAME.md` unless the prompt specifically says to update it.
+Do not edit `GAME.md` unless the prompt specifically says so.
 
 Do not add mechanics that conflict with:
+- PS1-style 3D
 - mission-based structure
-- retro pixel style
-- no multiplayer
-- no accounts
-- no external APIs
 - no open world
-- heat/hydration/crew as core
+- no accounts
+- no APIs
+- heat/hydration/quad damage/crew as core
 
 ## Scope Creep Alarm
 
-Flag any prompt that tries to add:
-- real maps
+Flag prompts that try to add:
+- exact Western States map
+- full course recreation
+- real GPS/GPX
 - Strava
-- online leaderboards
-- RPG skill trees
+- online leaderboard
 - multiplayer
-- account systems
-- procedural open world
-- complex animation systems
+- career mode
+- RPG systems
+- realistic graphics overhaul
 - huge asset packs
 
 Move those ideas to `docs/BACKLOG.md` unless explicitly approved.
@@ -131,10 +122,12 @@ Move those ideas to `docs/BACKLOG.md` unless explicitly approved.
 A run is done only if:
 
 - app starts
+- mission loads
 - build passes
+- controls still work
 - core loop still works
 - prompt acceptance criteria are met
-- report is written
+- run report is written
 - known issues are documented
 
 No fake done.

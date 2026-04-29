@@ -2,7 +2,7 @@
 
 ## Goal
 
-Tune Cal Street Heat Drop so it is playable and not instantly broken.
+Tune Foresthill Heat Drop so it is playable, replayable, and not instantly broken.
 
 ## Files / Directories to Inspect
 
@@ -16,28 +16,25 @@ Tune Cal Street Heat Drop so it is playable and not instantly broken.
 
 - Adjust heat gain.
 - Adjust hydration drain.
-- Adjust quad damage.
-- Adjust pace effects.
-- Adjust braking benefit.
+- Adjust pace costs.
 - Adjust cooling strength.
 - Adjust crew effects.
 - Adjust mission length if needed.
 - Centralize tuning constants if not already centralized.
+- Do not add major new mechanics.
 
 ## Out of Scope
 
-- No second mission.
+- No new mission.
 - No new resource system.
 - No big refactor.
-- No graphics overhaul.
+- No art overhaul.
 
 ## Acceptance Criteria
 
-- Cautious play can finish.
-- Reckless Send play can fail.
-- Braking/control feels useful.
-- Crew choices matter.
-- Cooling matters.
+- New player can survive at least 2–3 minutes with reasonable play.
+- Reckless Send pacing can still cook the player.
+- Cooling and crew feel useful but not overpowered.
 - Tuning values are easy to find.
 - Build passes.
 
@@ -50,8 +47,8 @@ npm run build
 ## Playtest Note
 
 Play three runs:
-1. cautious/control-heavy
-2. steady/race-like
-3. reckless/send-heavy
+1. cautious
+2. normal
+3. reckless
 
 Write what happened in the run report.

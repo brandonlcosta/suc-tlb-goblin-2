@@ -13,7 +13,8 @@ Read these files before implementing:
 - `ROADMAP.md`
 - `docs/AI_DEVELOPMENT_RULES.md`
 - `docs/MECHANICS_SPEC.md`
-- `docs/VISUAL_STYLE_GUIDE.md`
+- `docs/CAL_STREET_HEAT_DROP.md`
+- `docs/PS1_3D_STYLE_GUIDE.md`
 - `docs/REPO_STRUCTURE.md`
 - the oldest numbered file in `prompts/pending/`
 - the most recent report in `reports/runs/`

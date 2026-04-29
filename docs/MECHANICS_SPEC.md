@@ -2,21 +2,20 @@
 
 ## Design Priority
 
-The game should be simple to play but tense to manage.
+This is a downhill ultra survival game.
 
-The player should not need a manual.
+The important question is:
 
-Every mechanic should answer one question:
+> How much speed can the player take before heat, hydration, and quad damage destroy the run?
 
-> Does this make the run feel hotter, harder, more tactical, or more SUC?
+Every mechanic should support that question.
 
 ## Core Resources
 
 ### Heat
 
-Heat is the main danger.
-
 Range:
+
 ```txt
 0–100
 ```
@@ -24,14 +23,14 @@ Range:
 At 100, the player collapses.
 
 Heat rises from:
-- time
 - exposure
 - pace
+- high downhill effort
 - low hydration
-- climbs
-- poor cooling
+- lack of cooling
+- technical stress
 
-Heat falls from:
+Heat drops from:
 - ice
 - water dump
 - shade
@@ -41,18 +40,24 @@ Heat falls from:
 Heat warning bands:
 
 ```txt
-0–49: manageable
+0–49: controlled
 50–74: hot
 75–89: danger
 90–99: critical
 100: collapse
 ```
 
+High heat effects:
+- HUD flashes
+- audio pressure
+- screen shimmer
+- control instability
+- harsher report grade
+
 ### Hydration
 
-Hydration supports heat control.
-
 Range:
+
 ```txt
 0–100
 ```
@@ -63,9 +68,13 @@ Hydration drains from:
 - heat
 - exposure
 
-Low hydration should make heat rise faster.
+Low hydration:
+- increases heat gain
+- weakens recovery
+- increases fatigue
+- worsens final-section control
 
-Warning bands:
+Hydration warning bands:
 
 ```txt
 100–60: good
@@ -74,222 +83,219 @@ Warning bands:
 9–0: disaster
 ```
 
-### Fatigue
-
-Fatigue represents accumulated damage.
+### Quad Damage
 
 Range:
+
 ```txt
 0–100
 ```
 
-Fatigue rises from:
-- time
-- high heat
-- aggressive pace
-- low hydration
-- hazards
+Quad damage is the downhill-specific threat.
 
-At high fatigue:
-- speed may drop
-- steering may feel heavier
-- pace changes may be less effective
+It rises from:
+- high speed on descents
+- using Push/Send too long
+- late braking
+- hitting rocks/rough trail
+- bad line choice
+- technical downhill turns
 
-Keep this subtle at first.
+High quad damage:
+- reduces top speed
+- increases fatigue
+- makes braking less effective
+- worsens final push
+- damages run report
+
+Quad warning bands:
+
+```txt
+0–35: fresh
+36–65: loaded
+66–85: cooked
+86–100: wrecked
+```
 
 ### Ice Active
 
-Ice is a temporary cooling buff.
-
-Range:
-```txt
-0–100 or seconds remaining
-```
+Represents cooling currently working.
 
 While active:
 - heat gain is reduced
 - heat may slowly drop
-- warning state calms slightly
+- critical warning is softened
 
-Ice should feel powerful but temporary.
+Ice should be temporary and valuable.
 
 ## Pace Modes
 
-### Easy
+### Control
 
 Purpose:
+- restraint
+- descent management
 - survival
-- heat control
-- recovery
 
 Effects:
-- lowest speed
-- lowest heat gain
-- lowest hydration drain
-- lowest fatigue gain
+- slower speed
+- lower heat gain
+- lower hydration drain
+- lower quad damage
 
 ### Steady
 
 Purpose:
-- default race rhythm
+- normal race rhythm
 
 Effects:
-- normal speed
-- normal heat gain
-- normal resource drain
+- baseline speed and resource drain
 
 ### Push
 
 Purpose:
-- tactical speed
+- tactical acceleration
 
 Effects:
-- faster speed
-- higher heat gain
+- higher speed
+- higher heat
 - higher hydration drain
-- higher fatigue gain
+- higher quad damage
 
 ### Send
 
 Purpose:
-- risky surge
+- risky downhill bomb
 
 Effects:
 - fastest speed
 - major heat gain
-- major hydration drain
-- major fatigue gain
-- should punish long use
+- major quad damage
+- major late-section cost
 
-## Trail Zones
+Send should feel good immediately and expensive later.
 
-### Shade
+## Braking / Control Input
 
-Effects:
-- reduces heat gain
-- maybe slightly recovers heat
+The player needs a manual way to control descent.
 
-### Exposed
+Suggested behavior:
+- hold brake/control key to reduce speed
+- braking lowers immediate risk
+- braking can reduce future quad damage
+- braking costs time
+- panic braking at very high speed may still cause damage
 
-Effects:
-- increases heat gain
+Do not over-simulate physics early.
 
-### Descent
+## Line Choice
 
-Effects:
-- allows speed
-- can increase fatigue if using Push/Send too long
+The trail should offer simple decisions.
 
-### Climb
+Line types:
 
-Effects:
-- lower speed
-- higher heat gain
-- higher fatigue
+### Smooth Fast Line
+- faster
+- more exposed
+- more heat
 
-### Crew Zone
+### Shaded Line
+- less heat
+- may be rockier/slower
 
-Effects:
-- allows quick choices
-- refills resources
-- costs time
+### Rocky Line
+- more quad damage risk
+- possible speed disruption
 
-### Technical Trail
+### Safe Line
+- slower
+- lower risk
 
-Effects:
-- hazards more common
-- bad line choice has penalties
+Line choice does not need to be complex at first. It just needs to be visible and meaningful.
 
 ## Crew Actions
+
+The first mission starts with crew.
 
 ### Refill Bottles
 
 Effect:
-- restores hydration
+- hydration restored
 
 Cost:
-- medium time
+- time
 
 ### Ice Bandana
 
 Effect:
-- adds strong Ice Active duration
+- gives cooling charge or starts ice active
 
 Cost:
-- medium-high time
+- time
 
 ### Water Dump
 
 Effect:
-- immediate heat reduction
+- immediate heat drop
 
 Cost:
-- low time
+- small time
 
 ### Grab Gels
 
 Effect:
-- restores fuel or future fuel
+- optional fuel/morale support
 
 Cost:
-- low-medium time
+- time
 
 ### Calm Down
 
 Effect:
-- reduces fatigue or heat panic
+- reduces early fatigue / control wobble
 
 Cost:
-- medium time
+- time
 
 ### Leave Fast
 
 Effect:
-- exits crew immediately
-
-Cost:
-- no extra time
+- saves time
 
 Risk:
-- may leave without enough support
+- underprepared descent
 
-## Hazards
+## Failure Conditions
 
-Hazards should be simple.
+Initial:
+- heat reaches 100
 
-Examples:
-- rocks
-- heat shimmer patches
-- bad line zones
-- mental spiral zones
-- dry creek bed
+Next:
+- hydration reaches 0 and fatigue/heat penalty escalates
+- quad damage reaches 100 or causes collapse
 
-Hazard penalties:
-- heat spike
-- hydration loss
-- fatigue gain
-- speed loss
-
-Do not add enemy AI early.
+Failure should always have a clear cause.
 
 ## Run Report Stats
 
 Track:
 
-- finish/fail
+- result
 - elapsed time
 - max heat
 - lowest hydration
-- final fatigue
-- pace usage
-- crew actions taken
+- final quad damage
+- time spent in each pace
+- braking/control usage
+- crew choices
 - hazards hit
 - cooling uses
+- failure cause
 - verdict
 
 ## Tuning Rule
 
-Keep all tuning constants in one obvious place once implementation starts.
+Keep tuning values centralized once implementation begins.
 
 Suggested future file:
 
@@ -300,9 +306,8 @@ src/game/constants.ts
 Examples:
 - heat gain by pace
 - hydration drain by pace
+- quad damage by speed
 - cooling strength
-- crew action effects
-- fatigue gain
+- crew effects
+- zone modifiers
 - mission length
-
-This makes AI tuning runs safer.

@@ -1,16 +1,17 @@
 # Recommended Repo Structure
 
 ```txt
-game-lab/
+suc-the-long-burn/
   GAME.md
   README.md
   ROADMAP.md
   package.json
 
   docs/
-    FORESTHILL_HEAT_DROP.md
+    CAL_STREET_HEAT_DROP.md
     MECHANICS_SPEC.md
-    VISUAL_STYLE_GUIDE.md
+    PS1_3D_STYLE_GUIDE.md
+    LEVEL_DESIGN_GUIDE.md
     AUDIO_STYLE_GUIDE.md
     AI_DEVELOPMENT_RULES.md
     BC_OS_INTEGRATION.md
@@ -37,10 +38,12 @@ game-lab/
       input.ts
       update.ts
       render.ts
-      hud.ts
+      camera.ts
+      runner.ts
       mission.ts
-      crew.ts
+      terrain.ts
       resources.ts
+      crew.ts
       runReport.ts
     styles/
       base.css
@@ -55,39 +58,31 @@ game-lab/
 
 The design bible.
 
-Every implementation run must read this.
-
 ### `ROADMAP.md`
 
-The milestone plan.
+Milestone plan.
 
 ### `README.md`
 
-Human-facing setup and repo overview.
-
-### `package.json`
-
-Only after implementation begins.
-
-Do not add dependencies casually.
+Human-facing setup and overview.
 
 ## Docs
 
-### `docs/FORESTHILL_HEAT_DROP.md`
+### `docs/CAL_STREET_HEAT_DROP.md`
 
 First mission spec.
 
 ### `docs/MECHANICS_SPEC.md`
 
-Heat, hydration, pace, crew, fatigue, cooling.
+Heat, hydration, quad damage, pace, braking, crew.
 
-### `docs/VISUAL_STYLE_GUIDE.md`
+### `docs/PS1_3D_STYLE_GUIDE.md`
 
-Retro/pixel/SUC visual direction.
+Visual target.
 
-### `docs/AUDIO_STYLE_GUIDE.md`
+### `docs/LEVEL_DESIGN_GUIDE.md`
 
-Optional sound direction.
+How to shape the downhill course.
 
 ### `docs/AI_DEVELOPMENT_RULES.md`
 
@@ -95,7 +90,7 @@ Automation constraints.
 
 ### `docs/BC_OS_INTEGRATION.md`
 
-How BC-OS should operate around the repo.
+How BC-OS interacts with the game repo.
 
 ### `docs/PLAYTEST_CHECKLIST.md`
 
@@ -103,25 +98,25 @@ Manual review checklist.
 
 ### `docs/DECISIONS.md`
 
-Important decisions and why they were made.
+Decision log.
 
 ### `docs/BACKLOG.md`
 
-Cool ideas that are not approved for current build.
+Future ideas not approved yet.
 
 ## Prompt Queue
 
 ### `prompts/pending/`
 
-Implementation prompts waiting for Codex.
+Codex implementation prompts waiting to run.
 
 ### `prompts/completed/`
 
-Prompts that were successfully completed and reviewed.
+Completed prompts.
 
 ### `prompts/blocked/`
 
-Prompts that failed, got too big, or need clarification.
+Failed or too-large prompts.
 
 ## Reports
 
@@ -135,17 +130,16 @@ Manual playtest notes.
 
 ## Source
 
-Keep source simple at first.
+Keep source boring.
 
-Avoid complex architecture.
-
-Suggested separation:
+Suggested modules:
 - input
-- update loop
-- rendering
+- camera
+- runner
+- terrain
+- mission
 - resources
-- mission config
-- crew logic
-- run report
+- crew
+- report
 
-Do not build a generic engine before the game is fun.
+Do not build a generic engine before the mission feels good.

@@ -2,58 +2,49 @@
 
 ## Priority
 
-Audio is optional for the early prototype.
+Audio is optional early.
 
-Do not let audio block the core gameplay.
+Do not let audio block gameplay.
 
-## Audio Direction
+## Direction
 
-If audio is added, it should be simple and punchy.
-
-The sound should feel:
-- retro
-- dry
-- hot
-- mechanical
-- arcade-like
-- slightly harsh
+The audio should support:
+- downhill pressure
+- heat stress
+- breathing
+- crew urgency
+- PS1 atmosphere
 
 ## Early Sounds
 
 Good first sounds:
-- footstep tick
-- pickup blip
-- hydration refill
-- ice crunch
+- footstep loop
+- gravel/dirt step noise
 - heat warning beep
-- crew zone chime
+- hydration warning beep
+- ice/water sound
+- crew interaction blip
 - finish sound
 - collapse sound
 
-## Crew Voice Style
+## Ambience
 
-Crew voice can start as text only.
-
-Later, use short blips instead of real voice acting.
-
-Examples:
-- text appears: “ICE NOW”
-- small alert sound plays
+Later ambience:
+- wind
+- insects
+- distant canyon sound
+- muffled crew at start
+- breathing intensifies with effort
 
 ## Music
 
-No complex music system early.
+Optional.
 
-Possible later music:
+If added later:
 - low drone
-- simple beat that intensifies with heat
-- final push pulse
+- retro synth pulse
+- intensity rises with heat/final push
 
-## Anti-Goals
+No licensed music.
 
-Do not add:
-- licensed music
-- large audio packs
-- voice acting dependency
-- complicated adaptive soundtrack
-- sound systems that distract from gameplay
+No huge audio system early.

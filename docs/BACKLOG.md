@@ -1,86 +1,74 @@
 # Backlog
 
-Cool ideas live here so they do not pollute the core build.
+Cool ideas live here.
 
-Nothing in this file is approved until moved into a prompt.
+Nothing here is approved until turned into a small prompt.
 
 ## Mission Ideas
 
 ### Auburn Final Grind
-
-Late-race mission focused on fatigue, morale, and holding form.
+Late-race fatigue and final push.
 
 ### No Hands Bridge Push
-
-Iconic final push energy. Low resources, high emotion.
+Iconic-feeling bridge/final approach energy.
 
 ### Diablo Heat Lab
-
-Training mission with brutal climb and controlled heat testing.
+Training mission focused on brutal heat and climbing.
 
 ### River Crossing Reset
-
-Cooling opportunity followed by climb punishment.
+Major cooling opportunity followed by punishment.
 
 ### Crew Missed the Aid Station
-
-Disaster scenario where planned support fails.
+Disaster scenario.
 
 ### Saturday SUC Long Run
-
-Community chaos mission. Route confusion, water planning, group dynamics.
+Community chaos mission.
 
 ## Mechanics Ideas
 
 - caffeine risk/reward
 - morale meter
 - mental spiral warnings
-- shade line choice
-- quad damage from descending too hard
+- shade line strategy
+- advanced quad damage
 - shoe choice
-- heat acclimation challenge
+- poles, maybe much later
+- heat acclimation mode
 - night mode
-- “bad idea index”
+- bad idea index
 - crew member perks
 - route intel upgrades
 - mission modifiers
+- split-time ghosts
 
-## Visual Ideas
+## PS1 Atmosphere Ideas
 
-- heat shimmer
-- pixel dust trail
-- crew table scene
-- warning stencil overlays
-- canyon background layers
-- retro map card
-- fake race bib
-- SUC black/neon HUD
-- cracked asphalt intro
-
-## Report Ideas
-
-- grade system
-- “SUC group chat verdict”
-- heat discipline score
-- crew efficiency score
-- pacing stupidity score
-- “canyon tax” stat
-- “bad idea validated” badge
+- low-res render mode
+- fake texture wobble
+- heavy fog
+- title screen like an old race game
+- VHS/CRT overlay
+- save-screen style run report
+- canyon ambience
+- polygonal crew silhouettes
+- harsh sun lens blocks
 
 ## Hard Not Yet
 
-Do not build these early:
+Do not build early:
 
-- exact Western States map
-- real GPX import
-- Topodex integration
+- exact Western States course
+- real Cal Street GPS
+- full course
+- GPX import
 - Strava import
 - online leaderboard
-- account system
-- multiplayer crew
-- custom route builder
+- accounts
+- multiplayer
+- route builder
 - open-world Auburn
 - full career mode
 - RPG skill tree
-- complex character creator
-- asset marketplace
+- custom character creator
+- large asset packs
+- advanced animation system

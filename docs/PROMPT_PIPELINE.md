@@ -2,6 +2,10 @@
 
 This repo is designed for a small, repeatable loop: one prompt in, one focused implementation out, one report written.
 
+## Current Queue Direction
+
+As of the 2026-04-28 reset, the active prompt queue has been rebuilt around the PS1-style Cal Street Heat Drop direction. Historical prompts from the previous direction are archived under `prompts/archive/2026-04-28-pre-ps1-cal-street-reset/`.
+
 ## Normal Loop
 
 1. Run `npm run agent:check`.

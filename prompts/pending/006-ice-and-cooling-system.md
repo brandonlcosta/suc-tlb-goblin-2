@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add the signature cooling mechanic.
+Add the signature SUC cooling mechanic.
 
 ## Files / Directories to Inspect
 
@@ -13,24 +13,24 @@ Add the signature cooling mechanic.
 ## Implementation Scope
 
 - Add an Ice Active meter or cooling timer.
-- Add a cooling charge or pickup.
-- Press Space to use cooling if available.
-- Cooling reduces heat or heat gain temporarily.
+- Add one cooling charge.
+- Press Space to use cooling.
+- Cooling reduces heat or slows heat gain temporarily.
 - Add visual feedback when cooling is active.
-- Show Ice Active in the HUD.
+- Show cooling state in HUD.
 
 ## Out of Scope
 
-- No full inventory.
-- No multiple cooling item types yet.
+- No multiple cooling types yet.
 - No crew menu yet.
-- No complex animations.
+- No inventory.
+- No audio requirement.
 
 ## Acceptance Criteria
 
 - Player can activate cooling.
-- Cooling visibly affects heat.
-- Cooling has limited duration or charges.
+- Cooling visibly changes heat pressure.
+- Cooling is limited.
 - HUD shows cooling state.
 - Build passes.
 
@@ -42,4 +42,4 @@ npm run build
 
 ## Playtest Note
 
-Wait until heat is high, trigger cooling, and confirm heat pressure eases.
+Let heat rise, use cooling, and confirm the run stabilizes briefly.

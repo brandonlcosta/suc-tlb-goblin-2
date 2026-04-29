@@ -1,91 +1,95 @@
 # Playtest Checklist
 
-Use this after every meaningful game change.
+Use this after every meaningful change.
 
-## Basic Startup
+## Startup
 
-- [ ] App starts without crashing.
+- [ ] App starts.
+- [ ] Mission loads.
 - [ ] No obvious console errors.
-- [ ] Canvas/game screen renders.
 - [ ] Restart works.
+
+## 3D / Camera
+
+- [ ] Runner is visible.
+- [ ] Camera follows correctly.
+- [ ] Trail ahead is readable.
+- [ ] Downhill direction is obvious.
+- [ ] Fog/draw distance does not confuse navigation.
 
 ## Controls
 
-- [ ] Left/right movement works.
+- [ ] Left/right steering works.
+- [ ] Brake/control works.
 - [ ] Pace controls work.
-- [ ] Cooling action works, if implemented.
-- [ ] Crew interaction works, if implemented.
-- [ ] Controls still feel responsive.
+- [ ] Cooling control works if implemented.
+- [ ] Crew interaction works if implemented.
+- [ ] Controls feel stable.
 
-## Core Loop
+## Downhill Feel
 
-- [ ] Player starts mission.
-- [ ] Runner moves forward.
-- [ ] Progress increases.
-- [ ] Finish is reachable.
-- [ ] Failure is possible.
-- [ ] Restart returns to clean state.
+- [ ] Speed feels tempting.
+- [ ] Braking feels useful.
+- [ ] Turns are readable.
+- [ ] Fast lines and safe lines are understandable.
+- [ ] Reckless descending has consequences.
 
-## Heat / Hydration
+## Resources
 
-- [ ] Heat rises during exposed/hard running.
+- [ ] Heat rises.
 - [ ] Hydration drains.
-- [ ] Cooling reduces heat or heat gain.
-- [ ] Low hydration makes the run feel worse.
-- [ ] High heat creates clear warning.
-
-## Pace
-
-- [ ] Easy feels safer.
-- [ ] Steady feels normal.
-- [ ] Push feels useful.
-- [ ] Send feels dangerous.
-- [ ] Pace affects speed and resource drain.
+- [ ] Quad damage accumulates.
+- [ ] Cooling helps.
+- [ ] Low hydration makes heat worse.
+- [ ] High quad damage affects the finish.
 
 ## Crew
 
-- [ ] Crew zone is visible.
-- [ ] Crew interaction is understandable.
-- [ ] Choices have clear effects.
-- [ ] Crew costs time or creates tradeoffs.
-- [ ] Crew does not fully trivialize the mission.
+- [ ] Crew start is visible.
+- [ ] Crew choices are understandable.
+- [ ] Choices affect the run.
+- [ ] Leaving fast is risky.
+- [ ] Crew feels SUC, not generic.
 
-## Visual Feel
+## Visual Style
 
-- [ ] Retro/pixel vibe is present.
+- [ ] PS1 low-poly vibe is present.
+- [ ] Environment feels hot/dry.
 - [ ] HUD is readable.
-- [ ] Heat warnings are obvious.
-- [ ] Trail direction is clear.
-- [ ] Player can tell pickups/hazards apart.
+- [ ] Warning states are clear.
+- [ ] The style does not look like a modern generic runner.
 
-## SUC Feel
+## Mission
 
-- [ ] Copy feels direct and gritty.
-- [ ] Route intel feels like SUC.
-- [ ] Crew text has personality.
-- [ ] Nothing feels corporate wellness.
-- [ ] The mission feels like a bad idea worth doing.
+- [ ] Start is clear.
+- [ ] Finish is clear.
+- [ ] Mission lasts roughly 3–7 minutes when tuned.
+- [ ] Player can finish.
+- [ ] Player can fail.
+- [ ] Replay is immediate.
 
 ## Run Report
 
-- [ ] Report appears after finish/failure.
+- [ ] Report shows result.
 - [ ] Time is shown.
-- [ ] Heat/hydration stats are shown.
-- [ ] Cause of failure is shown if failed.
-- [ ] Verdict line fits the tone.
-- [ ] Replay is easy.
+- [ ] Max heat is shown.
+- [ ] Lowest hydration is shown.
+- [ ] Quad damage is shown.
+- [ ] Failure cause is shown if failed.
+- [ ] Verdict fits the tone.
 
-## Balance Questions
+## Playtest Questions
 
-After playing, answer:
-
-1. Did I understand what was killing me?
-2. Did pace choice matter?
-3. Did cooling feel useful?
-4. Did crew feel useful?
-5. Did I want to replay?
-6. Was anything confusing?
-7. What is the next smallest improvement?
+1. Did I feel like I was descending?
+2. Did speed tempt me?
+3. Did restraint matter?
+4. Did heat feel dangerous?
+5. Did hydration matter?
+6. Did quad damage make sense?
+7. Did crew choices matter?
+8. Did I want to replay?
+9. What was confusing?
+10. What is the next smallest fix?
 
 ## Playtest Note Template
 
@@ -100,21 +104,21 @@ After playing, answer:
 
 - Result:
 - Time:
-- Cause:
+- Failure cause:
 - Notes:
 
 ## Run 2
 
 - Result:
 - Time:
-- Cause:
+- Failure cause:
 - Notes:
 
 ## Run 3
 
 - Result:
 - Time:
-- Cause:
+- Failure cause:
 - Notes:
 
 ## What Felt Good

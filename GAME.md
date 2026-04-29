@@ -2,58 +2,67 @@
 
 ## One-line Pitch
 
-A retro, pixelated third-person ultra-running survival game where you run brutal SUC-inspired trail missions while managing heat, hydration, ice, pacing, fatigue, and crew support.
+A PS1-style 3D ultra-running survival game where you descend a brutal Cal Street / Foresthill-inspired trail section while managing heat, hydration, ice, quad damage, pace, and crew execution.
 
 ## Core Fantasy
 
-The player should feel like they are deep in a hot ultra, trying to survive one more section without falling apart.
+The player should feel like they just left Foresthill and are dropping into a dangerous section where everything can go wrong if they get greedy.
 
-This is not a normal running game about pure speed.
+This is not a standard running game about being fast.
 
 This is about:
-- staying cool
-- timing ice
-- managing hydration
-- trusting crew
-- not bombing the descent too early
-- staying mentally sharp when cooked
-- getting to the next checkpoint alive
+- controlling downhill speed
+- not trashing your quads
+- managing heat before it spikes
+- staying hydrated
+- using ice at the right time
+- trusting crew decisions
+- getting through the section without detonating
 
 The fantasy is:
 
-> You are on a legendary trail section. It is hot. You are moving well. But the canyon is taking pieces from you every minute.
+> You are moving fast downhill, the canyon is hot, your crew did what they could, and now you have to execute.
 
 ## Player Role
 
-The player is a SUC runner attempting to complete dangerous trail segments inspired by Western States, Auburn, Foresthill, Diablo, and local Sacramento ultra culture.
+The player is a SUC runner in a fictional ultra.
 
-The player is not a superhero.
+They are not a superhero.
 
-The player is a stubborn, prepared, slightly reckless endurance athlete using crew, ice, tactics, and grit to survive.
+They are an endurance athlete trying to survive a legendary downhill section with tactics, discipline, cooling, and stubbornness.
+
+The player must balance:
+- speed
+- braking
+- line choice
+- heat
+- hydration
+- quad damage
+- crew support
+- finishing condition
 
 ## Setting
 
-The game takes place in fictionalized SUC trail mythology.
-
 The first mission is:
 
-# Foresthill Heat Drop
+# Cal Street Heat Drop
 
-A Western States-inspired descent from a Foresthill-like town into exposed canyon terrain.
+A fictionalized mission inspired by the Cal Street / Foresthill section of Western States.
 
-The setting should feel like:
-- hot pavement-to-trail transition
-- dusty singletrack
-- canyon heat
+It is not a GPS-accurate recreation.
+
+It should feel like:
+- leaving a Foresthill-style crew zone
+- dropping into canyon heat
+- dusty trail
+- old roads
+- exposed turns
 - oak shade pockets
-- orange trail markings
-- old aid station energy
-- SUC crew chaos
-- retro game intensity
+- harsh downhill rhythm
+- aid station energy
+- late-day ultra pressure
 
-The game should not use exact real-world course data in V1.
-
-It should be inspired, not dependent.
+The world should be stylized and low-poly, like a lost PS1 endurance game.
 
 ## Format
 
@@ -62,124 +71,171 @@ Mission-based.
 Not open-world.
 
 Each mission is a contained trail corridor with:
-- start zone
 - route intel
-- trail section
-- crew or aid point
-- finish
+- start/crew zone
+- serious downhill section
+- heat and hydration pressure
+- technical line choices
+- finish point
 - run report
 
 ## Core Loop
 
-1. Choose a mission.
-2. Read route intel.
-3. Start running in third-person view.
-4. Manage pace, hydration, heat, and fuel while moving down the trail.
-5. Use ice/cooling before the heat gets out of control.
-6. Hit the crew zone and make fast support choices.
-7. Survive the final exposed push.
-8. Finish or collapse.
+1. Read route intel.
+2. Start at a Foresthill-style crew/aid zone.
+3. Choose initial support: hydration, ice, fuel, calm-down, or fast exit.
+4. Descend the trail in third-person view.
+5. Manage pace, braking, line choice, heat, hydration, and quad damage.
+6. Use cooling before heat debt gets out of control.
+7. Survive exposed sections and technical turns.
+8. Reach the finish or collapse.
 9. Read the run report.
-10. Decide what to improve next run.
+10. Replay to improve execution.
 
 ## Main Mechanics
 
-### Movement
+### Third-Person Downhill Movement
 
-The runner moves forward along a trail corridor.
+The player runs along a 3D trail corridor.
+
+The game should feel third-person:
+- camera behind the runner
+- runner visible on screen
+- trail moving downhill ahead
+- terrain slopes and turns
+- simple low-poly environment
 
 The player controls:
 - left/right line choice
 - pace mode
+- braking or restraint
 - cooling use
-- crew stop choices
+- crew stop decisions
 
-Movement should feel simple, not simulation-heavy.
+The runner can auto-forward, but the player must manage speed and control.
 
-### Camera
+### Downhill Momentum
 
-The game should feel third-person.
+Downhill speed is tempting but dangerous.
 
-For a lightweight prototype, this can be:
-- behind-the-runner pseudo-3D
-- 2.5D trail corridor
-- pixelated chase camera
-- scaled sprites
-- parallax trail elements
+If the player descends too aggressively:
+- speed increases
+- heat rises faster
+- hydration drains faster
+- quad damage rises
+- corner control becomes harder
+- late-section fatigue gets worse
 
-Do not require complex 3D for V1.
+The downhill should feel like a tactical trap.
 
-The feel matters more than technical purity.
-
-### Pace
+### Pace / Effort
 
 Pace modes:
 
-- **Easy**: slower, safer, lower heat gain
-- **Steady**: default race pace
-- **Push**: faster, higher heat/fatigue cost
-- **Send**: risky surge, major heat/fatigue cost
+- **Control**: slower, safer, lower damage
+- **Steady**: default race rhythm
+- **Push**: faster, higher heat/damage
+- **Send**: fast and dangerous
 
-Pace should be one of the main decisions.
+This is not just speed selection.
+
+It is risk selection.
+
+### Braking / Restraint
+
+The player needs a way to manage downhill aggression.
+
+Possible V1 control:
+- hold `Shift` or `S` to brake/control descent
+
+Braking:
+- lowers speed
+- lowers quad damage risk
+- may cost time
+- may help technical turns
+- may reduce heat slightly if effort drops
+
+The game should reward restraint.
 
 ### Heat
 
-Heat is the main boss.
+Heat is one of the main threats.
 
 Heat rises from:
 - exposure
 - high pace
-- climbing
 - low hydration
-- bad crew execution
-- missing cooling windows
+- technical stress
+- prolonged downhill sending
 
 Heat drops from:
 - ice
-- water dumps
+- water dump
 - shade
 - slowing down
-- crew support
+- good crew execution
 
-When heat gets high:
+At high heat:
 - HUD flashes
-- screen shimmers
+- screen warps/shimmers
 - control gets slightly less stable
-- warnings appear
-- collapse risk increases
+- breathing/audio pressure increases
+- collapse risk rises
 
 ### Hydration
 
 Hydration drains over time.
 
-Low hydration causes:
-- faster heat gain
-- slower recovery
-- higher fatigue
-- worse late-section performance
+Low hydration:
+- makes heat rise faster
+- makes recovery weaker
+- increases fatigue
+- makes late-section control worse
+
+### Quad Damage
+
+Quad damage is the downhill-specific mechanic.
+
+It rises from:
+- aggressive downhill speed
+- high pace on descents
+- hard braking too late
+- technical impacts
+- bad line choice
+
+High quad damage:
+- lowers top speed
+- increases fatigue
+- makes the final section harder
+- worsens run report grade
+
+This mechanic makes the downhill serious.
 
 ### Ice / Cooling
 
-Cooling is the signature mechanic.
+Cooling is signature SUC strategy.
 
-Initial cooling options:
+V1 can use one **Ice Active** meter.
+
+Cooling effects:
+- slows heat gain
+- may drop heat
+- buys time through exposed sections
+
+Later cooling types:
 - ice bandana
+- ice sleeves
 - water dump
-- ice sleeves, later
-- shade recovery, later
-
-In V1, this can be a single **Ice Active** meter.
-
-When ice is active:
-- heat gain slows
-- heat may gradually drop
-- the player has a temporary survival window
+- hat ice
+- creek dunk
 
 ### Crew
 
-Crew is a short tactical moment, not a full management sim.
+Crew is a short tactical moment.
 
-At crew zones, the player chooses limited actions.
+The first mission starts with a crew/aid zone.
+
+The player can choose a limited number of support actions before leaving.
 
 Example:
 - refill bottles
@@ -189,154 +245,146 @@ Example:
 - calm down
 - leave fast
 
-Each action costs seconds but gives survival benefits.
+Crew choices affect the entire descent.
 
-The crew should feel like SUC:
-- direct
-- chaotic
-- funny
-- supportive
-- no corporate wellness energy
+Crew is not a separate management sim.
 
-### Fatigue
+### Trail Line Choice
 
-Fatigue rises over time.
+The player should care about where they run.
 
-Fatigue rises faster when:
-- heat is high
-- hydration is low
-- pace is too aggressive
-- the player hits hazards
-- crew choices are poor
+Possible line types:
+- smooth line
+- rocky line
+- shade line
+- exposed line
+- fast outside turn
+- safer inside line
 
-Fatigue can reduce top speed or control sharpness.
+Line choice can affect:
+- speed
+- heat
+- quad damage
+- collision risk
 
-Keep fatigue simple early.
-
-### Trail Zones
-
-Trail sections can have different conditions:
-
-- shade
-- exposed
-- descent
-- climb
-- aid/crew zone
-- technical rocks
-- heat shimmer zone
-
-Each zone modifies resource drain.
+Keep this simple early.
 
 ## Progression
 
-Progression should start within the mission.
+Progression starts inside one mission.
 
-As the player gets deeper into Foresthill Heat Drop:
+As the player descends:
+- terrain gets faster
 - heat pressure increases
-- shade becomes less frequent
-- hydration pressure rises
-- the final push gets meaner
-- bad pacing early makes the ending harder
+- shade becomes less reliable
+- turns become more punishing
+- hydration becomes more important
+- quad damage starts to matter
+- the finish becomes a survival test
 
-Future progression can include:
+Later progression can include:
 - new missions
-- harder weather variants
-- better crew efficiency
-- route intel unlocks
+- harder heat variants
+- better crew systems
+- route intel cards
 - challenge modes
 
-Avoid long-term RPG systems early.
+Avoid RPG sprawl early.
 
 ## Failure / Success
 
 ### Success
 
-The player succeeds by reaching the finish line before collapse.
+The player succeeds by reaching the finish.
 
-A good finish is not just fastest time.
-
-The report should judge:
-- finish time
-- heat control
-- hydration management
-- crew efficiency
-- pacing discipline
-- final condition
+A strong finish means:
+- good time
+- controlled heat
+- hydration not destroyed
+- quads not blown up
+- crew choices made sense
+- final condition still runnable
 
 ### Failure
 
-The player fails if:
-- heat maxes out
-- hydration collapses
-- fatigue maxes out
-- optional later: morale breaks
+The player can fail by:
+- overheating
+- dehydration collapse
+- quad damage/fatigue collapse
+- leaving crew underprepared and detonating later
 
-Failure should be part of the game.
-
-It should produce a useful/funny run report.
+Failure should produce a serious but SUC-flavored run report.
 
 Example verdicts:
 - “Finished cooked.”
-- “Canyon tax collected.”
-- “You bombed the descent and paid for it.”
+- “You survived, but the descent took payment.”
+- “You bombed Cal Street like a rookie.”
 - “Crew saved your race.”
-- “Hydration plan: criminal.”
-- “SUC would roast you in the group chat.”
-- “Bad idea. Good data.”
+- “Fast early. Expensive late.”
+- “Canyon tax collected.”
+- “Good data. Bad execution.”
 
 ## Tone
 
-Retro, gritty, local, weird, funny, intense.
+Serious, gritty, tense, SUC-coded.
 
-The game should feel like:
-- pixelated ultra chaos
-- canyon heat
-- old-school arcade survival
-- SUC route intel
+Less meme. More pressure.
+
+The humor should be dry and harsh, not goofy.
+
+The vibe:
+- hot canyon
+- old-school 3D
+- low-poly trail
+- early PlayStation fog
+- black kit
+- sharp HUD
 - crew yelling from a folding table
-- handwritten signs
-- blacktop shimmering
-- dusty trail mythology
+- “this section can ruin your race”
 
 Avoid:
-- polished corporate fitness vibes
-- generic wellness tone
-- fantasy RPG bloat
-- fake inspirational fluff
+- polished corporate fitness tone
+- cartoony wellness
+- generic fantasy
+- goofy obstacle-course energy
 
 ## Visual Style
 
-Retro pixelated.
+PS1-style low-poly 3D.
 
-The first visual target:
-- low-resolution canvas look
-- chunky pixel runner
-- pseudo-3D trail corridor
-- limited color palette
-- dusty browns, black, bone, orange, neon green, hot red
-- simple animated runner
-- tactical HUD inspired by SUC/Topodex
-- heat shimmer effects as simple screen distortion or overlay
-- crew zone as a folding-table checkpoint
+The game should look like a lost PlayStation-era trail ultra game.
 
-No expensive assets.
+Visual traits:
+- low-poly terrain
+- low-res textures
+- chunky runner model
+- affine/warped texture feel if possible
+- visible fog
+- limited draw distance
+- harsh sun color
+- dithered shadows or simple fake shadows
+- angular rocks and trees
+- simple canyon geometry
+- retro HUD overlays
 
-Use shapes, pixel sprites, and simple effects first.
+Do not chase modern realism.
+
+The roughness is part of the identity.
 
 ## Audio Style
 
-Optional early.
+Optional for early builds.
 
-Future simple audio:
+Future audio:
 - footstep loop
-- heat warning beep
-- bottle pickup sound
-- ice crunch
-- crew shout blip
-- finish sting
-- collapse sting
+- breathing pressure
+- heat warning tone
+- ice/water sound
+- crew shout blips
+- wind and canyon ambience
+- low drone during critical heat
 
-No complex music system required.
+No licensed music.
 
 ## Controls
 
@@ -344,90 +392,99 @@ Keyboard first.
 
 Recommended:
 
-- `A` / `D` or left/right arrows: move left/right on trail
-- `1`: easy pace
-- `2`: steady pace
-- `3`: push pace
-- `4`: send pace
-- `Space`: use cooling item
-- `E`: interact at crew zone
+- `A` / `D` or left/right arrows: steer / choose line
+- `W` or up arrow: lean into pace / push if needed
+- `S` or down arrow: brake / control descent
+- `1`: Control pace
+- `2`: Steady pace
+- `3`: Push pace
+- `4`: Send pace
+- `Space`: use cooling
+- `E`: interact with crew
 - `P`: pause
 - `R`: restart
-
-Mobile controls are later.
 
 ## First Playable Version
 
 The smallest playable version must include:
 
 - browser app starts
-- retro canvas renders
-- third-person-style trail corridor exists
-- runner moves forward automatically
+- simple PS1-style 3D scene renders
+- third-person camera follows runner
+- downhill trail corridor exists
+- runner moves downhill/forward
 - player can steer left/right
+- player can slow/control descent
 - heat meter rises
 - hydration meter drains
-- pace mode changes speed/resource drain
-- ice/cooling pickup or button exists
-- one crew zone exists
+- quad damage exists
+- pace modes affect speed and resource pressure
+- one crew/start zone exists
 - finish line exists
 - game-over exists
 - run report exists
 - restart works
 
-That is enough.
-
 ## V1 Feature List
 
-V1 should include:
-
 ### Screens
+
 - title screen
 - route intel screen
 - gameplay screen
 - run report screen
 
-### Gameplay
-- one mission: Foresthill Heat Drop
-- third-person trail corridor
-- player steering
-- pace modes
-- heat meter
-- hydration meter
-- fatigue meter
-- ice/cooling system
-- crew zone triage
+### Mission
+
+- one mission: Cal Street Heat Drop
+- Foresthill-style start / crew zone
+- downhill trail corridor
+- exposed heat section
+- final survival push
 - finish line
-- failure conditions
-- run report
+
+### Systems
+
+- third-person movement
+- downhill momentum
+- braking/control
+- pace modes
+- heat
+- hydration
+- quad damage
+- ice/cooling
+- crew support
+- simple run report
 
 ### Style
-- retro pixelated look
-- SUC-inspired HUD
-- route intel card
-- heat warnings
-- crew flavor text
+
+- PS1 low-poly 3D
+- SUC tactical HUD
+- serious route intel
+- heat warning effects
+- canyon fog / limited draw distance
+- gritty crew text
 
 ## Later Ideas
 
 Do not build yet:
 
 - exact Western States map
+- real Cal Street GPS
+- full Western States course
 - real GPX import
-- real route elevation data
 - Strava integration
 - online leaderboards
 - multiplayer crews
 - accounts
-- custom character creator
-- big campaign
-- full coaching sim
 - open-world Auburn
-- procedural trail network
-- complex inventory
-- sponsorship systems
-- Topodex live integration
-- mobile app wrapper
+- custom route editor
+- full career mode
+- complex biomechanics
+- huge animation system
+- detailed nutrition inventory
+- sponsor/brand systems
+- mobile port
 
 ## Hard Constraints
 
@@ -437,37 +494,39 @@ Do not build yet:
 - No external APIs.
 - No real map dependency.
 - No real GPX dependency.
+- No full Western States recreation.
 - No huge open world.
 - No giant procedural terrain.
-- No complex crafting.
-- No giant RPG system.
+- No complex RPG systems.
 - No broad refactors without explicit approval.
 - No dependency sprawl.
+- No modern realistic asset chase.
 - No auto-push.
 - No auto-merge.
 - No auto-deploy.
-- No feature that does not improve the core loop.
+- No feature that does not improve the core downhill survival loop.
 
 Every feature must improve one of these:
-- running feel
+- third-person downhill feel
 - heat pressure
-- hydration/cooling strategy
+- hydration pressure
+- quad damage / restraint
 - crew decision-making
-- mission clarity
-- replayability
+- PS1 atmosphere
 - SUC identity
+- replayability
 
 ## Definition of Done
 
 A feature is only done if:
 
 - the game still starts
-- the core loop still works
+- the mission still loads
 - controls are not broken
 - validation/build passes
 - no obvious console errors appear
 - the feature is visible or testable in-game
-- the change stays inside the approved scope
+- the change stays inside approved scope
 - a run report is written in `reports/runs/`
 - known issues are documented honestly
 
@@ -480,7 +539,7 @@ A feature is only done if:
 - Do not consume multiple prompts in one run.
 - Do not add systems that conflict with this bible.
 - Do not refactor broadly without explicit prompt approval.
-- Prefer playable improvements over architecture.
+- Prefer playable downhill feel over architecture.
 - Write a report after every run.
 - Never push automatically.
 - Never merge automatically.
