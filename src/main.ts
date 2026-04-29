@@ -355,6 +355,7 @@ interface SceneObject {
 }
 
 interface GameState {
+  routeIntelActive: boolean;
   crewActive: boolean;
   crewActionsRemaining: number;
   crewChoices: CrewSupportAction[];
@@ -442,6 +443,14 @@ const crewText = requiredElement(
 const statusText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-status]"),
   "Missing status HUD element.",
+);
+const routeIntelOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#route-intel-overlay"),
+  "Missing route intel overlay.",
+);
+const routeIntelContinueButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#route-intel-continue-button"),
+  "Missing route intel continue button.",
 );
 const crewOverlay = requiredElement(
   document.querySelector<HTMLElement>("#crew-overlay"),
@@ -640,6 +649,7 @@ let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
 reportRestartButton.addEventListener("click", restart);
+routeIntelContinueButton.addEventListener("click", continueFromRouteIntel);
 for (const button of crewButtons) {
   button.addEventListener("click", () => {
     const actionId = button.dataset.crewAction;
@@ -714,6 +724,7 @@ gl.enableVertexAttribArray(colorLocation);
 gl.enable(gl.DEPTH_TEST);
 gl.disable(gl.CULL_FACE);
 
+updateRouteIntelUi();
 updateCrewUi();
 updateTouchControlsUi();
 requestAnimationFrame(tick);
@@ -723,7 +734,8 @@ function createInitialState(): GameState {
   const camera = desiredCameraFor(runner, 0);
 
   return {
-    crewActive: true,
+    routeIntelActive: true,
+    crewActive: false,
     crewActionsRemaining: CREW_ACTION_LIMIT,
     crewChoices: [],
     crewTimeSeconds: 0,
@@ -797,6 +809,7 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
 function restart(): void {
   state = createInitialState();
   resetTouchHoldControls();
+  updateRouteIntelUi();
   updateCrewUi();
   updateReportUi();
   updateTouchControlsUi();
@@ -808,6 +821,10 @@ function setPaceMode(nextPace: PaceMode): void {
 }
 
 function setPaceForKey(key: string): boolean {
+  if (!isDescentControlAvailable()) {
+    return false;
+  }
+
   const nextPace = PACE_BY_KEY[key];
 
   if (!nextPace) {
@@ -890,7 +907,7 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
-  if (state.crewActive || isRunTerminal()) {
+  if (state.routeIntelActive || state.crewActive || isRunTerminal()) {
     updateCamera(deltaSeconds);
     return;
   }
@@ -1087,7 +1104,7 @@ function updateTouchControlsUi(): void {
 }
 
 function isDescentControlAvailable(): boolean {
-  return !state.crewActive && !isRunTerminal();
+  return !state.routeIntelActive && !state.crewActive && !isRunTerminal();
 }
 
 function updateCamera(deltaSeconds: number): void {
@@ -1206,6 +1223,7 @@ function updateCooling(deltaSeconds: number): void {
 
 function useCooling(): void {
   if (
+    state.routeIntelActive ||
     state.crewActive ||
     isRunTerminal() ||
     state.coolingCharges <= 0 ||
@@ -1240,6 +1258,10 @@ function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
   const zone = routeZoneAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
+
+  if (state.routeIntelActive) {
+    return "ROUTE INTEL OPEN  READ THE DROP BEFORE CREW";
+  }
 
   if (state.crewActive) {
     return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
@@ -1344,6 +1366,12 @@ function setCoolingText(): void {
 }
 
 function setCrewText(): void {
+  if (state.routeIntelActive) {
+    crewText.textContent = "ROUTE INTEL";
+    crewText.dataset.crewLevel = "open";
+    return;
+  }
+
   if (state.crewActive) {
     crewText.textContent = `CREW ${state.crewActionsRemaining} PICKS`;
     crewText.dataset.crewLevel = "open";
@@ -1361,7 +1389,7 @@ function setCrewText(): void {
 }
 
 function chooseCrewAction(actionId: string): void {
-  if (!state.crewActive) {
+  if (state.routeIntelActive || !state.crewActive) {
     return;
   }
 
@@ -1440,8 +1468,25 @@ function startDescent(message: string, leaveFast: boolean): void {
   updateCrewUi();
 }
 
+function continueFromRouteIntel(): void {
+  if (!state.routeIntelActive) {
+    return;
+  }
+
+  state.routeIntelActive = false;
+  state.crewActive = true;
+  state.crewMessage = "Two quick crew calls. Then the canyon collects.";
+  updateRouteIntelUi();
+  updateCrewUi();
+  updateTouchControlsUi();
+}
+
+function updateRouteIntelUi(): void {
+  routeIntelOverlay.hidden = !state.routeIntelActive;
+}
+
 function updateCrewUi(): void {
-  crewOverlay.hidden = !state.crewActive;
+  crewOverlay.hidden = state.routeIntelActive || !state.crewActive;
   crewMessageText.textContent = state.crewMessage;
   crewCounterText.textContent = `${state.crewActionsRemaining} crew picks available  CREW +${formatClock(
     state.crewTimeSeconds,

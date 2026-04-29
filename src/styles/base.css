@@ -444,6 +444,109 @@ body {
   color: #837868;
 }
 
+#route-intel-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 12px;
+  color: #efe7cf;
+  text-shadow: 2px 2px 0 #080807;
+  background: rgba(8, 8, 7, 0.58);
+}
+
+#route-intel-overlay[hidden] {
+  display: none;
+}
+
+.route-intel-panel {
+  width: min(100%, 390px);
+  max-height: calc(100% - 10px);
+  overflow-y: auto;
+  border: 2px solid #efe7cf;
+  background: rgba(10, 9, 7, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(156, 255, 58, 0.22);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.route-intel-panel > span,
+.route-intel-panel > strong,
+.route-intel-panel > p {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.route-intel-panel > span {
+  width: max-content;
+  padding: 3px 6px;
+  background: #1d2410;
+  color: #9cff3a;
+  font-size: 0.64rem;
+}
+
+.route-intel-panel > strong {
+  color: #efe7cf;
+  font-size: 0.94rem;
+}
+
+.route-intel-panel > p {
+  color: #ffd15c;
+  font-size: 0.7rem;
+}
+
+.route-intel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid #5d513f;
+  border-left: 1px solid #5d513f;
+}
+
+.route-intel-grid div {
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid #5d513f;
+  border-bottom: 1px solid #5d513f;
+  background: rgba(21, 17, 12, 0.9);
+}
+
+.route-intel-grid strong,
+.route-intel-grid span {
+  display: block;
+  overflow-wrap: anywhere;
+  line-height: 1.12;
+}
+
+.route-intel-grid strong {
+  color: #9cff3a;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.route-intel-grid span {
+  margin-top: 4px;
+  color: #efe7cf;
+  font-size: 0.62rem;
+}
+
+.route-intel-panel button {
+  min-height: 48px;
+  border: 2px solid #9cff3a;
+  color: #080807;
+  background: #9cff3a;
+  font: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.route-intel-panel button:focus-visible {
+  outline: 2px solid #efe7cf;
+  outline-offset: 2px;
+}
+
 #crew-overlay {
   position: absolute;
   left: 10px;
@@ -672,6 +775,23 @@ body {
   .touch-controls__steer button,
   .touch-controls__actions button {
     min-height: 46px;
+  }
+
+  .route-intel-panel {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .route-intel-panel > strong {
+    font-size: 0.84rem;
+  }
+
+  .route-intel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .route-intel-grid div {
+    padding: 7px;
   }
 
   .crew-actions {
