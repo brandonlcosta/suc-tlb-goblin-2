@@ -112,6 +112,22 @@ body {
   color: #ff4f4f;
 }
 
+#hud [data-pace-mode="control"] {
+  color: #8fd2ff;
+}
+
+#hud [data-pace-mode="steady"] {
+  color: #9cff3a;
+}
+
+#hud [data-pace-mode="push"] {
+  color: #ffd15c;
+}
+
+#hud [data-pace-mode="send"] {
+  color: #ff4f4f;
+}
+
 #game-shell[data-alert="danger"] {
   border-color: #5e2a12;
 }

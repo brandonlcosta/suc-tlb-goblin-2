@@ -2,8 +2,9 @@ import "./styles/base.css";
 
 const TRAIL_LENGTH = 156;
 const BASE_RUN_SPEED = 6.4;
+const STEADY_MAX_RUN_SPEED = 13.2;
 const MIN_RUN_SPEED = 3.4;
-const MAX_RUN_SPEED = 13.2;
+const MAX_RUN_SPEED = 16;
 const BRAKE_TARGET_SPEED = 4.8;
 const MOMENTUM_ACCELERATION = 5.4;
 const BRAKE_DECELERATION = 9.6;
@@ -27,6 +28,58 @@ const HYDRATION_HEAT_DRAIN = 1.35;
 const QUAD_AGGRESSION_GAIN = 4.8;
 const QUAD_BRAKE_RELIEF = 0.38;
 
+const PACE_SETTINGS = {
+  control: {
+    label: "CONTROL",
+    key: "1",
+    speedMultiplier: 0.72,
+    downhillMultiplier: 0.58,
+    heatMultiplier: 0.72,
+    hydrationMultiplier: 0.78,
+    quadMultiplier: 0.58,
+    maxSpeed: 9.2,
+  },
+  steady: {
+    label: "STEADY",
+    key: "2",
+    speedMultiplier: 1,
+    downhillMultiplier: 1,
+    heatMultiplier: 1,
+    hydrationMultiplier: 1,
+    quadMultiplier: 1,
+    maxSpeed: STEADY_MAX_RUN_SPEED,
+  },
+  push: {
+    label: "PUSH",
+    key: "3",
+    speedMultiplier: 1.08,
+    downhillMultiplier: 1.1,
+    heatMultiplier: 1.28,
+    hydrationMultiplier: 1.2,
+    quadMultiplier: 1.42,
+    maxSpeed: 14.4,
+  },
+  send: {
+    label: "SEND",
+    key: "4",
+    speedMultiplier: 1.18,
+    downhillMultiplier: 1.22,
+    heatMultiplier: 1.78,
+    hydrationMultiplier: 1.48,
+    quadMultiplier: 2.08,
+    maxSpeed: MAX_RUN_SPEED,
+  },
+} as const;
+
+type PaceMode = keyof typeof PACE_SETTINGS;
+
+const PACE_BY_KEY: Record<string, PaceMode> = {
+  "1": "control",
+  "2": "steady",
+  "3": "push",
+  "4": "send",
+};
+
 type Vec3 = [number, number, number];
 
 interface Mesh {
@@ -47,6 +100,7 @@ interface GameState {
   lateral: number;
   lateralVelocity: number;
   speed: number;
+  paceMode: PaceMode;
   heat: number;
   hydration: number;
   quadDamage: number;
@@ -74,6 +128,10 @@ const restartButton = document.querySelector<HTMLButtonElement>("#restart-button
 const progressText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-progress]"),
   "Missing progress HUD element.",
+);
+const paceText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-pace]"),
+  "Missing pace HUD element.",
 );
 const heatText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-heat]"),
@@ -158,6 +216,8 @@ window.addEventListener("keydown", (event) => {
   } else if (key === "s" || key === "arrowdown" || key === "shift") {
     input.brake = true;
     event.preventDefault();
+  } else if (setPaceForKey(key)) {
+    event.preventDefault();
   } else if (key === "r") {
     restart();
     event.preventDefault();
@@ -195,6 +255,7 @@ function createInitialState(): GameState {
     lateral: 0,
     lateralVelocity: 0,
     speed: BASE_RUN_SPEED,
+    paceMode: "steady",
     heat: STARTING_HEAT,
     hydration: STARTING_HYDRATION,
     quadDamage: STARTING_QUAD_DAMAGE,
@@ -230,6 +291,17 @@ function restart(): void {
   state = createInitialState();
 }
 
+function setPaceForKey(key: string): boolean {
+  const nextPace = PACE_BY_KEY[key];
+
+  if (!nextPace) {
+    return false;
+  }
+
+  state.paceMode = nextPace;
+  return true;
+}
+
 function tick(timestamp: number): void {
   const deltaSeconds = Math.min((timestamp - state.lastTimestamp) / 1000, 0.08);
   state.lastTimestamp = timestamp;
@@ -252,7 +324,11 @@ function update(deltaSeconds: number): void {
   const targetVelocity = steerDirection * STEER_SPEED;
   const steeringResponse = Math.min(1, deltaSeconds * (input.brake ? 12 : 9));
   const downhillBoost = downhillMomentumAt(runnerZ);
-  const unbrakedTargetSpeed = BASE_RUN_SPEED + downhillBoost;
+  const pace = PACE_SETTINGS[state.paceMode];
+  const unbrakedTargetSpeed = Math.min(
+    pace.maxSpeed,
+    BASE_RUN_SPEED * pace.speedMultiplier + downhillBoost * pace.downhillMultiplier,
+  );
   const targetSpeed = input.brake
     ? Math.min(BRAKE_TARGET_SPEED, state.speed)
     : unbrakedTargetSpeed;
@@ -327,8 +403,11 @@ function drawRunner(x: number, groundY: number, z: number): void {
 function updateHud(): void {
   const progress = Math.floor(state.progress * 100).toString().padStart(3, "0");
   const speed = state.speed.toFixed(1).padStart(4, "0");
+  const pace = PACE_SETTINGS[state.paceMode];
 
   progressText.textContent = `PROGRESS ${progress}%`;
+  paceText.textContent = `PACE ${pace.key} ${pace.label}`;
+  paceText.dataset.paceMode = state.paceMode;
   setResourceText(heatText, "HEAT", state.heat, heatLevel(state.heat));
   setResourceText(
     hydrationText,
@@ -351,9 +430,14 @@ function updateCamera(deltaSeconds: number): void {
 }
 
 function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: number): void {
+  const pace = PACE_SETTINGS[state.paceMode];
   const exposure = exposureAt(state.progress);
   const speedPressure = speedPressureFor(state.speed);
-  const downhillPressure = clamp(downhillBoost / (MAX_RUN_SPEED - BASE_RUN_SPEED), 0, 1);
+  const downhillPressure = clamp(
+    downhillBoost / (STEADY_MAX_RUN_SPEED - BASE_RUN_SPEED),
+    0,
+    1,
+  );
   const heatPressure = state.heat / RESOURCE_MAX;
   const lowHydrationPressure = clamp((45 - state.hydration) / 45, 0, 1);
   const brakeRelief = input.brake ? 0.72 : 1;
@@ -363,18 +447,21 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
       speedPressure * HEAT_SPEED_GAIN +
       downhillPressure * HEAT_DOWNHILL_GAIN +
       lowHydrationPressure * HEAT_LOW_HYDRATION_GAIN) *
+    pace.heatMultiplier *
     brakeRelief;
   const hydrationDrain =
-    HYDRATION_PASSIVE_DRAIN +
-    exposure * HYDRATION_EXPOSURE_DRAIN +
-    speedPressure * HYDRATION_SPEED_DRAIN +
-    heatPressure * HYDRATION_HEAT_DRAIN;
+    (HYDRATION_PASSIVE_DRAIN +
+      exposure * HYDRATION_EXPOSURE_DRAIN +
+      speedPressure * HYDRATION_SPEED_DRAIN +
+      heatPressure * HYDRATION_HEAT_DRAIN) *
+    pace.hydrationMultiplier;
   const technicalPressure = technicalPressureAt(runnerZ);
   const quadMultiplier = input.brake ? QUAD_BRAKE_RELIEF : 1;
   const quadGain =
     speedPressure *
     (0.5 + downhillPressure * 0.7 + technicalPressure * 0.45) *
     QUAD_AGGRESSION_GAIN *
+    pace.quadMultiplier *
     quadMultiplier;
 
   state.heat = clamp(state.heat + heatGain * deltaSeconds, 0, RESOURCE_MAX);
@@ -397,6 +484,8 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
 }
 
 function statusLine(speed: string): string {
+  const pace = PACE_SETTINGS[state.paceMode];
+
   if (state.failureReason) {
     return `${state.failureReason} - PRESS R`;
   }
@@ -406,18 +495,18 @@ function statusLine(speed: string): string {
   }
 
   if (state.heat >= 90) {
-    return `HEAT CRITICAL ${speed}  S/SHIFT CONTROL`;
+    return `HEAT CRITICAL ${pace.label} ${speed}  S/SHIFT CONTROL`;
   }
 
   if (state.hydration <= 20) {
-    return `BOTTLES LOW ${speed}  S/SHIFT CONTROL`;
+    return `BOTTLES LOW ${pace.label} ${speed}  S/SHIFT CONTROL`;
   }
 
   if (state.quadDamage >= 70) {
-    return `QUADS COOKED ${speed}  S/SHIFT CONTROL`;
+    return `QUADS COOKED ${pace.label} ${speed}  S/SHIFT CONTROL`;
   }
 
-  return `${input.brake ? "CONTROL" : "DESCEND"} ${speed}  A/D STEER  S/SHIFT BRAKE`;
+  return `${input.brake ? "BRAKING" : pace.label} ${speed}  1-4 PACE  S/SHIFT BRAKE`;
 }
 
 function setResourceText(
@@ -508,9 +597,9 @@ function exposureAt(progress: number): number {
 
 function speedPressureFor(speed: number): number {
   return clamp(
-    (speed - BRAKE_TARGET_SPEED) / (MAX_RUN_SPEED - BRAKE_TARGET_SPEED),
+    (speed - BRAKE_TARGET_SPEED) / (STEADY_MAX_RUN_SPEED - BRAKE_TARGET_SPEED),
     0,
-    1,
+    1.25,
   );
 }
 
@@ -913,7 +1002,7 @@ function downhillMomentumAt(z: number): number {
   const aheadHeight = trailHeightAt(z - 10);
   const drop = Math.max(0, currentHeight - aheadHeight);
 
-  return clamp(drop * 4.2, 0.8, MAX_RUN_SPEED - BASE_RUN_SPEED);
+  return clamp(drop * 4.2, 0.8, STEADY_MAX_RUN_SPEED - BASE_RUN_SPEED);
 }
 
 function identityMat4(): Float32Array {
