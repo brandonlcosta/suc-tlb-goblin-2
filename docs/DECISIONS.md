@@ -1,6 +1,6 @@
 # Decisions Log
 
-## 001 — PS1-Style 3D
+## 001 - PS1-Style 3D
 
 Decision:
 `SUC: The Long Burn` is now a PS1-style low-poly 3D game.
@@ -11,7 +11,7 @@ The third-person downhill fantasy is stronger than the earlier pixel-loop arcade
 Implication:
 Use low-poly, fog, simple terrain, and retro HUD. Do not chase modern realism.
 
-## 002 — Cal Street Heat Drop Is the First Mission
+## 002 - Cal Street Heat Drop Is the First Mission
 
 Decision:
 The first mission is `Cal Street Heat Drop`, inspired by the Cal Street / Foresthill energy of Western States.
@@ -22,7 +22,7 @@ It captures the strongest player fantasy: leaving crew, descending hard, managin
 Implication:
 All early systems should serve this mission.
 
-## 003 — Mission-Based, Not Open World
+## 003 - Mission-Based, Not Open World
 
 Decision:
 The game is mission-based.
@@ -33,7 +33,7 @@ Open world would explode scope and break the autonomous build loop.
 Implication:
 Build one corridor at a time.
 
-## 004 — Downhill Momentum Is Core
+## 004 - Downhill Momentum Is Core
 
 Decision:
 Downhill speed and restraint are central mechanics.
@@ -44,7 +44,7 @@ A serious downhill section needs a tactical cost to speed.
 Implication:
 Add pace, braking, quad damage, line choice, and heat pressure.
 
-## 005 — Quad Damage Added
+## 005 - Quad Damage Added
 
 Decision:
 Quad damage is now a core resource.
@@ -55,7 +55,7 @@ It makes the downhill specific and serious.
 Implication:
 Players can go fast early, but bad descending damages the late mission.
 
-## 006 — Crew Starts the Mission
+## 006 - Crew Starts the Mission
 
 Decision:
 The first mission starts at a Foresthill-style crew zone.
@@ -66,7 +66,7 @@ Crew execution is part of the ultra fantasy and sets up the descent.
 Implication:
 Crew choices affect the whole run but remain quick and contained.
 
-## 007 — No Exact Course Recreation
+## 007 - No Exact Course Recreation
 
 Decision:
 The game is inspired by Cal Street / Foresthill, not an exact map.
@@ -87,3 +87,58 @@ The downhill survival loop should be immediately playable in the most natural ph
 
 Implication:
 All core screens and mechanics must work in portrait orientation with touch controls. Keyboard, mouse, controller, landscape, and desktop layouts are fallback or later adaptation paths, not primary design drivers.
+
+## 009 - River / Log Crossings Are Mission Identity
+
+Decision:
+River crossings and log crossings are part of the first mission identity.
+
+Reason:
+They make the Cal Street-inspired canyon section feel specific and create a strong safe/slow versus fast/risky line-choice moment.
+
+Implication:
+Water slows the runner and may cool slightly. Logs are faster but require better control. Crossings should feel like canyon terrain, not arcade obstacles or platformer spam.
+
+## 010 - Second Aid Station Added
+
+Decision:
+The first mission includes a second aid station / support point before the final survival push.
+
+Reason:
+It creates a tactical reset and lets earlier heat, hydration, crossing, and pacing decisions echo into the final third.
+
+Implication:
+Second aid choices should be quick and affect hydration, cooling, fuel/support, time, and final survival. It must not become a full management sim.
+
+## 011 - Trail Geometry Includes Curves and Switchbacks
+
+Decision:
+The trail should curve naturally and include switchbacks where useful.
+
+Reason:
+A straight corridor does not sell a serious downhill canyon section. Curves and switchbacks reward braking, line choice, and forward reading.
+
+Implication:
+Turns must be readable and fair in portrait. Switchbacks should increase control pressure without becoming a maze.
+
+## 012 - Terrain Variation Includes Steeper Downhill and One Short Uphill
+
+Decision:
+The mission includes steeper downhill sections and one short uphill interruption.
+
+Reason:
+Steeper downhill increases speed temptation and quad damage risk. The short uphill disrupts rhythm and makes heat/hydration management matter.
+
+Implication:
+Steep sections must be readable before entry. The uphill must stay short and purposeful; this is still a downhill mission.
+
+## 013 - Cleaner Runner Model and Animation Stay PS1
+
+Decision:
+The runner should become cleaner and more readable, with simple better animation, while PS1 style remains the visual target.
+
+Reason:
+Portrait mobile readability needs a stronger silhouette and more obvious movement states, but the game should not drift into modern realism.
+
+Implication:
+Add a cleaner low-poly runner, basic run cycle, downhill lean, braking posture, and optional wobble/stumble later. Do not add high-poly asset requirements or animation-system bloat.

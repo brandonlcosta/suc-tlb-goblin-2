@@ -23,6 +23,15 @@ BC-OS can:
 - detect scope creep
 - keep the game aligned with `GAME.md`
 
+Current canon direction to protect:
+- one Cal Street / Foresthill-inspired mission
+- portrait mobile touch-first play
+- PS1-style low-poly 3D
+- downhill survival with heat, hydration, quad damage, ice, crew, and aid choices
+- terrain variation with curves, switchbacks, steeper downhill, and one short uphill
+- river/log crossing decisions as canyon terrain
+- cleaner readable runner model/animation inside PS1 style
+
 ## BC-OS Should Not Do
 
 BC-OS should not:
@@ -33,20 +42,10 @@ BC-OS should not:
 - let Codex run multiple prompts at once
 - allow the game to become a giant course simulator
 - directly rewrite the game without a prompt
+- turn river/log crossings into platformer spam
+- turn aid stations into a full management sim
 
 ## Game Repo Boundary
-
-Recommended game repo:
-
-```txt
-C:\dev\suc-the-long-burn
-```
-
-or
-
-```txt
-C:\dev\game-lab
-```
 
 The game repo must stay separate from BC-OS.
 
@@ -82,6 +81,30 @@ Known issues:
 Recommended decision:
 Next prompt:
 ```
+
+## Prompt Quality Checklist
+
+Each prompt should include:
+- title
+- goal
+- files/directories to inspect
+- implementation scope
+- out of scope
+- acceptance criteria
+- validation command
+- playtest note
+
+Each prompt should enforce:
+- one feature per run
+- no open world
+- no exact Western States recreation
+- no real maps
+- no external APIs
+- no multiplayer
+- no accounts
+- no auto-push
+- no auto-merge
+- no auto-deploy
 
 ## Final Rule
 

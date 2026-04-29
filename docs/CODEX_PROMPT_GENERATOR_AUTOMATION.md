@@ -19,7 +19,7 @@ Hard rules:
 - Do not run an interactive browser session.
 - Do not edit BC-OS or any external repo.
 
-Use Game Studio guidance if available for a lightweight direction review. Keep the prompt focused on one small improvement for the next playtest: moment-to-moment downhill feel, trail readability, player/camera readability, PS1 atmosphere, HUD clarity, heat/hydration/quad decision-making, braking/pacing tension, ice/crew-zone survival loop, feedback/juice/responsiveness, or finish/report clarity.
+Use Game Studio guidance if available for a lightweight direction review. Keep the prompt focused on one small improvement for the next playtest: moment-to-moment downhill feel, terrain readability, curves/switchbacks/steeps/uphill, river/log crossing readability, water slowdown/cooling, player/camera readability, cleaner PS1 runner animation, PS1 atmosphere, HUD clarity, heat/hydration/quad decision-making, braking/pacing tension, ice/crew/second-aid survival loop, feedback/juice/responsiveness, or finish/report clarity.
 
 Steps:
 1. Change to C:\dev\suc-tlb-goblin-2.
@@ -46,6 +46,8 @@ The generator must analyze:
 - screenshots in reports/playtests/screenshots/, reports/screenshots/, and .goblin/screenshots/ if present
 - current source files in src/
 - current prompt ledger state
+
+Do not generate prompts for open world, exact Western States recreation, real maps/GPX, external APIs, multiplayer, accounts, many aid stations, complex water physics, advanced log balance physics, high-poly assets, or complex animation rigs.
 
 The new prompt must use the exact structure documented in docs/PROMPT_GENERATION.md and must validate with:
 

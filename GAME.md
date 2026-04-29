@@ -2,7 +2,7 @@
 
 ## One-line Pitch
 
-A portrait-mode mobile, touchscreen-first PS1-style 3D ultra-running survival game where you descend a brutal Cal Street / Foresthill-inspired trail section while managing heat, hydration, ice, quad damage, pace, and crew execution.
+A portrait-mode mobile, touchscreen-first PS1-style low-poly 3D ultra-running survival game where you descend a brutal Cal Street / Foresthill-inspired canyon section while managing heat, hydration, ice, quad damage, pace, braking, crew support, river/log crossing choices, and survival momentum.
 
 ## Core Fantasy
 
@@ -13,15 +13,19 @@ This is not a standard running game about being fast.
 This is about:
 - controlling downhill speed
 - not trashing your quads
+- reading curves and switchbacks before they bite
+- choosing safe or fast lines through canyon terrain
+- crossing water without losing the race rhythm
+- deciding whether a log crossing is worth the risk
 - managing heat before it spikes
 - staying hydrated
-- using ice at the right time
-- trusting crew decisions
+- using ice and water at the right time
+- making quick aid-station decisions
 - getting through the section without detonating
 
 The fantasy is:
 
-> You are moving fast downhill, the canyon is hot, your crew did what they could, and now you have to execute.
+> You are moving fast downhill, the canyon is hot, the trail is bending away under your feet, water is coming up, your crew did what they could, and now you have to execute.
 
 ## Player Role
 
@@ -29,7 +33,7 @@ The player is a SUC runner in a fictional ultra.
 
 They are not a superhero.
 
-They are an endurance athlete trying to survive a legendary downhill section with tactics, discipline, cooling, and stubbornness.
+They are an endurance athlete trying to survive a legendary downhill section with tactics, discipline, cooling, line choice, crew support, and stubbornness.
 
 The player must balance:
 - speed
@@ -38,6 +42,7 @@ The player must balance:
 - heat
 - hydration
 - quad damage
+- water crossing choices
 - crew support
 - finishing condition
 
@@ -56,12 +61,18 @@ It is not a GPS-accurate recreation.
 It should feel like:
 - leaving a Foresthill-style crew zone
 - dropping into canyon heat
-- dusty trail
-- old roads
+- dusty trail and old roads
 - exposed turns
+- curved downhill geometry
+- switchbacks
+- one short uphill interruption
+- steeper downhill pitches
+- river crossings
+- one memorable log crossing option
+- water slowing the runner while possibly cooling them slightly
+- a second aid station / support point before the final push
 - oak shade pockets
 - harsh downhill rhythm
-- aid station energy
 - late-day ultra pressure
 
 The world should be stylized and low-poly, like a lost PS1 endurance game.
@@ -76,8 +87,10 @@ Each mission is a contained trail corridor with:
 - route intel
 - start/crew zone
 - serious downhill section
+- terrain variation
 - heat and hydration pressure
 - technical line choices
+- aid/support points
 - finish point
 - run report
 
@@ -85,14 +98,16 @@ Each mission is a contained trail corridor with:
 
 1. Read route intel.
 2. Start at a Foresthill-style crew/aid zone.
-3. Choose initial support: hydration, ice, fuel, calm-down, or fast exit.
+3. Choose initial support: hydration, ice, fuel, calm-down, water dump, or fast exit.
 4. Descend the trail in third-person view.
 5. Manage pace, braking, line choice, heat, hydration, and quad damage.
-6. Use cooling before heat debt gets out of control.
-7. Survive exposed sections and technical turns.
-8. Reach the finish or collapse.
-9. Read the run report.
-10. Replay to improve execution.
+6. Read curves, switchbacks, steep drops, and the short uphill before committing.
+7. Choose crossing lines through river terrain: slower safer water or faster riskier log.
+8. Use cooling before heat debt gets out of control.
+9. Make a quick second aid-station decision before the final push.
+10. Reach the finish or collapse.
+11. Read the run report.
+12. Replay to improve execution.
 
 ## Main Mechanics
 
@@ -106,13 +121,14 @@ The game should feel third-person:
 - trail moving downhill ahead
 - terrain slopes and turns
 - simple low-poly environment
+- curved trail sections readable in portrait
 
 The player controls:
 - left/right line choice
 - pace mode
 - braking or restraint
 - cooling use
-- crew stop decisions
+- crew and aid-station decisions
 
 The runner can auto-forward, but the player must manage speed and control.
 
@@ -128,9 +144,25 @@ If the player descends too aggressively:
 - hydration drains faster
 - quad damage rises
 - corner control becomes harder
+- steep sections become costly
 - late-section fatigue gets worse
 
 The downhill should feel like a tactical trap.
+
+### Terrain Variation
+
+The first mission should include more than a straight corridor.
+
+Terrain variation includes:
+- fast downhill rollout
+- steeper Cal Street-style drops
+- curves
+- switchbacks
+- one short uphill heat check
+- river crossing terrain
+- final downhill survival push
+
+Terrain should stay readable and fair. It should increase control pressure without becoming a maze, platformer, or open-world route.
 
 ### Pace / Effort
 
@@ -156,7 +188,7 @@ Braking:
 - lowers speed
 - lowers quad damage risk
 - may cost time
-- may help technical turns
+- may help technical turns, switchbacks, and logs
 - may reduce heat slightly if effort drops
 
 The game should reward restraint.
@@ -170,6 +202,7 @@ Heat rises from:
 - high pace
 - low hydration
 - technical stress
+- uphill effort
 - prolonged downhill sending
 
 Heat drops from:
@@ -178,6 +211,7 @@ Heat drops from:
 - shade
 - slowing down
 - good crew execution
+- possible small cooling benefit from water crossings
 
 At high heat:
 - HUD flashes
@@ -194,6 +228,7 @@ Low hydration:
 - makes heat rise faster
 - makes recovery weaker
 - increases fatigue
+- makes uphill interruptions harsher
 - makes late-section control worse
 
 ### Quad Damage
@@ -203,9 +238,11 @@ Quad damage is the downhill-specific mechanic.
 It rises from:
 - aggressive downhill speed
 - high pace on descents
+- steep downhill sections
 - hard braking too late
 - technical impacts
 - bad line choice
+- missing/falling off a log crossing
 
 High quad damage:
 - lowers top speed
@@ -214,6 +251,34 @@ High quad damage:
 - worsens run report grade
 
 This mechanic makes the downhill serious.
+
+### Water / River Crossings
+
+River crossings are part of the first mission identity, not random obstacle-course clutter.
+
+Water rules:
+- entering water slows the runner
+- deeper water slows more
+- water may reduce heat slightly
+- water can interrupt pace rhythm
+- splashing through water is slower but safer
+- crossings should feel like canyon terrain
+
+The crossing choice should matter: safe/slow water versus fast/risky log.
+
+### Log Crossings
+
+Logs across water are a terrain and line-choice mechanic.
+
+Design rules:
+- logs provide a faster crossing route
+- logs require better steering and control
+- falling or missing the log slows the player
+- a bad log attempt may add fatigue or quad damage
+- logs must be readable and fair
+- one memorable log crossing is better than many cheap ones
+
+Logs are not platformer spam.
 
 ### Ice / Cooling
 
@@ -225,6 +290,9 @@ Cooling effects:
 - slows heat gain
 - may drop heat
 - buys time through exposed sections
+- can pair with aid-station decisions
+
+Water crossings may provide a smaller, terrain-driven cooling effect, but they should not replace ice or crew support.
 
 Later cooling types:
 - ice bandana
@@ -233,15 +301,13 @@ Later cooling types:
 - hat ice
 - creek dunk
 
-### Crew
+### Crew and Aid Stations
 
 Crew is a short tactical moment.
 
-The first mission starts with a crew/aid zone.
+The first mission starts with a crew/aid zone and later includes a second aid station / support point before the final survival push.
 
-The player can choose a limited number of support actions before leaving.
-
-Example:
+Example start choices:
 - refill bottles
 - ice bandana
 - water dump
@@ -249,9 +315,16 @@ Example:
 - calm down
 - leave fast
 
-Crew choices affect the entire descent.
+Example second aid station choices:
+- top off hydration
+- quick ice/cooling reset
+- water dump
+- grab fuel
+- skip to save time
 
-Crew is not a separate management sim.
+Aid-station choices affect hydration, cooling, fuel, time, and final survival.
+
+Crew and aid are not a separate management sim. They are quick choices under pressure.
 
 ### Trail Line Choice
 
@@ -264,14 +337,41 @@ Possible line types:
 - exposed line
 - fast outside turn
 - safer inside line
+- safe water route
+- faster log route
 
 Line choice can affect:
 - speed
 - heat
+- hydration
 - quad damage
 - collision risk
+- control pressure
 
 Keep this simple early.
+
+### Runner Model and Animation
+
+The runner should become cleaner and more readable inside the PS1 style.
+
+Target:
+- cleaner low-poly runner model
+- better silhouette
+- readable posture
+- obvious running direction
+- basic but cleaner run animation
+- downhill lean
+- braking / controlled descent posture
+- optional stumble or wobble under high quad damage
+- optional water-splash step animation later
+
+This is better readability and movement feel inside the PS1 style, not a move away from PS1 style.
+
+Do not chase modern realism.
+
+Do not add high-poly asset requirements.
+
+Do not create animation-system bloat.
 
 ## Progression
 
@@ -279,11 +379,14 @@ Progression starts inside one mission.
 
 As the player descends:
 - terrain gets faster
+- grades become steeper
+- curves and switchbacks demand braking
+- river/log choices interrupt rhythm
 - heat pressure increases
 - shade becomes less reliable
-- turns become more punishing
 - hydration becomes more important
 - quad damage starts to matter
+- the second aid station creates a tactical reset
 - the finish becomes a survival test
 
 Later progression can include:
@@ -306,7 +409,8 @@ A strong finish means:
 - controlled heat
 - hydration not destroyed
 - quads not blown up
-- crew choices made sense
+- crew and second-aid choices made sense
+- river/log decisions were disciplined
 - final condition still runnable
 
 ### Failure
@@ -316,17 +420,19 @@ The player can fail by:
 - dehydration collapse
 - quad damage/fatigue collapse
 - leaving crew underprepared and detonating later
+- sending steep downhill too hard
+- mismanaging water/log crossing risk
 
 Failure should produce a serious but SUC-flavored run report.
 
 Example verdicts:
-- “Finished cooked.”
-- “You survived, but the descent took payment.”
-- “You bombed Cal Street like a rookie.”
-- “Crew saved your race.”
-- “Fast early. Expensive late.”
-- “Canyon tax collected.”
-- “Good data. Bad execution.”
+- "Finished cooked."
+- "You survived, but the descent took payment."
+- "You bombed Cal Street like a rookie."
+- "Crew saved your race."
+- "Fast early. Expensive late."
+- "Canyon tax collected."
+- "Good data. Bad execution."
 
 ## Tone
 
@@ -344,7 +450,9 @@ The vibe:
 - black kit
 - sharp HUD
 - crew yelling from a folding table
-- “this section can ruin your race”
+- water cutting the rhythm
+- a log that looks faster than it feels safe
+- "this section can ruin your race"
 
 Avoid:
 - polished corporate fitness tone
@@ -361,7 +469,8 @@ The game should look like a lost PlayStation-era trail ultra game.
 Visual traits:
 - low-poly terrain
 - low-res textures
-- chunky runner model
+- cleaner low-poly runner silhouette
+- simple readable animation
 - affine/warped texture feel if possible
 - visible fog
 - limited draw distance
@@ -369,11 +478,12 @@ Visual traits:
 - dithered shadows or simple fake shadows
 - angular rocks and trees
 - simple canyon geometry
+- readable river water and logs
 - retro HUD overlays
 
 Do not chase modern realism.
 
-The roughness is part of the identity.
+The roughness is part of the identity. Cleaner readability is the goal, not higher fidelity.
 
 ## Audio Style
 
@@ -384,7 +494,9 @@ Future audio:
 - breathing pressure
 - heat warning tone
 - ice/water sound
-- crew shout blips
+- river splash
+- log footstep creak
+- crew/aid shout blips
 - wind and canyon ambience
 - low drone during critical heat
 
@@ -414,7 +526,7 @@ Recommended portrait touch layout:
 - lower-right control button: hold to brake/control descent
 - pace selector: thumbable Control / Steady / Push / Send control
 - cooling button: tap to use ice/cooling when available
-- crew actions: tap large crew choice buttons at the start zone
+- crew and aid actions: tap large quick-choice buttons
 - pause/restart: small top-corner controls with restart confirmation
 
 Controls should be playable with one or two thumbs while keeping the trail readable.
@@ -429,7 +541,7 @@ Keyboard fallback for desktop/debug:
 - `3`: Push pace
 - `4`: Send pace
 - `Space`: use cooling
-- `E`: interact with crew
+- `E`: interact with crew or aid
 - `P`: pause
 - `R`: restart
 
@@ -456,6 +568,8 @@ The smallest playable version must include:
 - run report exists
 - restart works
 
+The first playable may use placeholders for river/log, second aid, cleaner animation, and expanded terrain if those are staged into later prompts.
+
 ## V1 Feature List
 
 ### Screens
@@ -472,7 +586,12 @@ All V1 screens should be designed for portrait mobile first.
 - one mission: Cal Street Heat Drop
 - Foresthill-style start / crew zone
 - downhill trail corridor
+- curved/switchback trail sections
+- steeper downhill sections
+- one short uphill heat check
+- river crossing with safe water and faster/riskier log choice
 - exposed heat section
+- second aid station / support point
 - final survival push
 - finish line
 
@@ -485,13 +604,18 @@ All V1 screens should be designed for portrait mobile first.
 - heat
 - hydration
 - quad damage
+- water slowdown with possible small cooling effect
+- log crossing risk/reward
 - ice/cooling
 - crew support
+- second aid support
 - simple run report
 
 ### Style
 
 - PS1 low-poly 3D
+- cleaner readable low-poly runner
+- simple readable run/brake/downhill animations
 - SUC tactical HUD
 - serious route intel
 - heat warning effects
@@ -514,7 +638,11 @@ Do not build yet:
 - custom route editor
 - full career mode
 - complex biomechanics
-- huge animation system
+- advanced balance physics on logs
+- full swimming
+- complex water physics
+- many aid stations
+- huge animation system or complex animation trees
 - detailed nutrition inventory
 - sponsor/brand systems
 - landscape/desktop-focused mode
@@ -535,6 +663,9 @@ Do not build yet:
 - No broad refactors without explicit approval.
 - No dependency sprawl.
 - No modern realistic asset chase.
+- No high-poly character requirement.
+- No animation-system bloat.
+- No platformer-spam log crossings.
 - No desktop-only controls.
 - No keyboard-required core actions.
 - No landscape-only screens.
@@ -548,7 +679,9 @@ Every feature must improve one of these:
 - heat pressure
 - hydration pressure
 - quad damage / restraint
-- crew decision-making
+- line choice
+- river/log crossing decisions
+- crew and aid decision-making
 - PS1 atmosphere
 - SUC identity
 - replayability
@@ -565,6 +698,8 @@ A feature is only done if:
 - no obvious console errors appear
 - the feature is visible or testable in-game
 - the change stays inside approved scope
+- river/log/aid/terrain additions remain readable and fair if touched
+- PS1 style remains the visual target if art/animation is touched
 - a run report is written in `reports/runs/`
 - known issues are documented honestly
 

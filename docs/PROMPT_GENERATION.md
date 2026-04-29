@@ -112,7 +112,7 @@ reports/screenshots/
 .goblin/screenshots/
 ```
 
-Use playtest screenshots to steer small prompts toward visible problems: trail readability, HUD clarity, camera framing, PS1 atmosphere, warning feedback, and finish/report clarity.
+Use playtest screenshots to steer small prompts toward visible problems: trail readability, HUD clarity, camera framing, PS1 atmosphere, warning feedback, river/log readability, aid-station clarity, runner readability, and finish/report clarity.
 
 ## Numbering
 
@@ -133,12 +133,15 @@ Use the Game Studio guidance as a lightweight direction check, not as an impleme
 
 - third-person downhill feel
 - trail and camera readability
+- curves, switchbacks, steeper downhill, and one short uphill
+- river/log crossing decisions as canyon terrain
 - PS1 atmosphere
 - HUD clarity
-- heat, hydration, quad, cooling, and crew decisions
+- heat, hydration, quad, cooling, crew, and second-aid decisions
+- cleaner low-poly runner readability and simple animation
 - finish/report clarity
 
-Do not use prompt generation to start broad redesigns, add services, add accounts, add multiplayer, add real maps, add GPX/Strava, or grow the game outside Cal Street Heat Drop.
+Do not use prompt generation to start broad redesigns, add services, add accounts, add multiplayer, add real maps, add GPX/Strava, create many aid stations, add complex water physics, add advanced log balance physics, add a complex animation rig, or grow the game outside Cal Street Heat Drop.
 
 ## Reviewing A Generated Prompt
 
@@ -149,6 +152,7 @@ Before allowing automation to consume a generated prompt, check that:
 - it improves the next playtest
 - it does not duplicate an existing pending prompt
 - it does not ask for source, infrastructure, or external service changes outside the goal
+- it keeps the game one corridor, not an open world
 - `npm run agent:check` passes
 
 If the prompt is not useful, edit or remove it manually before running implementation automation.

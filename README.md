@@ -1,31 +1,36 @@
-# SUC: The Long Burn — PS1 Cal Street Roadmap Package
+# SUC: The Long Burn - Canonical Planning Package
 
-This is the revised planning package for **SUC: The Long Burn**.
+This repo is the planning and implementation queue for **SUC: The Long Burn**.
 
 The game direction is now:
 
-> A portrait-mode mobile, touchscreen-first PS1-style low-poly 3D ultra-running survival game centered on a serious downhill trail section inspired by the Cal Street / Foresthill energy of Western States.
+> A portrait-mode mobile, touchscreen-first PS1-style low-poly 3D ultra-running survival game centered on a serious Cal Street / Foresthill-inspired downhill canyon section, with heat, hydration, quad damage, ice, crew, river/log crossing decisions, terrain variation, and SUC grit.
 
-This is not a goofy loop arcade game anymore.
+This is not a goofy loop arcade game.
 
 It should feel like:
 - a phone-first portrait trail survival game
 - thumb-driven touchscreen control
 - low-poly 3D trail running
 - serious downhill momentum
+- steeper downhill temptation
+- curves and switchbacks that reward restraint
+- one short uphill heat check
+- river crossings that slow rhythm
+- a faster/riskier log crossing line
 - heat management
 - hydration pressure
 - quad damage
 - ice and crew execution
-- SUC grit
-- Foresthill-to-canyon descent energy
+- a second aid/support point before the final push
+- cleaner PS1-style runner readability
 - old-school PlayStation atmosphere
 
 The first mission is:
 
 # Cal Street Heat Drop
 
-A fictionalized, Western States-inspired downhill section where the player leaves a Foresthill-style crew zone and descends into exposed canyon heat.
+A fictionalized, Western States-inspired downhill section where the player leaves a Foresthill-style crew zone, descends into exposed canyon heat, crosses water, survives a short uphill interruption, uses a second aid station, and tries to hold the final downhill push together.
 
 ## Core Rule
 
@@ -33,20 +38,8 @@ Do not build a huge open world.
 
 Build one intense downhill mission first.
 
-The goal is not realism.  
-The goal is pressure, heat, momentum, and atmosphere.
-
-## Recommended Repo Name
-
-```txt
-C:\dev\suc-the-long-burn
-```
-
-or
-
-```txt
-C:\dev\game-lab
-```
+The goal is not realism.
+The goal is pressure, heat, momentum, line choice, and atmosphere.
 
 ## Recommended Stack
 
@@ -68,12 +61,14 @@ The game can be true 3D, but the scope must stay narrow:
 - one trail corridor
 - one mission
 - simple terrain
-- simple low-poly props
+- simple river/log crossing geometry
+- simple aid-station props
+- simple low-poly runner
 - simple HUD
 - portrait-safe on-screen controls
 - simple systems
 
-## Package Contents
+## Canonical Docs
 
 ```txt
 GAME.md
@@ -92,26 +87,31 @@ docs/
   BACKLOG.md
 prompts/
   pending/
-    001-minimal-ps1-3d-prototype-shell.md
-    002-downhill-trail-corridor.md
-    003-runner-control-camera-and-momentum.md
-    004-heat-hydration-and-quad-damage.md
-    005-pace-and-braking-modes.md
-    006-ice-and-cooling-system.md
-    007-foresthill-crew-zone.md
-    008-finish-line-and-run-report.md
-    009-ps1-atmosphere-pass.md
-    010-first-balance-pass.md
+  completed/
+  blocked/
 reports/
   runs/
   playtests/
 ```
 
+## Active Prompt Direction
+
+The queue should keep implementation small and staged. Current future work should move through:
+
+1. Terrain variation: curves, switchbacks, steeper downhill, and one short uphill.
+2. River and log crossing mechanics.
+3. Water slowdown and small water-cooling tuning.
+4. Foresthill crew continuity plus second aid station.
+5. Finish/report updates for the expanded mission.
+6. Cleaner retro runner model and basic animation pass.
+7. PS1 atmosphere pass for the expanded canyon terrain.
+8. First balance pass against the new mission structure.
+
+Completed prompts remain historical ledger entries. The active queue is the source for the next automation runs.
+
 ## How to Use
 
-Drop this package into the game repo.
-
-BC-OS should use it as the source planning layer:
+BC-OS should use this repo as the source planning layer:
 - generate prompts
 - read reports
 - summarize progress
@@ -120,7 +120,7 @@ BC-OS should use it as the source planning layer:
 
 Codex should implement one pending prompt at a time in the game repo.
 
-No auto-push.  
-No auto-merge.  
-No auto-deploy.  
+No auto-push.
+No auto-merge.
+No auto-deploy.
 Brandon reviews everything.

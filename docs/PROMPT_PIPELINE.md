@@ -4,7 +4,16 @@ This repo is designed for a small, repeatable loop: one prompt in, one focused i
 
 ## Current Queue Direction
 
-As of the 2026-04-28 reset, the active prompt queue has been rebuilt around the PS1-style Cal Street Heat Drop direction. Historical prompts from the previous direction are archived under `prompts/archive/2026-04-28-pre-ps1-cal-street-reset/`.
+As of the 2026-04-29 canonical docs update, the active prompt queue has been rebuilt around the expanded PS1-style Cal Street Heat Drop direction:
+
+- terrain variation with curves, switchbacks, steeper downhill, and one short uphill
+- river/log crossing decisions with water slowdown and small possible cooling
+- Foresthill crew start plus a second aid station before the final push
+- expanded finish/report feedback
+- cleaner low-poly runner readability and simple animation
+- PS1 atmosphere and balance passes after the expanded mission shape
+
+Historical prompts remain ledger entries under `prompts/completed/` and `prompts/blocked/`.
 
 ## Normal Loop
 
@@ -67,6 +76,7 @@ Every implementation run should read:
 - Prompt names must begin with a sortable number such as `001-`.
 - Never skip ahead unless Brandon explicitly says to.
 - Never edit later prompts while consuming the current prompt.
+- Each new prompt should include a title, goal, files/directories to inspect, implementation scope, out of scope, acceptance criteria, validation command, and playtest note.
 
 ## Feature Scope Guard
 
@@ -75,6 +85,7 @@ Every implementation run should read:
 - If a feature prompt seems to require package/script changes, block the prompt and explain why in the run report instead of changing those files.
 - Do not change the `build` script.
 - Do not add `--emptyOutDir=false`.
+- Do not add open world, exact Western States maps, real GPX/maps/APIs, multiplayer, accounts, advanced water physics, many aid stations, or complex animation rigs.
 
 ## Validation Rules
 
