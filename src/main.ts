@@ -1,9 +1,9 @@
 import "./styles/base.css";
 
-const TRAIL_LENGTH = 132;
+const TRAIL_LENGTH = 156;
 const RUN_SPEED = 7.5;
 const STEER_SPEED = 4.2;
-const LATERAL_LIMIT = 2.05;
+const LATERAL_LIMIT = 1.85;
 
 type Vec3 = [number, number, number];
 
@@ -207,22 +207,23 @@ function render(): void {
 
   const runnerZ = -state.progress * TRAIL_LENGTH;
   const runnerY = trailHeightAt(runnerZ);
-  const runnerX = state.lateral;
+  const runnerX = trailCenterAt(runnerZ) + state.lateral;
+  const lookAheadZ = runnerZ - 12;
   const cameraPosition: Vec3 = [
-    runnerX * 0.38,
-    runnerY + 4.4,
-    runnerZ + 9.8,
+    trailCenterAt(runnerZ + 8) + state.lateral * 0.38,
+    runnerY + 4.7,
+    runnerZ + 10.4,
   ];
   const cameraTarget: Vec3 = [
-    runnerX * 0.28,
+    trailCenterAt(lookAheadZ) + state.lateral * 0.24,
     runnerY + 1,
-    runnerZ - 9,
+    lookAheadZ,
   ];
   const projection = perspective(
     radians(61),
     canvas.width / canvas.height,
     0.1,
-    92,
+    72,
   );
   const view = lookAt(cameraPosition, cameraTarget, [0, 1, 0]);
   const viewProjection = multiplyMat4(projection, view);
@@ -276,44 +277,75 @@ function drawMesh(mesh: Mesh, model: Float32Array): void {
 function createTrailMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const segments = 28;
+  const segments = 36;
   const trailColorA: Vec3 = [0.43, 0.28, 0.17];
   const trailColorB: Vec3 = [0.56, 0.37, 0.2];
+  const exposedColor: Vec3 = [0.64, 0.42, 0.22];
+  const shadeColor: Vec3 = [0.33, 0.25, 0.17];
   const edgeColor: Vec3 = [0.22, 0.15, 0.1];
+  const shoulderColor: Vec3 = [0.24, 0.18, 0.11];
 
   for (let index = 0; index < segments; index += 1) {
     const nearZ = -index * (TRAIL_LENGTH / segments) + 5;
     const farZ = -(index + 1) * (TRAIL_LENGTH / segments) + 5;
-    const nearWidth = 5.7 - index * 0.035;
-    const farWidth = 5.7 - (index + 1) * 0.035;
-    const color = index % 2 === 0 ? trailColorA : trailColorB;
+    const nearCenter = trailCenterAt(nearZ);
+    const farCenter = trailCenterAt(farZ);
+    const nearWidth = trailWidthAt(nearZ);
+    const farWidth = trailWidthAt(farZ);
+    const sectionProgress = index / segments;
+    const color =
+      sectionProgress > 0.42 && sectionProgress < 0.72
+        ? exposedColor
+        : sectionProgress > 0.74 && index % 3 === 0
+          ? shadeColor
+          : index % 2 === 0
+            ? trailColorA
+            : trailColorB;
 
     addQuad(
       positions,
       colors,
-      [-nearWidth, trailHeightAt(nearZ), nearZ],
-      [nearWidth, trailHeightAt(nearZ), nearZ],
-      [farWidth, trailHeightAt(farZ), farZ],
-      [-farWidth, trailHeightAt(farZ), farZ],
+      [nearCenter - nearWidth, trailHeightAt(nearZ), nearZ],
+      [nearCenter + nearWidth, trailHeightAt(nearZ), nearZ],
+      [farCenter + farWidth, trailHeightAt(farZ), farZ],
+      [farCenter - farWidth, trailHeightAt(farZ), farZ],
       color,
     );
     addQuad(
       positions,
       colors,
-      [-nearWidth - 0.24, trailHeightAt(nearZ) + 0.015, nearZ],
-      [-nearWidth, trailHeightAt(nearZ) + 0.015, nearZ],
-      [-farWidth, trailHeightAt(farZ) + 0.015, farZ],
-      [-farWidth - 0.24, trailHeightAt(farZ) + 0.015, farZ],
+      [nearCenter - nearWidth - 0.28, trailHeightAt(nearZ) + 0.018, nearZ],
+      [nearCenter - nearWidth, trailHeightAt(nearZ) + 0.018, nearZ],
+      [farCenter - farWidth, trailHeightAt(farZ) + 0.018, farZ],
+      [farCenter - farWidth - 0.28, trailHeightAt(farZ) + 0.018, farZ],
       edgeColor,
     );
     addQuad(
       positions,
       colors,
-      [nearWidth, trailHeightAt(nearZ) + 0.015, nearZ],
-      [nearWidth + 0.24, trailHeightAt(nearZ) + 0.015, nearZ],
-      [farWidth + 0.24, trailHeightAt(farZ) + 0.015, farZ],
-      [farWidth, trailHeightAt(farZ) + 0.015, farZ],
+      [nearCenter + nearWidth, trailHeightAt(nearZ) + 0.018, nearZ],
+      [nearCenter + nearWidth + 0.28, trailHeightAt(nearZ) + 0.018, nearZ],
+      [farCenter + farWidth + 0.28, trailHeightAt(farZ) + 0.018, farZ],
+      [farCenter + farWidth, trailHeightAt(farZ) + 0.018, farZ],
       edgeColor,
+    );
+    addQuad(
+      positions,
+      colors,
+      [nearCenter - nearWidth - 1.1, trailHeightAt(nearZ) + 0.006, nearZ],
+      [nearCenter - nearWidth - 0.3, trailHeightAt(nearZ) + 0.006, nearZ],
+      [farCenter - farWidth - 0.3, trailHeightAt(farZ) + 0.006, farZ],
+      [farCenter - farWidth - 1.1, trailHeightAt(farZ) + 0.006, farZ],
+      shoulderColor,
+    );
+    addQuad(
+      positions,
+      colors,
+      [nearCenter + nearWidth + 0.3, trailHeightAt(nearZ) + 0.006, nearZ],
+      [nearCenter + nearWidth + 1.1, trailHeightAt(nearZ) + 0.006, nearZ],
+      [farCenter + farWidth + 1.1, trailHeightAt(farZ) + 0.006, farZ],
+      [farCenter + farWidth + 0.3, trailHeightAt(farZ) + 0.006, farZ],
+      shoulderColor,
     );
   }
 
@@ -326,10 +358,12 @@ function createTerrainMesh(): Mesh {
   const ground: Vec3 = [0.18, 0.21, 0.13];
   const canyonLeft: Vec3 = [0.42, 0.24, 0.15];
   const canyonRight: Vec3 = [0.52, 0.3, 0.16];
+  const farFog: Vec3 = [0.62, 0.55, 0.45];
 
-  addQuad(positions, colors, [-42, 0.08, 10], [42, 0.08, 10], [42, trailHeightAt(-145), -145], [-42, trailHeightAt(-145), -145], ground);
-  addQuad(positions, colors, [-8, 0.05, 8], [-38, 3.6, 0], [-34, trailHeightAt(-142) + 8, -142], [-8, trailHeightAt(-142), -142], canyonLeft);
-  addQuad(positions, colors, [8, 0.05, 8], [8, trailHeightAt(-142), -142], [34, trailHeightAt(-142) + 7, -142], [38, 3.1, 0], canyonRight);
+  addQuad(positions, colors, [-48, 0.08, 10], [48, 0.08, 10], [46, trailHeightAt(-164), -164], [-46, trailHeightAt(-164), -164], ground);
+  addQuad(positions, colors, [-8, 0.05, 8], [-40, 3.6, 0], [-36, trailHeightAt(-164) + 8, -164], [-10, trailHeightAt(-164), -164], canyonLeft);
+  addQuad(positions, colors, [8, 0.05, 8], [10, trailHeightAt(-164), -164], [36, trailHeightAt(-164) + 7, -164], [40, 3.1, 0], canyonRight);
+  addQuad(positions, colors, [-46, trailHeightAt(-164), -164], [46, trailHeightAt(-164), -164], [34, trailHeightAt(-190) + 7, -190], [-34, trailHeightAt(-190) + 7, -190], farFog);
 
   return createMesh(positions, colors);
 }
@@ -337,14 +371,38 @@ function createTerrainMesh(): Mesh {
 function createTrailMarkers(): SceneObject[] {
   const markers: SceneObject[] = [];
 
-  for (let index = 0; index < 12; index += 1) {
-    const z = -10 - index * 10;
+  for (let index = 0; index < 22; index += 1) {
+    const z = -8 - index * 6.5;
     const side = index % 2 === 0 ? -1 : 1;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
     markers.push({
       mesh: cubeMesh,
-      position: [side * 4.65, trailHeightAt(z) + 0.55, z],
-      scale: [0.16, 1.1, 0.16],
+      position: [center + side * (width + 0.55), trailHeightAt(z) + 0.58, z],
+      scale: [0.16, 1.16, 0.16],
     });
+  }
+
+  for (const z of [-52, -96, -148]) {
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    markers.push(
+      {
+        mesh: cubeMesh,
+        position: [center - width - 0.18, trailHeightAt(z) + 1.2, z],
+        scale: [0.22, 2.4, 0.22],
+      },
+      {
+        mesh: cubeMesh,
+        position: [center + width + 0.18, trailHeightAt(z) + 1.2, z],
+        scale: [0.22, 2.4, 0.22],
+      },
+      {
+        mesh: accentMesh,
+        position: [center, trailHeightAt(z) + 2.45, z],
+        scale: [width * 2.1, 0.16, 0.16],
+      },
+    );
   }
 
   return markers;
@@ -353,14 +411,15 @@ function createTrailMarkers(): SceneObject[] {
 function createRocks(): SceneObject[] {
   const rocks: SceneObject[] = [];
 
-  for (let index = 0; index < 32; index += 1) {
-    const z = -6 - index * 4.1;
+  for (let index = 0; index < 46; index += 1) {
+    const z = -6 - index * 3.4;
     const side = index % 3 === 0 ? -1 : 1;
-    const offset = 6.5 + ((index * 17) % 9) * 0.32;
+    const center = trailCenterAt(z);
+    const offset = trailWidthAt(z) + 1.1 + ((index * 17) % 9) * 0.28;
 
     rocks.push({
       mesh: rockMesh,
-      position: [side * offset, trailHeightAt(z) + 0.2, z],
+      position: [center + side * offset, trailHeightAt(z) + 0.2, z],
       scale: [0.5 + (index % 4) * 0.12, 0.36, 0.42 + (index % 5) * 0.08],
       rotationY: index * 0.57,
     });
@@ -372,14 +431,15 @@ function createRocks(): SceneObject[] {
 function createTrees(): SceneObject[] {
   const trees: SceneObject[] = [];
 
-  for (let index = 0; index < 10; index += 1) {
-    const z = -14 - index * 12;
-    const side = index % 2 === 0 ? -1 : 1;
+  for (let index = 0; index < 18; index += 1) {
+    const z = -14 - index * 8.5;
+    const side = index % 4 < 2 ? -1 : 1;
+    const center = trailCenterAt(z);
 
     trees.push({
       mesh: treeMesh,
-      position: [side * (9.5 + (index % 3)), trailHeightAt(z) + 1.3, z],
-      scale: [1.2, 2.6, 1.2],
+      position: [center + side * (6.6 + (index % 3) * 0.8), trailHeightAt(z) + 1.3, z],
+      scale: [1.15, 2.45 + (index % 2) * 0.45, 1.15],
       rotationY: index * 0.8,
     });
   }
@@ -535,7 +595,21 @@ function requiredBuffer(): WebGLBuffer {
 }
 
 function trailHeightAt(z: number): number {
-  return z * 0.07;
+  return z * 0.095 + Math.sin(z * 0.09) * 0.22;
+}
+
+function trailCenterAt(z: number): number {
+  const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+
+  return Math.sin(depth * Math.PI * 2.2) * 2.2 + Math.sin(depth * Math.PI * 5.1) * 0.72;
+}
+
+function trailWidthAt(z: number): number {
+  const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+  const base = 3.1 - depth * 0.72;
+  const technicalPinch = depth > 0.62 && depth < 0.84 ? 0.52 : 0;
+
+  return base - technicalPinch;
 }
 
 function identityMat4(): Float32Array {

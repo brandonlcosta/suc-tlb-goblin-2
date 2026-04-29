@@ -1,4 +1,4 @@
-# Prompt 002 — Downhill Trail Corridor
+# Prompt 002 â€” Downhill Trail Corridor
 
 ## Goal
 
@@ -44,3 +44,14 @@ npm run build
 ## Playtest Note
 
 Run for 30 seconds and confirm the game feels like descending a trail.
+
+## Blocked Reason
+
+Implementation was attempted, but required validation failed. `npm run build` completed the TypeScript phase and then Vite failed while preparing the output directory:
+
+```txt
+[plugin vite:prepare-out-dir]
+Error: EPERM, Permission denied: \\?\C:\dev\suc-tlb-goblin-2\dist\assets
+```
+
+This appears to be the same local Windows permission or process-lock issue seen in the previous run report. The build script was not changed.
