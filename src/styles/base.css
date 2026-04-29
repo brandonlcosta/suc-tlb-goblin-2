@@ -1048,7 +1048,7 @@ body {
   font-size: 0.7rem;
 }
 
-.report-panel > [data-report-discipline] {
+.report-panel > [data-report-next-run] {
   color: #efe7cf;
   font-size: 0.64rem;
 }
@@ -1065,6 +1065,10 @@ body {
   border: 1px solid #5d513f;
   background: #15110c;
   padding: 7px;
+}
+
+.report-stats .report-stats__wide {
+  grid-column: 1 / -1;
 }
 
 .report-stats dt,

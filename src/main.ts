@@ -393,6 +393,15 @@ interface CoolingUseMoment {
   heat: number;
 }
 
+type TerrainReportKind = "steep" | "switchback" | "uphill";
+
+interface TerrainCostStats {
+  seconds: number;
+  heat: number;
+  hydration: number;
+  quad: number;
+}
+
 interface DecisionStats {
   descentSeconds: number;
   paceSeconds: Record<PaceMode, number>;
@@ -400,6 +409,7 @@ interface DecisionStats {
   coolingUses: number;
   firstCoolingUse: CoolingUseMoment | null;
   riskLaneSeconds: Record<RiskLaneKind, number>;
+  terrainCosts: Record<TerrainReportKind, TerrainCostStats>;
 }
 
 interface ResourcePressure {
@@ -810,9 +820,13 @@ const reportCrossingText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-crossing]"),
   "Missing report crossing element.",
 );
-const reportDisciplineText = requiredElement(
-  document.querySelector<HTMLElement>("[data-report-discipline]"),
-  "Missing report discipline element.",
+const reportTerrainTaxText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-terrain-tax]"),
+  "Missing report terrain tax element.",
+);
+const reportNextRunText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-next-run]"),
+  "Missing report next run element.",
 );
 const reportRestartButton = requiredElement(
   document.querySelector<HTMLButtonElement>("#report-restart-button"),
@@ -1149,6 +1163,20 @@ function createInitialDecisionStats(): DecisionStats {
       water: 0,
       log: 0,
     },
+    terrainCosts: {
+      steep: createTerrainCostStats(),
+      switchback: createTerrainCostStats(),
+      uphill: createTerrainCostStats(),
+    },
+  };
+}
+
+function createTerrainCostStats(): TerrainCostStats {
+  return {
+    seconds: 0,
+    heat: 0,
+    hydration: 0,
+    quad: 0,
   };
 }
 
@@ -1879,6 +1907,8 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     state.calmSupportRemaining = Math.max(0, state.calmSupportRemaining - deltaSeconds);
   }
 
+  recordTerrainCosts(deltaSeconds, pressure);
+
   state.heat = clamp(state.heat + pressure.heatChange * deltaSeconds, 0, RESOURCE_MAX);
   state.hydration = clamp(
     state.hydration - pressure.hydrationDrain * deltaSeconds,
@@ -1985,6 +2015,27 @@ function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePre
     hydrationDrain,
     quadGain,
   };
+}
+
+function recordTerrainCosts(
+  deltaSeconds: number,
+  pressure: ResourcePressure,
+): void {
+  const zoneKind = routeZoneAt(state.progress).kind;
+
+  if (!isTerrainReportKind(zoneKind)) {
+    return;
+  }
+
+  const stats = state.decisionStats.terrainCosts[zoneKind];
+  stats.seconds += deltaSeconds;
+  stats.heat += Math.max(0, pressure.heatChange) * deltaSeconds;
+  stats.hydration += pressure.hydrationDrain * deltaSeconds;
+  stats.quad += pressure.quadGain * deltaSeconds;
+}
+
+function isTerrainReportKind(kind: RouteZoneKind): kind is TerrainReportKind {
+  return kind === "steep" || kind === "switchback" || kind === "uphill";
 }
 
 function recordRunExtremes(): void {
@@ -2823,7 +2874,8 @@ function updateReportUi(): void {
   reportIceTimingText.textContent = iceTimingSummary();
   reportPrimaryLineText.textContent = primaryLineSummary();
   reportCrossingText.textContent = crossingSummary();
-  reportDisciplineText.textContent = disciplineNote();
+  reportTerrainTaxText.textContent = terrainTaxSummary();
+  reportNextRunText.textContent = nextRunAdvice();
 }
 
 function paceMixSummary(): string {
@@ -2892,7 +2944,34 @@ function crossingSummary(): string {
   return "NOT REACHED";
 }
 
-function disciplineNote(): string {
+function terrainTaxSummary(): string {
+  return [
+    terrainCostSegment("STEEP", state.decisionStats.terrainCosts.steep, "quad"),
+    terrainCostSegment(
+      "SWITCH",
+      state.decisionStats.terrainCosts.switchback,
+      "quad",
+    ),
+    terrainCostSegment("UPHILL", state.decisionStats.terrainCosts.uphill, "heat"),
+  ].join(" / ");
+}
+
+function terrainCostSegment(
+  label: string,
+  stats: TerrainCostStats,
+  focus: "heat" | "quad",
+): string {
+  if (stats.seconds <= 0) {
+    return `${label} --`;
+  }
+
+  const value = focus === "heat" ? stats.heat : stats.quad;
+  const suffix = focus === "heat" ? "H" : "Q";
+
+  return `${label} +${Math.round(value).toString().padStart(2, "0")}${suffix}`;
+}
+
+function nextRunAdvice(): string {
   const totalSeconds = state.decisionStats.descentSeconds;
   const sendPercent = percentOf(state.decisionStats.paceSeconds.send, totalSeconds);
   const pushSendPercent = percentOf(
@@ -2911,49 +2990,49 @@ function disciplineNote(): string {
   const firstIce = state.decisionStats.firstCoolingUse;
 
   if (sendPercent >= 28) {
-    return "Discipline note: SEND got too much oxygen. Control the early drop.";
+    return "Next run: Keep SEND short until the final push.";
   }
 
   if (pushSendPercent >= 52) {
-    return "Discipline note: Risk pace dominated. Buy the finish before buying speed.";
+    return "Next run: Buy the finish before buying speed.";
   }
 
   if (totalSeconds >= 20 && brakePercent <= 3) {
-    return "Discipline note: Almost no braking. The descent was driving you.";
+    return "Next run: Brake before steep drops and turns.";
   }
 
   if (!firstIce && state.maxHeat >= 78) {
-    return "Discipline note: No ice used while heat climbed. Cool before redline.";
+    return "Next run: Spend ice before heat reaches redline.";
   }
 
   if (firstIce && (firstIce.progress >= 0.68 || firstIce.heat >= 84)) {
-    return "Discipline note: Ice came late. Spend cooling before critical heat.";
+    return "Next run: Use cooling earlier, before critical heat.";
   }
 
   if (
     state.secondAidChoice === "skip" &&
     (state.maxHeat >= 84 || state.lowestHydration <= 30 || state.quadDamage >= 72)
   ) {
-    return "Discipline note: Aid skip saved clock and raised the final bill.";
+    return "Next run: Take second aid when the dashboard is ugly.";
   }
 
   if (fastLinePercent >= 25) {
-    return "Discipline note: Fast exposed line was home base. Take shade or center sooner.";
+    return "Next run: Leave the exposed fast line sooner.";
   }
 
   if (state.riverCrossingOutcome === "log-missed") {
-    return "Discipline note: The log was not free speed. Brake and center it next time.";
+    return "Next run: Brake and center the log before committing.";
   }
 
   if (state.riverCrossingOutcome === "water" && pushSendPercent >= 40) {
-    return "Discipline note: Water choice was conservative; risky pace gave time back.";
+    return "Next run: Keep the water choice, cut the risky pacing.";
   }
 
   if (controlSteadyPercent >= 76 && brakePercent >= 8 && fastLinePercent <= 18) {
-    return "Discipline note: Solid restraint profile. That is how you keep a race alive.";
+    return "Next run: Same restraint profile. Spend speed late.";
   }
 
-  return "Discipline note: Mixed execution. Compare pace, brake, ice, and line before retry.";
+  return "Next run: Compare pace, brake, ice, line, and aid before retry.";
 }
 
 function primaryRiskLaneKind(): RiskLaneKind {
