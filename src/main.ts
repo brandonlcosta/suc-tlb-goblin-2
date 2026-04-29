@@ -222,6 +222,12 @@ interface DecisionStats {
   riskLaneSeconds: Record<RiskLaneKind, number>;
 }
 
+interface ResourcePressure {
+  heatChange: number;
+  hydrationDrain: number;
+  quadGain: number;
+}
+
 const DEFAULT_RISK_LANE: RiskLaneEffect = {
   kind: "main",
   label: "MAIN TRAIL",
@@ -443,6 +449,22 @@ const crewText = requiredElement(
 const statusText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-status]"),
   "Missing status HUD element.",
+);
+const pressureRow = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-pressure-row]"),
+  "Missing pressure readout row.",
+);
+const pressureHeatText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-pressure-heat]"),
+  "Missing heat pressure readout.",
+);
+const pressureHydrationText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-pressure-hydration]"),
+  "Missing hydration pressure readout.",
+);
+const pressureQuadText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-pressure-quad]"),
+  "Missing quad pressure readout.",
 );
 const routeIntelOverlay = requiredElement(
   document.querySelector<HTMLElement>("#route-intel-overlay"),
@@ -1039,6 +1061,8 @@ function updateHud(): void {
   const progress = Math.floor(state.progress * 100).toString().padStart(3, "0");
   const speed = state.speed.toFixed(1).padStart(4, "0");
   const pace = PACE_SETTINGS[state.paceMode];
+  const runnerZ = -state.progress * TRAIL_LENGTH;
+  const downhillBoost = downhillMomentumAt(runnerZ);
 
   progressText.textContent = `PROGRESS ${progress}%`;
   setRouteZoneText();
@@ -1058,6 +1082,7 @@ function updateHud(): void {
   setCrewText();
   gameShell.dataset.alert = shellAlertLevel();
   gameShell.dataset.cooling = coolingLevel();
+  setPressureReadout(runnerZ, downhillBoost);
   statusText.textContent = statusLine(speed);
   updateTouchControlsUi();
 }
@@ -1117,6 +1142,39 @@ function updateCamera(deltaSeconds: number): void {
 }
 
 function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: number): void {
+  const pressure = resourcePressureAt(runnerZ, downhillBoost);
+
+  if (state.gelSupportRemaining > 0) {
+    state.gelSupportRemaining = Math.max(0, state.gelSupportRemaining - deltaSeconds);
+  }
+
+  if (state.calmSupportRemaining > 0) {
+    state.calmSupportRemaining = Math.max(0, state.calmSupportRemaining - deltaSeconds);
+  }
+
+  state.heat = clamp(state.heat + pressure.heatChange * deltaSeconds, 0, RESOURCE_MAX);
+  state.hydration = clamp(
+    state.hydration - pressure.hydrationDrain * deltaSeconds,
+    0,
+    RESOURCE_MAX,
+  );
+  state.quadDamage = clamp(
+    state.quadDamage + pressure.quadGain * deltaSeconds,
+    0,
+    RESOURCE_MAX,
+  );
+  recordRunExtremes();
+
+  if (state.heat >= RESOURCE_MAX) {
+    failRun("HEAT COLLAPSE");
+  } else if (state.hydration <= 0) {
+    failRun("DEHYDRATION COLLAPSE");
+  } else if (state.quadDamage >= RESOURCE_MAX) {
+    failRun("QUAD DAMAGE COLLAPSE");
+  }
+}
+
+function resourcePressureAt(runnerZ: number, downhillBoost: number): ResourcePressure {
   const pace = PACE_SETTINGS[state.paceMode];
   const riskLane = riskLaneAt(state.progress, state.lateral);
   const exposure = exposureAt(state.progress);
@@ -1157,38 +1215,19 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
 
   if (state.gelSupportRemaining > 0) {
     hydrationDrain *= CREW_GEL_HYDRATION_MULTIPLIER;
-    state.gelSupportRemaining = Math.max(0, state.gelSupportRemaining - deltaSeconds);
   }
 
   if (state.calmSupportRemaining > 0) {
     quadGain *= CREW_CALM_QUAD_MULTIPLIER;
-    state.calmSupportRemaining = Math.max(0, state.calmSupportRemaining - deltaSeconds);
   }
 
-  const coolingHeatChange = isCoolingActive()
-    ? heatGain * COOLING_HEAT_GAIN_MULTIPLIER - COOLING_HEAT_DROP_PER_SECOND
-    : heatGain;
-
-  state.heat = clamp(state.heat + coolingHeatChange * deltaSeconds, 0, RESOURCE_MAX);
-  state.hydration = clamp(
-    state.hydration - hydrationDrain * deltaSeconds,
-    0,
-    RESOURCE_MAX,
-  );
-  state.quadDamage = clamp(
-    state.quadDamage + quadGain * deltaSeconds,
-    0,
-    RESOURCE_MAX,
-  );
-  recordRunExtremes();
-
-  if (state.heat >= RESOURCE_MAX) {
-    failRun("HEAT COLLAPSE");
-  } else if (state.hydration <= 0) {
-    failRun("DEHYDRATION COLLAPSE");
-  } else if (state.quadDamage >= RESOURCE_MAX) {
-    failRun("QUAD DAMAGE COLLAPSE");
-  }
+  return {
+    heatChange: isCoolingActive()
+      ? heatGain * COOLING_HEAT_GAIN_MULTIPLIER - COOLING_HEAT_DROP_PER_SECOND
+      : heatGain,
+    hydrationDrain,
+    quadGain,
+  };
 }
 
 function recordRunExtremes(): void {
@@ -1298,6 +1337,94 @@ function statusLine(speed: string): string {
   return `${input.brake ? "BRAKING" : pace.label} ${speed}  ${
     riskLane.kind === "main" ? zone.cue : riskLane.status
   }`;
+}
+
+function setPressureReadout(runnerZ: number, downhillBoost: number): void {
+  if (!isDescentControlAvailable()) {
+    pressureRow.hidden = true;
+    setPressureChip(pressureHeatText, "HEAT +", "calm");
+    setPressureChip(pressureHydrationText, "H2O -", "calm");
+    setPressureChip(pressureQuadText, "QUAD +", "calm");
+    return;
+  }
+
+  const pressure = resourcePressureAt(runnerZ, downhillBoost);
+  pressureRow.hidden = false;
+
+  if (pressure.heatChange < -0.05) {
+    setPressureChip(pressureHeatText, "ICE RELIEF", "relief");
+  } else {
+    setPressureChip(
+      pressureHeatText,
+      pressureLabel("HEAT", "+", pressure.heatChange, 0.55, 1.05, 1.65),
+      pressureLevel(pressure.heatChange, 0.55, 1.05, 1.65),
+    );
+  }
+
+  setPressureChip(
+    pressureHydrationText,
+    pressureLabel("H2O", "-", pressure.hydrationDrain, 0.42, 0.72, 1.05),
+    pressureLevel(pressure.hydrationDrain, 0.42, 0.72, 1.05),
+  );
+
+  if (input.brake && pressure.quadGain < 0.32) {
+    setPressureChip(pressureQuadText, "BRAKE SAVING LEGS", "relief");
+  } else {
+    setPressureChip(
+      pressureQuadText,
+      pressureLabel("QUAD", "+", pressure.quadGain, 0.22, 0.55, 0.95),
+      pressureLevel(pressure.quadGain, 0.22, 0.55, 0.95),
+    );
+  }
+}
+
+function pressureLabel(
+  label: string,
+  sign: string,
+  value: number,
+  warning: number,
+  danger: number,
+  critical: number,
+): string {
+  if (value >= critical) {
+    return `${label} ${sign}${sign}${sign}`;
+  }
+
+  if (value >= danger) {
+    return `${label} ${sign}${sign}`;
+  }
+
+  if (value >= warning) {
+    return `${label} ${sign}`;
+  }
+
+  return `${label} =`;
+}
+
+function pressureLevel(
+  value: number,
+  warning: number,
+  danger: number,
+  critical: number,
+): string {
+  if (value >= critical) {
+    return "critical";
+  }
+
+  if (value >= danger) {
+    return "danger";
+  }
+
+  if (value >= warning) {
+    return "warning";
+  }
+
+  return "calm";
+}
+
+function setPressureChip(element: HTMLElement, text: string, level: string): void {
+  element.textContent = text;
+  element.dataset.pressureLevel = level;
 }
 
 function setRouteZoneText(): void {

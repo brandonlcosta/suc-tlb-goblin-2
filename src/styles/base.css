@@ -125,6 +125,22 @@ body {
   gap: 6px;
 }
 
+#hud .pressure-row {
+  align-self: stretch;
+  justify-content: center;
+  gap: 5px;
+}
+
+#hud .pressure-row[hidden] {
+  display: none;
+}
+
+#hud .pressure-row span {
+  flex: 1 1 72px;
+  max-width: 132px;
+  text-align: center;
+}
+
 #hud strong,
 #hud span {
   display: block;
@@ -249,6 +265,28 @@ body {
 
 #hud [data-lane-kind="safe"] {
   color: #9cff3a;
+}
+
+#hud [data-pressure-level="relief"] {
+  color: #c9f5ff;
+  background: rgba(24, 79, 96, 0.84);
+}
+
+#hud [data-pressure-level="calm"] {
+  color: #9cff3a;
+}
+
+#hud [data-pressure-level="warning"] {
+  color: #ffd15c;
+}
+
+#hud [data-pressure-level="danger"] {
+  color: #ff8b3d;
+}
+
+#hud [data-pressure-level="critical"] {
+  color: #ff4f4f;
+  background: rgba(42, 12, 10, 0.88);
 }
 
 #game-shell[data-alert="danger"] {
