@@ -1,4 +1,4 @@
-# Prompt 004 — Heat, Hydration, and Quad Damage
+# Prompt 004 - Heat, Hydration, and Quad Damage
 
 ## Goal
 

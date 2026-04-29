@@ -62,7 +62,13 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+#hud .meter-row {
+  justify-content: flex-start;
+  gap: 6px;
 }
 
 #hud strong,
@@ -92,6 +98,27 @@ body {
 
 #hud span {
   color: #9cff3a;
+}
+
+#hud [data-resource-level="warning"] {
+  color: #ffd15c;
+}
+
+#hud [data-resource-level="danger"] {
+  color: #ff8b3d;
+}
+
+#hud [data-resource-level="critical"] {
+  color: #ff4f4f;
+}
+
+#game-shell[data-alert="danger"] {
+  border-color: #5e2a12;
+}
+
+#game-shell[data-alert="critical"],
+#game-shell[data-alert="failure"] {
+  border-color: #6d1414;
 }
 
 [data-hud-status] {

@@ -11,6 +11,21 @@ const STEER_SPEED = 4.2;
 const LATERAL_LIMIT = 1.85;
 const RUNNER_EDGE_BUFFER = 0.48;
 const CAMERA_RESPONSE = 4.8;
+const RESOURCE_MAX = 100;
+const STARTING_HEAT = 18;
+const STARTING_HYDRATION = 100;
+const STARTING_QUAD_DAMAGE = 0;
+const HEAT_PASSIVE_GAIN = 1.55;
+const HEAT_EXPOSURE_GAIN = 2.15;
+const HEAT_SPEED_GAIN = 3.4;
+const HEAT_DOWNHILL_GAIN = 0.9;
+const HEAT_LOW_HYDRATION_GAIN = 2.1;
+const HYDRATION_PASSIVE_DRAIN = 1.25;
+const HYDRATION_EXPOSURE_DRAIN = 1.05;
+const HYDRATION_SPEED_DRAIN = 1.65;
+const HYDRATION_HEAT_DRAIN = 1.35;
+const QUAD_AGGRESSION_GAIN = 4.8;
+const QUAD_BRAKE_RELIEF = 0.38;
 
 type Vec3 = [number, number, number];
 
@@ -32,6 +47,10 @@ interface GameState {
   lateral: number;
   lateralVelocity: number;
   speed: number;
+  heat: number;
+  hydration: number;
+  quadDamage: number;
+  failureReason: string | null;
   cameraPosition: Vec3;
   cameraTarget: Vec3;
   lastTimestamp: number;
@@ -47,10 +66,26 @@ const canvas = requiredElement(
   document.querySelector<HTMLCanvasElement>("#game-canvas"),
   "Missing game canvas.",
 );
+const gameShell = requiredElement(
+  document.querySelector<HTMLElement>("#game-shell"),
+  "Missing game shell.",
+);
 const restartButton = document.querySelector<HTMLButtonElement>("#restart-button");
 const progressText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-progress]"),
   "Missing progress HUD element.",
+);
+const heatText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-heat]"),
+  "Missing heat HUD element.",
+);
+const hydrationText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-hydration]"),
+  "Missing hydration HUD element.",
+);
+const quadText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-quad]"),
+  "Missing quad HUD element.",
 );
 const statusText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-status]"),
@@ -160,6 +195,10 @@ function createInitialState(): GameState {
     lateral: 0,
     lateralVelocity: 0,
     speed: BASE_RUN_SPEED,
+    heat: STARTING_HEAT,
+    hydration: STARTING_HYDRATION,
+    quadDamage: STARTING_QUAD_DAMAGE,
+    failureReason: null,
     cameraPosition: camera.position,
     cameraTarget: camera.target,
     lastTimestamp: performance.now(),
@@ -202,6 +241,11 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
+  if (state.failureReason || state.progress >= 1) {
+    updateCamera(deltaSeconds);
+    return;
+  }
+
   const runnerZ = -state.progress * TRAIL_LENGTH;
   const lateralLimit = playableLateralLimitAt(runnerZ);
   const steerDirection = Number(input.right) - Number(input.left);
@@ -232,6 +276,7 @@ function update(deltaSeconds: number): void {
   }
 
   state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
+  updateResources(deltaSeconds, runnerZ, downhillBoost);
   updateCamera(deltaSeconds);
 }
 
@@ -282,11 +327,18 @@ function drawRunner(x: number, groundY: number, z: number): void {
 function updateHud(): void {
   const progress = Math.floor(state.progress * 100).toString().padStart(3, "0");
   const speed = state.speed.toFixed(1).padStart(4, "0");
+
   progressText.textContent = `PROGRESS ${progress}%`;
-  statusText.textContent =
-    state.progress >= 1
-      ? "END OF PROTOTYPE SHELL - PRESS R"
-      : `${input.brake ? "CONTROL" : "DESCEND"} ${speed}  A/D STEER  S/SHIFT BRAKE`;
+  setResourceText(heatText, "HEAT", state.heat, heatLevel(state.heat));
+  setResourceText(
+    hydrationText,
+    "HYDRATION",
+    state.hydration,
+    hydrationLevel(state.hydration),
+  );
+  setResourceText(quadText, "QUADS", state.quadDamage, quadLevel(state.quadDamage));
+  gameShell.dataset.alert = shellAlertLevel();
+  statusText.textContent = statusLine(speed);
 }
 
 function updateCamera(deltaSeconds: number): void {
@@ -296,6 +348,176 @@ function updateCamera(deltaSeconds: number): void {
 
   state.cameraPosition = lerpVec3(state.cameraPosition, desired.position, response);
   state.cameraTarget = lerpVec3(state.cameraTarget, desired.target, response);
+}
+
+function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: number): void {
+  const exposure = exposureAt(state.progress);
+  const speedPressure = speedPressureFor(state.speed);
+  const downhillPressure = clamp(downhillBoost / (MAX_RUN_SPEED - BASE_RUN_SPEED), 0, 1);
+  const heatPressure = state.heat / RESOURCE_MAX;
+  const lowHydrationPressure = clamp((45 - state.hydration) / 45, 0, 1);
+  const brakeRelief = input.brake ? 0.72 : 1;
+  const heatGain =
+    (HEAT_PASSIVE_GAIN +
+      exposure * HEAT_EXPOSURE_GAIN +
+      speedPressure * HEAT_SPEED_GAIN +
+      downhillPressure * HEAT_DOWNHILL_GAIN +
+      lowHydrationPressure * HEAT_LOW_HYDRATION_GAIN) *
+    brakeRelief;
+  const hydrationDrain =
+    HYDRATION_PASSIVE_DRAIN +
+    exposure * HYDRATION_EXPOSURE_DRAIN +
+    speedPressure * HYDRATION_SPEED_DRAIN +
+    heatPressure * HYDRATION_HEAT_DRAIN;
+  const technicalPressure = technicalPressureAt(runnerZ);
+  const quadMultiplier = input.brake ? QUAD_BRAKE_RELIEF : 1;
+  const quadGain =
+    speedPressure *
+    (0.5 + downhillPressure * 0.7 + technicalPressure * 0.45) *
+    QUAD_AGGRESSION_GAIN *
+    quadMultiplier;
+
+  state.heat = clamp(state.heat + heatGain * deltaSeconds, 0, RESOURCE_MAX);
+  state.hydration = clamp(
+    state.hydration - hydrationDrain * deltaSeconds,
+    0,
+    RESOURCE_MAX,
+  );
+  state.quadDamage = clamp(
+    state.quadDamage + quadGain * deltaSeconds,
+    0,
+    RESOURCE_MAX,
+  );
+
+  if (state.heat >= RESOURCE_MAX) {
+    state.failureReason = "HEAT COLLAPSE";
+    state.speed = 0;
+    state.lateralVelocity = 0;
+  }
+}
+
+function statusLine(speed: string): string {
+  if (state.failureReason) {
+    return `${state.failureReason} - PRESS R`;
+  }
+
+  if (state.progress >= 1) {
+    return "END OF PROTOTYPE SHELL - PRESS R";
+  }
+
+  if (state.heat >= 90) {
+    return `HEAT CRITICAL ${speed}  S/SHIFT CONTROL`;
+  }
+
+  if (state.hydration <= 20) {
+    return `BOTTLES LOW ${speed}  S/SHIFT CONTROL`;
+  }
+
+  if (state.quadDamage >= 70) {
+    return `QUADS COOKED ${speed}  S/SHIFT CONTROL`;
+  }
+
+  return `${input.brake ? "CONTROL" : "DESCEND"} ${speed}  A/D STEER  S/SHIFT BRAKE`;
+}
+
+function setResourceText(
+  element: HTMLElement,
+  label: string,
+  value: number,
+  level: string,
+): void {
+  element.textContent = `${label} ${Math.round(value).toString().padStart(3, "0")}`;
+  element.dataset.resourceLevel = level;
+}
+
+function shellAlertLevel(): string {
+  if (state.failureReason) {
+    return "failure";
+  }
+
+  if (state.heat >= 90 || state.hydration <= 10 || state.quadDamage >= 86) {
+    return "critical";
+  }
+
+  if (state.heat >= 75 || state.hydration <= 29 || state.quadDamage >= 66) {
+    return "danger";
+  }
+
+  return "stable";
+}
+
+function heatLevel(value: number): string {
+  if (value >= 90) {
+    return "critical";
+  }
+
+  if (value >= 75) {
+    return "danger";
+  }
+
+  if (value >= 50) {
+    return "warning";
+  }
+
+  return "safe";
+}
+
+function hydrationLevel(value: number): string {
+  if (value <= 9) {
+    return "critical";
+  }
+
+  if (value <= 29) {
+    return "danger";
+  }
+
+  if (value <= 59) {
+    return "warning";
+  }
+
+  return "safe";
+}
+
+function quadLevel(value: number): string {
+  if (value >= 86) {
+    return "critical";
+  }
+
+  if (value >= 66) {
+    return "danger";
+  }
+
+  if (value >= 36) {
+    return "warning";
+  }
+
+  return "safe";
+}
+
+function exposureAt(progress: number): number {
+  if (progress > 0.42 && progress < 0.72) {
+    return 1;
+  }
+
+  if (progress > 0.74 && progress < 0.9) {
+    return 0.38;
+  }
+
+  return 0.58;
+}
+
+function speedPressureFor(speed: number): number {
+  return clamp(
+    (speed - BRAKE_TARGET_SPEED) / (MAX_RUN_SPEED - BRAKE_TARGET_SPEED),
+    0,
+    1,
+  );
+}
+
+function technicalPressureAt(z: number): number {
+  const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
+
+  return depth > 0.62 && depth < 0.84 ? 0.85 : 0.25;
 }
 
 function runnerPositionAt(progress: number, lateral: number): {
