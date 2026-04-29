@@ -482,6 +482,7 @@ body {
   color: #837868;
 }
 
+#title-overlay,
 #route-intel-overlay {
   position: absolute;
   inset: 0;
@@ -495,10 +496,18 @@ body {
   background: rgba(8, 8, 7, 0.58);
 }
 
+#title-overlay {
+  background:
+    linear-gradient(180deg, rgba(8, 8, 7, 0.32), rgba(8, 8, 7, 0.78)),
+    rgba(8, 8, 7, 0.58);
+}
+
+#title-overlay[hidden],
 #route-intel-overlay[hidden] {
   display: none;
 }
 
+.title-panel,
 .route-intel-panel {
   width: min(100%, 390px);
   max-height: calc(100% - 10px);
@@ -511,6 +520,16 @@ body {
   gap: 10px;
 }
 
+.title-panel {
+  align-content: center;
+  min-height: min(440px, calc(100% - 10px));
+  text-align: center;
+}
+
+.title-panel > span,
+.title-panel > strong,
+.title-panel > p,
+.title-panel > small,
 .route-intel-panel > span,
 .route-intel-panel > strong,
 .route-intel-panel > p {
@@ -518,6 +537,7 @@ body {
   line-height: 1.15;
 }
 
+.title-panel > span,
 .route-intel-panel > span {
   width: max-content;
   padding: 3px 6px;
@@ -526,14 +546,33 @@ body {
   font-size: 0.64rem;
 }
 
+.title-panel > span {
+  justify-self: center;
+}
+
+.title-panel > strong,
 .route-intel-panel > strong {
   color: #efe7cf;
   font-size: 0.94rem;
 }
 
+.title-panel > strong {
+  font-size: 1.18rem;
+}
+
+.title-panel > p,
 .route-intel-panel > p {
   color: #ffd15c;
   font-size: 0.7rem;
+}
+
+.title-panel > p {
+  font-size: 0.82rem;
+}
+
+.title-panel > small {
+  color: #c8bda3;
+  font-size: 0.66rem;
 }
 
 .route-intel-grid {
@@ -570,6 +609,7 @@ body {
   font-size: 0.62rem;
 }
 
+.title-panel button,
 .route-intel-panel button {
   min-height: 48px;
   border: 2px solid #9cff3a;
@@ -580,6 +620,13 @@ body {
   cursor: pointer;
 }
 
+.title-panel button {
+  min-height: 56px;
+  margin-top: 6px;
+  font-size: 0.76rem;
+}
+
+.title-panel button:focus-visible,
 .route-intel-panel button:focus-visible {
   outline: 2px solid #efe7cf;
   outline-offset: 2px;
@@ -818,6 +865,10 @@ body {
   .route-intel-panel {
     gap: 8px;
     padding: 10px;
+  }
+
+  .title-panel > strong {
+    font-size: 1rem;
   }
 
   .route-intel-panel > strong {

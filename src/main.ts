@@ -361,6 +361,7 @@ interface SceneObject {
 }
 
 interface GameState {
+  titleActive: boolean;
   routeIntelActive: boolean;
   crewActive: boolean;
   crewActionsRemaining: number;
@@ -465,6 +466,14 @@ const pressureHydrationText = requiredElement(
 const pressureQuadText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-pressure-quad]"),
   "Missing quad pressure readout.",
+);
+const titleOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#title-overlay"),
+  "Missing title overlay.",
+);
+const titleStartButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#title-start-button"),
+  "Missing title start button.",
 );
 const routeIntelOverlay = requiredElement(
   document.querySelector<HTMLElement>("#route-intel-overlay"),
@@ -671,6 +680,7 @@ let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
 reportRestartButton.addEventListener("click", restart);
+titleStartButton.addEventListener("click", startMissionIntel);
 routeIntelContinueButton.addEventListener("click", continueFromRouteIntel);
 for (const button of crewButtons) {
   button.addEventListener("click", () => {
@@ -715,7 +725,7 @@ window.addEventListener("keydown", (event) => {
   } else if (key === "s" || key === "arrowdown" || key === "shift") {
     input.brake = true;
     event.preventDefault();
-  } else if (key === " ") {
+  } else if (key === " " && isDescentControlAvailable()) {
     useCooling();
     event.preventDefault();
   } else if (setPaceForKey(key)) {
@@ -746,6 +756,7 @@ gl.enableVertexAttribArray(colorLocation);
 gl.enable(gl.DEPTH_TEST);
 gl.disable(gl.CULL_FACE);
 
+updateTitleUi();
 updateRouteIntelUi();
 updateCrewUi();
 updateTouchControlsUi();
@@ -756,7 +767,8 @@ function createInitialState(): GameState {
   const camera = desiredCameraFor(runner, 0);
 
   return {
-    routeIntelActive: true,
+    titleActive: true,
+    routeIntelActive: false,
     crewActive: false,
     crewActionsRemaining: CREW_ACTION_LIMIT,
     crewChoices: [],
@@ -831,6 +843,7 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
 function restart(): void {
   state = createInitialState();
   resetTouchHoldControls();
+  updateTitleUi();
   updateRouteIntelUi();
   updateCrewUi();
   updateReportUi();
@@ -929,7 +942,7 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
-  if (state.routeIntelActive || state.crewActive || isRunTerminal()) {
+  if (state.titleActive || state.routeIntelActive || state.crewActive || isRunTerminal()) {
     updateCamera(deltaSeconds);
     return;
   }
@@ -1129,7 +1142,12 @@ function updateTouchControlsUi(): void {
 }
 
 function isDescentControlAvailable(): boolean {
-  return !state.routeIntelActive && !state.crewActive && !isRunTerminal();
+  return (
+    !state.titleActive &&
+    !state.routeIntelActive &&
+    !state.crewActive &&
+    !isRunTerminal()
+  );
 }
 
 function updateCamera(deltaSeconds: number): void {
@@ -1262,6 +1280,7 @@ function updateCooling(deltaSeconds: number): void {
 
 function useCooling(): void {
   if (
+    state.titleActive ||
     state.routeIntelActive ||
     state.crewActive ||
     isRunTerminal() ||
@@ -1297,6 +1316,10 @@ function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
   const zone = routeZoneAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
+
+  if (state.titleActive) {
+    return "TITLE READY  CAL STREET HEAT DROP";
+  }
 
   if (state.routeIntelActive) {
     return "ROUTE INTEL OPEN  READ THE DROP BEFORE CREW";
@@ -1493,6 +1516,12 @@ function setCoolingText(): void {
 }
 
 function setCrewText(): void {
+  if (state.titleActive) {
+    crewText.textContent = "TITLE";
+    crewText.dataset.crewLevel = "open";
+    return;
+  }
+
   if (state.routeIntelActive) {
     crewText.textContent = "ROUTE INTEL";
     crewText.dataset.crewLevel = "open";
@@ -1516,7 +1545,7 @@ function setCrewText(): void {
 }
 
 function chooseCrewAction(actionId: string): void {
-  if (state.routeIntelActive || !state.crewActive) {
+  if (state.titleActive || state.routeIntelActive || !state.crewActive) {
     return;
   }
 
@@ -1608,12 +1637,30 @@ function continueFromRouteIntel(): void {
   updateTouchControlsUi();
 }
 
+function startMissionIntel(): void {
+  if (!state.titleActive) {
+    return;
+  }
+
+  state.titleActive = false;
+  state.routeIntelActive = true;
+  state.crewMessage = "Route intel: hot drop, exposed middle, no hero miles.";
+  updateTitleUi();
+  updateRouteIntelUi();
+  updateCrewUi();
+  updateTouchControlsUi();
+}
+
+function updateTitleUi(): void {
+  titleOverlay.hidden = !state.titleActive;
+}
+
 function updateRouteIntelUi(): void {
-  routeIntelOverlay.hidden = !state.routeIntelActive;
+  routeIntelOverlay.hidden = state.titleActive || !state.routeIntelActive;
 }
 
 function updateCrewUi(): void {
-  crewOverlay.hidden = state.routeIntelActive || !state.crewActive;
+  crewOverlay.hidden = state.titleActive || state.routeIntelActive || !state.crewActive;
   crewMessageText.textContent = state.crewMessage;
   crewCounterText.textContent = `${state.crewActionsRemaining} crew picks available  CREW +${formatClock(
     state.crewTimeSeconds,
