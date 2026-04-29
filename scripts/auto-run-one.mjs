@@ -54,13 +54,23 @@ const automationToolingPromptPatterns = [
   /\bscripts\//i,
 ];
 
-function run(command, args, options = {}) {
-  console.log(`\n> ${command} ${args.join(" ")}`);
+function commandFor(name) {
+  if (process.platform !== "win32") return name;
+  if (name === "npm") return "npm.cmd";
+  if (name === "npx") return "npx.cmd";
+  return name;
+}
 
-  const result = spawnSync(command, args, {
+function commandLine(command, args) {
+  return [command, ...args].join(" ");
+}
+
+function run(command, args, options = {}) {
+  console.log(`\n> ${commandLine(command, args)}`);
+
+  const result = spawnSync(commandFor(command), args, {
     cwd: root,
     stdio: options.input ? ["pipe", "inherit", "inherit"] : "inherit",
-    shell: process.platform === "win32",
     ...options,
   });
 
@@ -68,20 +78,31 @@ function run(command, args, options = {}) {
     result.stdin.end(options.input);
   }
 
+  if (result.error) {
+    throw new Error(
+      `Command failed to start: ${commandLine(command, args)}\n${result.error.message}`,
+    );
+  }
+
   if (result.status !== 0) {
-    throw new Error(`Command failed: ${command} ${args.join(" ")}`);
+    throw new Error(`Command failed: ${commandLine(command, args)}`);
   }
 }
 
 function output(command, args) {
-  const result = spawnSync(command, args, {
+  const result = spawnSync(commandFor(command), args, {
     cwd: root,
     encoding: "utf8",
-    shell: process.platform === "win32",
   });
 
+  if (result.error) {
+    throw new Error(
+      `Command failed to start: ${commandLine(command, args)}\n${result.error.message}`,
+    );
+  }
+
   if (result.status !== 0) {
-    throw new Error(result.stderr || `Command failed: ${command} ${args.join(" ")}`);
+    throw new Error(result.stderr || `Command failed: ${commandLine(command, args)}`);
   }
 
   return result.stdout.trim();

@@ -18,22 +18,38 @@ const autoMerge = args.includes("--auto-merge");
 const reuseBranch = args.includes("--reuse-branch");
 const unknownFlag = args.find((arg) => !allowedFlags.has(arg));
 
-function run(command, commandArgs, options = {}) {
-  console.log(`\n> ${command} ${commandArgs.join(" ")}`);
+function commandFor(name) {
+  if (process.platform !== "win32") return name;
+  if (name === "npm") return "npm.cmd";
+  if (name === "npx") return "npx.cmd";
+  return name;
+}
 
-  const result = spawnSync(command, commandArgs, {
+function commandLine(command, commandArgs) {
+  return [command, ...commandArgs].join(" ");
+}
+
+function run(command, commandArgs, options = {}) {
+  console.log(`\n> ${commandLine(command, commandArgs)}`);
+
+  const result = spawnSync(commandFor(command), commandArgs, {
     cwd: root,
     encoding: options.capture ? "utf8" : undefined,
-    shell: process.platform === "win32",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
+
+  if (result.error) {
+    throw new Error(
+      `Command failed to start: ${commandLine(command, commandArgs)}\n${result.error.message}`,
+    );
+  }
 
   if (result.status !== 0) {
     const details = options.capture
       ? [result.stderr, result.stdout].filter(Boolean).join("\n").trim()
       : "";
     throw new Error(
-      `${options.errorMessage ?? `Command failed: ${command} ${commandArgs.join(" ")}`}${
+      `${options.errorMessage ?? `Command failed: ${commandLine(command, commandArgs)}`}${
         details ? `\n${details}` : ""
       }`,
     );
@@ -47,11 +63,18 @@ function output(command, commandArgs) {
 }
 
 function commandStatus(command, commandArgs) {
-  return spawnSync(command, commandArgs, {
+  const result = spawnSync(commandFor(command), commandArgs, {
     cwd: root,
-    shell: process.platform === "win32",
     stdio: "ignore",
-  }).status;
+  });
+
+  if (result.error) {
+    throw new Error(
+      `Command failed to start: ${commandLine(command, commandArgs)}\n${result.error.message}`,
+    );
+  }
+
+  return result.status;
 }
 
 function assertCleanWorktree(context) {

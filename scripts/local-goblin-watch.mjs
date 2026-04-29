@@ -57,18 +57,26 @@ function commandLine(command, args) {
   return [command, ...args].join(" ");
 }
 
+function commandFor(name) {
+  if (process.platform !== "win32") return name;
+  if (name === "npm") return "npm.cmd";
+  if (name === "npx") return "npx.cmd";
+  return name;
+}
+
 function run(command, args, options = {}) {
   console.log(`\n> ${commandLine(command, args)}`);
 
-  const result = spawnSync(command, args, {
+  const result = spawnSync(commandFor(command), args, {
     cwd: root,
     encoding: options.capture ? "utf8" : undefined,
-    shell: process.platform === "win32",
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
 
   if (result.error) {
-    throw result.error;
+    throw new Error(
+      `Command failed to start: ${commandLine(command, args)}\n${result.error.message}`,
+    );
   }
 
   if (result.status !== 0) {
