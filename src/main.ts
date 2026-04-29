@@ -401,6 +401,7 @@ interface GameState {
   gelSupportRemaining: number;
   calmSupportRemaining: number;
   failureReason: string | null;
+  heatAudioWarningLevel: number;
   cameraPosition: Vec3;
   cameraTarget: Vec3;
   lastTimestamp: number;
@@ -413,6 +414,13 @@ interface InputState {
 }
 
 type TouchHoldControl = keyof InputState;
+type AudioCueName = "ice" | "heatWarning" | "finish" | "collapse";
+type AudioContextConstructor = new () => AudioContext;
+
+interface AudioFeedback {
+  unlock: () => void;
+  play: (cueName: AudioCueName) => void;
+}
 
 const canvas = requiredElement(
   document.querySelector<HTMLCanvasElement>("#game-canvas"),
@@ -724,8 +732,11 @@ const touchHoldPointerIds: Record<TouchHoldControl, number | null> = {
   brake: null,
 };
 
+const audioFeedback = createAudioFeedback();
 let state = createInitialState();
 
+window.addEventListener("pointerdown", unlockAudioFeedback, { passive: true });
+window.addEventListener("keydown", unlockAudioFeedback);
 restartButton?.addEventListener("click", requestRestart);
 reportRestartButton.addEventListener("click", restart);
 pauseButton.addEventListener("click", pauseRun);
@@ -854,6 +865,7 @@ function createInitialState(): GameState {
     gelSupportRemaining: 0,
     calmSupportRemaining: 0,
     failureReason: null,
+    heatAudioWarningLevel: 0,
     cameraPosition: camera.position,
     cameraTarget: camera.target,
     lastTimestamp: performance.now(),
@@ -901,6 +913,140 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
   }
 
   return context;
+}
+
+function createAudioFeedback(): AudioFeedback {
+  const audioWindow = window as Window & {
+    webkitAudioContext?: AudioContextConstructor;
+  };
+  const AudioContextClass = window.AudioContext ?? audioWindow.webkitAudioContext;
+  let audioContext: AudioContext | null = null;
+  let audioUnlocked = false;
+  let unavailable = !AudioContextClass;
+
+  const getAudioContext = (): AudioContext | null => {
+    if (unavailable || !AudioContextClass) {
+      return null;
+    }
+
+    if (audioContext) {
+      return audioContext;
+    }
+
+    try {
+      audioContext = new AudioContextClass();
+      return audioContext;
+    } catch {
+      unavailable = true;
+      audioContext = null;
+      return null;
+    }
+  };
+
+  const unlock = (): void => {
+    const context = getAudioContext();
+
+    if (!context || context.state === "closed") {
+      return;
+    }
+
+    if (context.state === "running") {
+      audioUnlocked = true;
+      return;
+    }
+
+    void context
+      .resume()
+      .then(() => {
+        audioUnlocked = context.state === "running";
+      })
+      .catch(() => {
+        audioUnlocked = false;
+      });
+  };
+
+  const play = (cueName: AudioCueName): void => {
+    if (!audioUnlocked) {
+      return;
+    }
+
+    const context = getAudioContext();
+
+    if (!context || context.state !== "running") {
+      return;
+    }
+
+    try {
+      scheduleAudioCue(context, cueName);
+    } catch {
+      // Audio is optional; gameplay must remain silent-safe if a device rejects a cue.
+    }
+  };
+
+  return { unlock, play };
+}
+
+function unlockAudioFeedback(): void {
+  audioFeedback.unlock();
+}
+
+function playAudioCue(cueName: AudioCueName): void {
+  audioFeedback.play(cueName);
+}
+
+function scheduleAudioCue(audioContext: AudioContext, cueName: AudioCueName): void {
+  const now = audioContext.currentTime + 0.01;
+
+  if (cueName === "ice") {
+    scheduleAudioTone(audioContext, now, 900, 0.1, "triangle", 0.034, 520);
+    scheduleAudioTone(audioContext, now + 0.09, 760, 0.12, "sine", 0.026, 440);
+    return;
+  }
+
+  if (cueName === "heatWarning") {
+    scheduleAudioTone(audioContext, now, 420, 0.07, "square", 0.026);
+    scheduleAudioTone(audioContext, now + 0.12, 360, 0.08, "square", 0.024);
+    return;
+  }
+
+  if (cueName === "finish") {
+    scheduleAudioTone(audioContext, now, 440, 0.08, "triangle", 0.028, 540);
+    scheduleAudioTone(audioContext, now + 0.09, 620, 0.1, "triangle", 0.026, 740);
+    return;
+  }
+
+  scheduleAudioTone(audioContext, now, 180, 0.18, "sawtooth", 0.03, 72);
+  scheduleAudioTone(audioContext, now + 0.12, 86, 0.2, "sine", 0.026, 44);
+}
+
+function scheduleAudioTone(
+  audioContext: AudioContext,
+  startTime: number,
+  frequency: number,
+  duration: number,
+  oscillatorType: OscillatorType,
+  peakGain: number,
+  endFrequency = frequency,
+): void {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const endTime = startTime + duration;
+
+  oscillator.type = oscillatorType;
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    Math.max(1, endFrequency),
+    endTime,
+  );
+
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(startTime);
+  oscillator.stop(endTime + 0.03);
 }
 
 function restart(): void {
@@ -1375,6 +1521,22 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     failRun("DEHYDRATION COLLAPSE");
   } else if (state.quadDamage >= RESOURCE_MAX) {
     failRun("QUAD DAMAGE COLLAPSE");
+  } else {
+    updateHeatAudioWarning();
+  }
+}
+
+function updateHeatAudioWarning(): void {
+  if (state.heat < 70) {
+    state.heatAudioWarningLevel = 0;
+    return;
+  }
+
+  const nextWarningLevel = state.heat >= 90 ? 2 : state.heat >= 75 ? 1 : 0;
+
+  if (nextWarningLevel > state.heatAudioWarningLevel) {
+    state.heatAudioWarningLevel = nextWarningLevel;
+    playAudioCue("heatWarning");
   }
 }
 
@@ -1440,12 +1602,22 @@ function recordRunExtremes(): void {
 }
 
 function failRun(reason: string): void {
+  if (state.failureReason) {
+    return;
+  }
+
   state.failureReason = reason;
+  playAudioCue("collapse");
   settleRunMotion();
 }
 
 function finishRun(): void {
+  if (state.failureReason) {
+    return;
+  }
+
   state.progress = 1;
+  playAudioCue("finish");
   settleRunMotion();
 }
 
@@ -1484,6 +1656,7 @@ function useCooling(): void {
   state.coolingCharges -= 1;
   state.coolingRemaining = COOLING_DURATION_SECONDS;
   state.heat = clamp(state.heat - COOLING_IMMEDIATE_HEAT_DROP, 0, RESOURCE_MAX);
+  playAudioCue("ice");
   updateTouchControlsUi();
 }
 
