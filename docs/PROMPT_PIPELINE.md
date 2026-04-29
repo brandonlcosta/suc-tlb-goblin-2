@@ -176,6 +176,28 @@ Terminal mode can still use `gh` by omitting `--codex-app`. In normal terminal m
 
 GitHub checks still protect `main`. This mode builds through prompts and reviewable PRs, not direct self-mutation of game source.
 
+## Direct-Main Goblin Mode
+
+`npm run goblin:main` is for sandbox experiments only. It skips PRs and commits directly to `main` after one successful guarded prompt run.
+
+This mode still consumes exactly one oldest numbered prompt per run. It requires a clean worktree, checks out `main`, pulls `origin main`, runs `npm run agent:check`, runs the existing one-prompt worker in explicit direct-main mode, runs `npm run build:goblin`, runs `npm run agent:check` again, verifies that exactly one prompt moved and that a matching fresh run report exists, then commits and pushes directly to `main`.
+
+Normal feature prompts still cannot modify automation or config files such as `.github/**`, `.agents/**`, `AGENTS.md`, `scripts/**`, `package.json`, lockfiles, or deployment files. If a feature prompt changes those files, direct-main mode stops and does not commit.
+
+The direct-main commit message is:
+
+```txt
+Complete STLB prompt <number>: <slug>
+```
+
+or:
+
+```txt
+Block STLB prompt <number>: <slug>
+```
+
+Use `git log --oneline` to inspect direct-main history. If a run is bad, use a revert commit rather than rewriting history.
+
 The repo also has a local pause switch. To pause scheduled ticks from inside the repo:
 
 ```bash

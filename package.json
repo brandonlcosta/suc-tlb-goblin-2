@@ -9,6 +9,7 @@
     "build:goblin": "tsc && vite build --outDir .goblin/dist --emptyOutDir=false",
     "agent:check": "node scripts/check-prompt-ledger.mjs",
     "agent:one": "node scripts/auto-run-one.mjs",
+    "goblin:main": "node scripts/goblin-main.mjs",
     "goblin:pr": "node scripts/local-goblin-pr.mjs",
     "goblin:tick": "node scripts/local-goblin-tick.mjs",
     "goblin:tick:auto": "node scripts/local-goblin-tick.mjs --auto-merge --generate-if-needed",

@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const commitEnabled = !process.argv.includes("--no-commit");
+const directMainMode = process.env.GOBLIN_DIRECT_MAIN === "1";
 const baseAllowedChangedPathPatterns = [
   /^src\//,
   /^tests\//,
@@ -28,11 +29,18 @@ const automationToolingChangedPathPatterns = [
   /^pnpm-lock\.yaml$/,
   /^yarn\.lock$/,
   /^bun\.lockb?$/,
-  /^\.github\/workflows\//,
+  /^\.github\//,
   /^\.github\/codex\/prompts\//,
   /^scripts\//,
   /^AGENTS\.md$/,
   /^\.agents\//,
+  /^vercel\.json$/,
+  /^netlify\.toml$/,
+  /^render\.ya?ml$/,
+  /^fly\.toml$/,
+  /^Dockerfile$/,
+  /^docker-compose\.ya?ml$/,
+  /^\.dockerignore$/,
 ];
 const automationToolingPromptPatterns = [
   /\bautomation\b/i,
@@ -49,7 +57,7 @@ const automationToolingPromptPatterns = [
   /\b(add|install|update|remove|change)\b.{0,40}\bdependency\b/i,
   /\b(add|install|update|remove|change)\b.{0,40}\bdependencies\b/i,
   /\bGitHub workflow\b/i,
-  /\.github\/workflows\//i,
+  /\.github\//i,
   /\.github\/codex\/prompts\//i,
   /\.agents\//i,
   /\bscripts\//i,
@@ -369,6 +377,10 @@ function readPackageJson() {
   return JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 }
 
+function currentBranch() {
+  return output("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
+}
+
 function assertBuildScriptUnchanged(originalBuildScript) {
   const currentBuildScript = readPackageJson().scripts?.build;
 
@@ -418,6 +430,21 @@ if (beforeStatus) {
   throw new Error("Working tree is dirty before the run. Refusing to start automation.");
 }
 
+const branchBeforeRun = currentBranch();
+if (branchBeforeRun === "main" && !directMainMode) {
+  throw new Error(
+    "Refusing to run prompt automation on main unless GOBLIN_DIRECT_MAIN=1 is set by the direct-main wrapper.",
+  );
+}
+
+if (directMainMode && branchBeforeRun !== "main") {
+  throw new Error("GOBLIN_DIRECT_MAIN=1 may only run from main.");
+}
+
+if (directMainMode && commitEnabled) {
+  throw new Error("GOBLIN_DIRECT_MAIN=1 must call agent:one with --no-commit.");
+}
+
 run("npm", ["run", "agent:check"]);
 
 const pendingBefore = listPromptFiles("pending");
@@ -430,6 +457,7 @@ const promptNumber = promptFile.match(/^(\d+)/)?.[1];
 const promptPath = `prompts/pending/${promptFile}`;
 const promptText = readFileSync(join(root, promptPath), "utf8");
 const originalBuildScript = readPackageJson().scripts?.build;
+const validationScript = directMainMode ? "build:goblin" : "build";
 const workerPrompt = `
 You are working in the suc-the-long-burn repo.
 
@@ -459,7 +487,7 @@ Implement only that prompt. Do not consume any other pending prompt. Do not skip
 Do not open the browser.
 Do not run an interactive/manual UI playtest.
 Use CLI validation only.
-Run npm run build before marking the prompt completed.
+Run npm run ${validationScript} before marking the prompt completed.
 
 If validation passes, move ${promptPath} to prompts/completed/${promptFile}.
 If validation fails or the scope is unsafe, move it to prompts/blocked/${promptFile}.
@@ -481,6 +509,8 @@ Write a structured run report in reports/runs/ with:
 The manual playtest line must be:
 Manual playtest: Not performed; requires Brandon to run locally.
 
+${directMainMode ? "Direct-main wrapper mode is active. Do not create or switch branches. Do not commit; the wrapper validates, commits, and pushes after this worker exits." : ""}
+
 ## Hard constraints
 
 - Do not edit BC-OS.
@@ -490,8 +520,8 @@ Manual playtest: Not performed; requires Brandon to run locally.
 - Do not add accounts, servers, Strava, GPX, multiplayer, or real external APIs.
 - Do not consume multiple prompts.
 - Do not run an interactive browser session during automation.
-- Normal feature prompts must not modify package.json, lockfiles, build scripts, GitHub workflows, agent scripts, AGENTS.md, or .agents/**.
-- Only automation/tooling prompts may modify package.json, lockfiles, GitHub workflows, agent scripts, AGENTS.md, or .agents/**.
+- Normal feature prompts must not modify package.json, lockfiles, build scripts, GitHub workflows, agent scripts, AGENTS.md, .agents/**, scripts/**, or deployment files.
+- Only automation/tooling prompts may modify package.json, lockfiles, GitHub workflows, agent scripts, AGENTS.md, .agents/**, scripts/**, or deployment files.
 - If a feature prompt seems to require package/script changes, move it to blocked and explain why in the run report instead of changing those files.
 - Do not change the build script.
 - Do not add --emptyOutDir=false.
@@ -502,7 +532,7 @@ run("codex", ["exec", "--full-auto", "--sandbox", "workspace-write", "-"], {
 });
 
 assertBuildScriptUnchanged(originalBuildScript);
-run("npm", ["run", "build"]);
+run("npm", ["run", validationScript]);
 run("npm", ["run", "agent:check"]);
 
 const pendingAfter = listPromptFiles("pending");
