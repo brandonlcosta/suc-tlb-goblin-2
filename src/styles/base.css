@@ -247,6 +247,21 @@ body {
   color: #efe7cf;
 }
 
+#hud [data-zone-transition="preview"] {
+  border-color: rgba(239, 231, 207, 0.78);
+  box-shadow:
+    inset 0 -2px 0 rgba(255, 209, 92, 0.2),
+    0 0 10px rgba(255, 209, 92, 0.16);
+}
+
+#hud [data-zone-transition="close"] {
+  border-color: #efe7cf;
+  background: rgba(42, 12, 10, 0.9);
+  box-shadow:
+    inset 0 -2px 0 rgba(255, 79, 79, 0.28),
+    0 0 12px rgba(255, 79, 79, 0.18);
+}
+
 #hud [data-lane-kind="main"] {
   color: #c8bda3;
 }

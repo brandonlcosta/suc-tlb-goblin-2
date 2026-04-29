@@ -42,7 +42,10 @@ const CREW_CALM_QUAD_MULTIPLIER = 0.64;
 const CREW_WATER_HEAT_DROP = 20;
 const LEAVE_FAST_HEAT_PENALTY = 6;
 const LEAVE_FAST_HYDRATION_PENALTY = 8;
-const ROUTE_MARKER_LEAD_PROGRESS = 0.035;
+const ROUTE_MARKER_LEAD_PROGRESS = 0.075;
+const ROUTE_MARKER_CLOSE_LEAD_PROGRESS = 0.03;
+const ROUTE_TRANSITION_PREVIEW_PROGRESS = 0.1;
+const ROUTE_TRANSITION_CLOSE_PROGRESS = 0.035;
 
 const PACE_SETTINGS = {
   control: {
@@ -127,7 +130,7 @@ const CREW_ACTIONS = {
 type CrewSupportAction = keyof typeof CREW_ACTIONS;
 
 type RouteZoneKind = "mixed" | "exposed" | "technical" | "shade" | "finish";
-type RouteMarkerKind = "exposed" | "technical" | "shade";
+type RouteMarkerKind = "exposed" | "technical" | "shade" | "finish";
 
 interface RouteZone {
   start: number;
@@ -136,6 +139,13 @@ interface RouteZone {
   cue: string;
   kind: RouteZoneKind;
   markerKind?: RouteMarkerKind;
+}
+
+interface RouteTransitionNotice {
+  zone: RouteZone;
+  remainingProgress: number;
+  percentText: string;
+  isClose: boolean;
 }
 
 const ROUTE_ZONES: readonly RouteZone[] = [
@@ -183,6 +193,7 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     shortLabel: "FINAL RUNOUT",
     cue: "NO PANIC SEND",
     kind: "finish",
+    markerKind: "finish",
   },
 ];
 
@@ -1458,6 +1469,7 @@ function isRunTerminal(): boolean {
 function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
   const zone = routeZoneAt(state.progress);
+  const transition = nextRouteTransitionAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
 
   if (state.titleActive) {
@@ -1489,6 +1501,12 @@ function statusLine(speed: string): string {
   }
 
   if (isCoolingActive()) {
+    if (transition && transition.remainingProgress <= ROUTE_TRANSITION_CLOSE_PROGRESS) {
+      return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ENTER ${
+        transition.zone.shortLabel
+      }`;
+    }
+
     return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  ${riskLane.label}  ${speed}`;
   }
 
@@ -1506,6 +1524,12 @@ function statusLine(speed: string): string {
 
   if (state.quadDamage >= 70) {
     return `QUADS COOKED  DESCENT TAX DUE  ${speed}`;
+  }
+
+  if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
+    const transitionPrefix = transition.isClose ? "ENTERING" : "UPCOMING";
+
+    return `${transitionPrefix} ${transition.zone.shortLabel} - ${transition.zone.cue}  ${speed}`;
   }
 
   return `${input.brake ? "BRAKING" : pace.label} ${speed}  ${
@@ -1603,11 +1627,23 @@ function setPressureChip(element: HTMLElement, text: string, level: string): voi
 
 function setRouteZoneText(): void {
   const currentZone = routeZoneAt(state.progress);
-  const nextZone = nextRouteZoneAfter(state.progress);
-  const nextLabel = nextZone ? nextZone.shortLabel : "FINISH";
+  const transition = nextRouteTransitionAt(state.progress);
+
+  if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
+    const transitionPrefix = transition.isClose ? "ENTER" : "NEXT";
+    zoneText.textContent = `ZONE ${currentZone.shortLabel} / ${transitionPrefix} ${
+      transition.zone.shortLabel
+    } ${transition.percentText}`;
+    zoneText.dataset.zoneKind = transition.zone.kind;
+    zoneText.dataset.zoneTransition = transition.isClose ? "close" : "preview";
+    return;
+  }
+
+  const nextLabel = transition ? transition.zone.shortLabel : "FINISH";
 
   zoneText.textContent = `ZONE ${currentZone.shortLabel} / NEXT ${nextLabel}`;
   zoneText.dataset.zoneKind = currentZone.kind;
+  zoneText.dataset.zoneTransition = "steady";
 }
 
 function setRiskLaneText(): void {
@@ -1645,6 +1681,23 @@ function nextRouteZoneAfter(progress: number): RouteZone | null {
   const currentZone = routeZoneAt(progress);
 
   return ROUTE_ZONES.find((zone) => zone.start > currentZone.start) ?? null;
+}
+
+function nextRouteTransitionAt(progress: number): RouteTransitionNotice | null {
+  const nextZone = nextRouteZoneAfter(progress);
+
+  if (!nextZone) {
+    return null;
+  }
+
+  const remainingProgress = Math.max(0, nextZone.start - clamp(progress, 0, 1));
+
+  return {
+    zone: nextZone,
+    remainingProgress,
+    percentText: `${Math.max(1, Math.ceil(remainingProgress * 100))}%`,
+    isClose: remainingProgress <= ROUTE_TRANSITION_CLOSE_PROGRESS,
+  };
 }
 
 function setCoolingText(): void {
@@ -2619,49 +2672,69 @@ function createRouteZoneMarkers(): SceneObject[] {
       continue;
     }
 
-    const markerProgress = Math.max(0.02, zone.start - ROUTE_MARKER_LEAD_PROGRESS);
-    const z = -TRAIL_LENGTH * markerProgress;
-    const center = trailCenterAt(z);
-    const width = trailWidthAt(z);
-    const y = trailHeightAt(z);
-    const mesh = routeMarkerMeshFor(zone.markerKind);
-    const sideRotation = zone.markerKind === "technical" ? 0.55 : 0.18;
-
-    markers.push(
-      {
-        mesh,
-        position: [center - width - 0.42, y + 1.08, z],
-        scale: [0.2, 2.16, 0.2],
-        rotationY: -sideRotation,
-      },
-      {
-        mesh,
-        position: [center + width + 0.42, y + 1.08, z],
-        scale: [0.2, 2.16, 0.2],
-        rotationY: sideRotation,
-      },
-      {
-        mesh,
-        position: [center, y + 2.22, z],
-        scale: [width * 2.16, 0.16, 0.18],
-        rotationY: 0,
-      },
-      {
-        mesh,
-        position: [center - width * 0.48, y + 0.09, z + 0.5],
-        scale: [0.92, 0.05, 0.22],
-        rotationY: -0.18,
-      },
-      {
-        mesh,
-        position: [center + width * 0.48, y + 0.09, z + 0.5],
-        scale: [0.92, 0.05, 0.22],
-        rotationY: 0.18,
-      },
+    addRouteZoneMarkerGate(
+      markers,
+      zone.markerKind,
+      Math.max(0.02, zone.start - ROUTE_MARKER_LEAD_PROGRESS),
+      0.78,
+    );
+    addRouteZoneMarkerGate(
+      markers,
+      zone.markerKind,
+      Math.max(0.02, zone.start - ROUTE_MARKER_CLOSE_LEAD_PROGRESS),
+      1,
     );
   }
 
   return markers;
+}
+
+function addRouteZoneMarkerGate(
+  markers: SceneObject[],
+  kind: RouteMarkerKind,
+  markerProgress: number,
+  scaleMultiplier: number,
+): void {
+  const z = -TRAIL_LENGTH * markerProgress;
+  const center = trailCenterAt(z);
+  const width = trailWidthAt(z);
+  const y = trailHeightAt(z);
+  const mesh = routeMarkerMeshFor(kind);
+  const sideRotation = kind === "technical" ? 0.55 : 0.18;
+  const gateHeight = 2.16 * scaleMultiplier;
+
+  markers.push(
+    {
+      mesh,
+      position: [center - width - 0.42, y + gateHeight * 0.5, z],
+      scale: [0.2, gateHeight, 0.2],
+      rotationY: -sideRotation,
+    },
+    {
+      mesh,
+      position: [center + width + 0.42, y + gateHeight * 0.5, z],
+      scale: [0.2, gateHeight, 0.2],
+      rotationY: sideRotation,
+    },
+    {
+      mesh,
+      position: [center, y + gateHeight + 0.06, z],
+      scale: [width * (1.7 + scaleMultiplier * 0.46), 0.16, 0.18],
+      rotationY: 0,
+    },
+    {
+      mesh,
+      position: [center - width * 0.48, y + 0.09, z + 0.5],
+      scale: [0.64 + scaleMultiplier * 0.28, 0.05, 0.22],
+      rotationY: -0.18,
+    },
+    {
+      mesh,
+      position: [center + width * 0.48, y + 0.09, z + 0.5],
+      scale: [0.64 + scaleMultiplier * 0.28, 0.05, 0.22],
+      rotationY: 0.18,
+    },
+  );
 }
 
 function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
@@ -2671,6 +2744,10 @@ function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
 
   if (kind === "technical") {
     return zoneTechnicalMesh;
+  }
+
+  if (kind === "finish") {
+    return finishTapeMesh;
   }
 
   return zoneShadeMesh;
