@@ -208,6 +208,20 @@ interface RiskLaneCue extends RiskLaneEffect {
   color: Vec3;
 }
 
+interface CoolingUseMoment {
+  progress: number;
+  heat: number;
+}
+
+interface DecisionStats {
+  descentSeconds: number;
+  paceSeconds: Record<PaceMode, number>;
+  brakeSeconds: number;
+  coolingUses: number;
+  firstCoolingUse: CoolingUseMoment | null;
+  riskLaneSeconds: Record<RiskLaneKind, number>;
+}
+
 const DEFAULT_RISK_LANE: RiskLaneEffect = {
   kind: "main",
   label: "MAIN TRAIL",
@@ -305,6 +319,28 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
   },
 ];
 
+const PACE_REPORT_ORDER: readonly PaceMode[] = ["control", "steady", "push", "send"];
+const PACE_REPORT_LABELS: Record<PaceMode, string> = {
+  control: "CTL",
+  steady: "STDY",
+  push: "PUSH",
+  send: "SEND",
+};
+const RISK_LANE_REPORT_ORDER: readonly RiskLaneKind[] = [
+  "main",
+  "shade",
+  "rocky",
+  "fast",
+  "safe",
+];
+const RISK_LANE_REPORT_LABELS: Record<RiskLaneKind, string> = {
+  main: "MAIN TRAIL",
+  shade: "SHADE LINE",
+  rocky: "ROCKY LINE",
+  fast: "FAST/EXPOSED",
+  safe: "SAFE CENTER",
+};
+
 interface Mesh {
   positionBuffer: WebGLBuffer;
   colorBuffer: WebGLBuffer;
@@ -337,6 +373,7 @@ interface GameState {
   lowestHydration: number;
   coolingCharges: number;
   coolingRemaining: number;
+  decisionStats: DecisionStats;
   gelSupportRemaining: number;
   calmSupportRemaining: number;
   failureReason: string | null;
@@ -456,6 +493,26 @@ const reportFailureText = requiredElement(
 const reportCrewText = requiredElement(
   document.querySelector<HTMLElement>("[data-report-crew]"),
   "Missing report crew element.",
+);
+const reportPaceMixText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-pace-mix]"),
+  "Missing report pace mix element.",
+);
+const reportBrakeTimeText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-brake-time]"),
+  "Missing report brake time element.",
+);
+const reportIceTimingText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-ice-timing]"),
+  "Missing report ice timing element.",
+);
+const reportPrimaryLineText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-primary-line]"),
+  "Missing report primary line element.",
+);
+const reportDisciplineText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-discipline]"),
+  "Missing report discipline element.",
 );
 const reportRestartButton = requiredElement(
   document.querySelector<HTMLButtonElement>("#report-restart-button"),
@@ -684,12 +741,35 @@ function createInitialState(): GameState {
     lowestHydration: STARTING_HYDRATION,
     coolingCharges: STARTING_COOLING_CHARGES,
     coolingRemaining: 0,
+    decisionStats: createInitialDecisionStats(),
     gelSupportRemaining: 0,
     calmSupportRemaining: 0,
     failureReason: null,
     cameraPosition: camera.position,
     cameraTarget: camera.target,
     lastTimestamp: performance.now(),
+  };
+}
+
+function createInitialDecisionStats(): DecisionStats {
+  return {
+    descentSeconds: 0,
+    paceSeconds: {
+      control: 0,
+      steady: 0,
+      push: 0,
+      send: 0,
+    },
+    brakeSeconds: 0,
+    coolingUses: 0,
+    firstCoolingUse: null,
+    riskLaneSeconds: {
+      main: 0,
+      shade: 0,
+      rocky: 0,
+      fast: 0,
+      safe: 0,
+    },
   };
 }
 
@@ -840,6 +920,8 @@ function update(deltaSeconds: number): void {
     : unbrakedTargetSpeed;
   const speedResponse = input.brake ? BRAKE_DECELERATION : MOMENTUM_ACCELERATION;
 
+  recordDecisionStats(deltaSeconds, riskLane);
+
   state.speed += (targetSpeed - state.speed) * Math.min(1, deltaSeconds * speedResponse);
   state.speed = clamp(state.speed, MIN_RUN_SPEED, MAX_RUN_SPEED);
 
@@ -866,6 +948,16 @@ function update(deltaSeconds: number): void {
   }
 
   updateCamera(deltaSeconds);
+}
+
+function recordDecisionStats(deltaSeconds: number, riskLane: RiskLaneEffect): void {
+  state.decisionStats.descentSeconds += deltaSeconds;
+  state.decisionStats.paceSeconds[state.paceMode] += deltaSeconds;
+  state.decisionStats.riskLaneSeconds[riskLane.kind] += deltaSeconds;
+
+  if (input.brake) {
+    state.decisionStats.brakeSeconds += deltaSeconds;
+  }
 }
 
 function render(): void {
@@ -1120,6 +1212,14 @@ function useCooling(): void {
     isCoolingActive()
   ) {
     return;
+  }
+
+  state.decisionStats.coolingUses += 1;
+  if (!state.decisionStats.firstCoolingUse) {
+    state.decisionStats.firstCoolingUse = {
+      progress: state.progress,
+      heat: state.heat,
+    };
   }
 
   state.coolingCharges -= 1;
@@ -1391,6 +1491,133 @@ function updateReportUi(): void {
   reportFinalQuadsText.textContent = formatReportValue(state.quadDamage);
   reportFailureText.textContent = state.failureReason ?? "NONE";
   reportCrewText.textContent = crewChoiceSummary();
+  reportPaceMixText.textContent = paceMixSummary();
+  reportBrakeTimeText.textContent = brakeTimeSummary();
+  reportIceTimingText.textContent = iceTimingSummary();
+  reportPrimaryLineText.textContent = primaryLineSummary();
+  reportDisciplineText.textContent = disciplineNote();
+}
+
+function paceMixSummary(): string {
+  const totalSeconds = state.decisionStats.descentSeconds;
+
+  return PACE_REPORT_ORDER.map((mode) => {
+    const percent = percentOf(state.decisionStats.paceSeconds[mode], totalSeconds);
+
+    return `${PACE_REPORT_LABELS[mode]} ${percent.toString().padStart(3, "0")}`;
+  }).join(" / ");
+}
+
+function brakeTimeSummary(): string {
+  const brakePercent = percentOf(
+    state.decisionStats.brakeSeconds,
+    state.decisionStats.descentSeconds,
+  );
+
+  return `${formatClock(state.decisionStats.brakeSeconds)} / ${brakePercent
+    .toString()
+    .padStart(3, "0")}%`;
+}
+
+function iceTimingSummary(): string {
+  if (!state.decisionStats.firstCoolingUse) {
+    return "0 uses / no ice";
+  }
+
+  const useCount = state.decisionStats.coolingUses;
+  const useLabel = useCount === 1 ? "use" : "uses";
+  const progress = Math.round(state.decisionStats.firstCoolingUse.progress * 100)
+    .toString()
+    .padStart(3, "0");
+  const heat = Math.round(state.decisionStats.firstCoolingUse.heat)
+    .toString()
+    .padStart(3, "0");
+
+  return `${useCount} ${useLabel} / first ${progress}% @ heat ${heat}`;
+}
+
+function primaryLineSummary(): string {
+  const lineKind = primaryRiskLaneKind();
+  const linePercent = percentOf(
+    state.decisionStats.riskLaneSeconds[lineKind],
+    state.decisionStats.descentSeconds,
+  );
+
+  return `${RISK_LANE_REPORT_LABELS[lineKind]} ${linePercent
+    .toString()
+    .padStart(3, "0")}%`;
+}
+
+function disciplineNote(): string {
+  const totalSeconds = state.decisionStats.descentSeconds;
+  const sendPercent = percentOf(state.decisionStats.paceSeconds.send, totalSeconds);
+  const pushSendPercent = percentOf(
+    state.decisionStats.paceSeconds.push + state.decisionStats.paceSeconds.send,
+    totalSeconds,
+  );
+  const brakePercent = percentOf(state.decisionStats.brakeSeconds, totalSeconds);
+  const fastLinePercent = percentOf(
+    state.decisionStats.riskLaneSeconds.fast,
+    totalSeconds,
+  );
+  const controlSteadyPercent = percentOf(
+    state.decisionStats.paceSeconds.control + state.decisionStats.paceSeconds.steady,
+    totalSeconds,
+  );
+  const firstIce = state.decisionStats.firstCoolingUse;
+
+  if (sendPercent >= 28) {
+    return "Discipline note: SEND got too much oxygen. Control the early drop.";
+  }
+
+  if (pushSendPercent >= 52) {
+    return "Discipline note: Risk pace dominated. Buy the finish before buying speed.";
+  }
+
+  if (totalSeconds >= 20 && brakePercent <= 3) {
+    return "Discipline note: Almost no braking. The descent was driving you.";
+  }
+
+  if (!firstIce && state.maxHeat >= 78) {
+    return "Discipline note: No ice used while heat climbed. Cool before redline.";
+  }
+
+  if (firstIce && (firstIce.progress >= 0.68 || firstIce.heat >= 84)) {
+    return "Discipline note: Ice came late. Spend cooling before critical heat.";
+  }
+
+  if (fastLinePercent >= 25) {
+    return "Discipline note: Fast exposed line was home base. Take shade or center sooner.";
+  }
+
+  if (controlSteadyPercent >= 76 && brakePercent >= 8 && fastLinePercent <= 18) {
+    return "Discipline note: Solid restraint profile. That is how you keep a race alive.";
+  }
+
+  return "Discipline note: Mixed execution. Compare pace, brake, ice, and line before retry.";
+}
+
+function primaryRiskLaneKind(): RiskLaneKind {
+  let primaryKind = RISK_LANE_REPORT_ORDER[0]!;
+
+  for (const laneKind of RISK_LANE_REPORT_ORDER) {
+    if (
+      state.decisionStats.riskLaneSeconds[laneKind] >
+      state.decisionStats.riskLaneSeconds[primaryKind]
+    ) {
+      primaryKind = laneKind;
+    }
+  }
+
+  return primaryKind;
+}
+
+function percentOf(value: number, total: number): number {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.round((value / total) * 100);
 }
 
 function verdictLine(): string {
