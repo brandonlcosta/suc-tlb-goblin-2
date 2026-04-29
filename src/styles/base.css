@@ -18,13 +18,20 @@ body {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 50% 0%, rgba(240, 90, 36, 0.16), transparent 32rem),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 234, 176, 0.025) 0,
+      rgba(255, 234, 176, 0.025) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, #26150d 0%, #120d09 52%, #070605 100%),
     #12100d;
 }
 
 #app {
-  width: min(100vw, 960px);
-  padding: 16px;
+  width: min(100vw, 460px);
+  padding: 10px;
   display: grid;
   justify-items: center;
   gap: 12px;
@@ -32,15 +39,61 @@ body {
 
 #game-shell {
   position: relative;
-  width: min(100%, 960px);
+  width: min(100%, 430px);
+  overflow: hidden;
   background: #080807;
-  border: 4px solid #080807;
+  border: 3px solid #0b0907;
+  box-shadow:
+    0 0 0 2px #2b1a0f,
+    0 18px 48px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 2px rgba(239, 231, 207, 0.08);
+}
+
+#game-shell::before,
+#game-shell::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+#game-shell::before {
+  z-index: 1;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 8, 7, 0.26),
+      transparent 11%,
+      transparent 89%,
+      rgba(8, 8, 7, 0.26)
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.045) 0,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  mix-blend-mode: soft-light;
+}
+
+#game-shell::after {
+  z-index: 1;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 70, 24, 0.7),
+    transparent 15%,
+    transparent 85%,
+    rgba(255, 70, 24, 0.7)
+  );
+  transition: opacity 120ms steps(2, end);
 }
 
 #game-canvas {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 9 / 16;
   background: #080807;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -54,8 +107,9 @@ body {
   flex-direction: column;
   justify-content: space-between;
   pointer-events: none;
+  z-index: 2;
   color: #efe7cf;
-  text-shadow: 2px 2px 0 #080807;
+  text-shadow: 2px 2px 0 #080807, 0 0 8px rgba(8, 8, 7, 0.8);
 }
 
 #hud > div {
@@ -74,11 +128,14 @@ body {
 #hud strong,
 #hud span {
   display: block;
-  padding: 3px 5px;
-  background: rgba(8, 8, 7, 0.76);
-  font-size: 0.72rem;
+  padding: 4px 6px;
+  border: 1px solid rgba(239, 231, 207, 0.34);
+  background: rgba(8, 8, 7, 0.82);
+  box-shadow: inset 0 -2px 0 rgba(156, 255, 58, 0.08);
+  font-size: 0.68rem;
   line-height: 1.15;
   letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 @media (max-width: 420px) {
@@ -94,6 +151,7 @@ body {
 
 #hud strong {
   color: #efe7cf;
+  border-color: #efe7cf;
 }
 
 #hud span {
@@ -157,14 +215,37 @@ body {
   border-color: #5e2a12;
 }
 
+#game-shell[data-alert="danger"]::after {
+  opacity: 0.22;
+  animation: heat-pulse 1.1s steps(2, end) infinite;
+}
+
 #game-shell[data-alert="critical"],
 #game-shell[data-alert="failure"] {
   border-color: #6d1414;
 }
 
+#game-shell[data-alert="critical"]::after,
+#game-shell[data-alert="failure"]::after {
+  opacity: 0.42;
+  animation: heat-pulse 680ms steps(2, end) infinite;
+}
+
 #game-shell[data-cooling="active"] {
   border-color: #5cc9ff;
   box-shadow: inset 0 0 0 2px rgba(201, 245, 255, 0.42);
+}
+
+#game-shell[data-cooling="active"]::after {
+  opacity: 0.24;
+  background: linear-gradient(
+    90deg,
+    rgba(92, 201, 255, 0.58),
+    transparent 14%,
+    transparent 86%,
+    rgba(92, 201, 255, 0.58)
+  );
+  animation: none;
 }
 
 [data-hud-status] {
@@ -176,7 +257,7 @@ body {
   left: 10px;
   right: 10px;
   bottom: 10px;
-  z-index: 2;
+  z-index: 4;
   color: #efe7cf;
   text-shadow: 2px 2px 0 #080807;
 }
@@ -188,6 +269,7 @@ body {
 .crew-panel {
   border: 2px solid #efe7cf;
   background: rgba(8, 8, 7, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(156, 255, 58, 0.22);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -263,7 +345,7 @@ body {
 #report-overlay {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 5;
   display: grid;
   align-items: center;
   justify-items: center;
@@ -281,6 +363,7 @@ body {
   width: min(100%, 420px);
   border: 2px solid #efe7cf;
   background: rgba(12, 11, 9, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(156, 255, 58, 0.22);
   padding: 12px;
   display: grid;
   gap: 9px;
@@ -406,5 +489,16 @@ body {
 #restart-button:hover {
   color: #080807;
   background: #efe7cf;
+}
+
+@keyframes heat-pulse {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+
+  50% {
+    opacity: 0.48;
+  }
 }
 

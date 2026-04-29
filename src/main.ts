@@ -94,7 +94,7 @@ const CREW_ACTIONS = {
   refill: {
     label: "BOTTLES",
     timeCost: 14,
-    shout: "Bottles full. Do not make us watch you cook.",
+    shout: "Bottles full. Exposed middle. No hero miles.",
   },
   ice: {
     label: "ICE",
@@ -104,7 +104,7 @@ const CREW_ACTIONS = {
   water: {
     label: "WATER",
     timeCost: 8,
-    shout: "Water dump done. You get one calm minute.",
+    shout: "Water dump done. One calm minute, then furnace.",
   },
   gels: {
     label: "GELS",
@@ -276,20 +276,40 @@ attribute vec3 aColor;
 
 uniform mat4 uModel;
 uniform mat4 uViewProjection;
+uniform vec3 uCameraPosition;
 
 varying lowp vec3 vColor;
+varying mediump float vDistance;
 
 void main() {
+  vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+
   vColor = aColor;
-  gl_Position = uViewProjection * uModel * vec4(aPosition, 1.0);
+  vDistance = distance(worldPosition.xyz, uCameraPosition);
+  gl_Position = uViewProjection * worldPosition;
 }
 `;
 
 const fragmentShaderSource = `
+precision mediump float;
+
 varying lowp vec3 vColor;
+varying mediump float vDistance;
+
+uniform vec3 uFogColor;
+uniform float uFogNear;
+uniform float uFogFar;
+uniform float uHeatTint;
 
 void main() {
-  gl_FragColor = vec4(vColor, 1.0);
+  float fogAmount = smoothstep(uFogNear, uFogFar, vDistance);
+  float dither = (mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), 2.0) - 0.5) * 0.045;
+  vec3 canyonHeat = vec3(1.0, 0.31, 0.08);
+  vec3 color = mix(vColor, uFogColor, fogAmount);
+
+  color = mix(color, canyonHeat, uHeatTint);
+  color += dither;
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
 `;
 
@@ -298,6 +318,11 @@ const positionLocation = gl.getAttribLocation(program, "aPosition");
 const colorLocation = gl.getAttribLocation(program, "aColor");
 const modelLocation = requiredUniform(program, "uModel");
 const viewProjectionLocation = requiredUniform(program, "uViewProjection");
+const cameraPositionLocation = requiredUniform(program, "uCameraPosition");
+const fogColorLocation = requiredUniform(program, "uFogColor");
+const fogNearLocation = requiredUniform(program, "uFogNear");
+const fogFarLocation = requiredUniform(program, "uFogFar");
+const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
 const terrainMesh = createTerrainMesh();
@@ -308,6 +333,9 @@ const accentMesh = createCubeMesh([0.57, 1, 0.24]);
 const iceMesh = createCubeMesh([0.42, 0.86, 1]);
 const rockMesh = createLowPolyRockMesh();
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
+const dryGrassMesh = createPyramidMesh([0.62, 0.46, 0.16]);
+const heatSignMesh = createCubeMesh([0.82, 0.16, 0.08]);
+const sunMesh = createCubeMesh([0.94, 0.62, 0.18]);
 const crewTableMesh = createCubeMesh([0.46, 0.28, 0.15]);
 const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
@@ -316,6 +344,7 @@ const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
+  ...createAtmosphereObjects(),
   ...createTrailMarkers(),
   ...createFinishLineObjects(),
   ...createRocks(),
@@ -396,7 +425,7 @@ function createInitialState(): GameState {
     crewActionsRemaining: CREW_ACTION_LIMIT,
     crewChoices: [],
     crewTimeSeconds: 0,
-    crewMessage: "Two quick crew calls. Then the canyon collects.",
+    crewMessage: "Route intel: hot drop, exposed middle, no hero miles.",
     elapsedSeconds: 0,
     progress: 0,
     lateral: 0,
@@ -521,7 +550,9 @@ function update(deltaSeconds: number): void {
 
 function render(): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0.48, 0.55, 0.64, 1);
+  const fogColor = fogColorForRun();
+
+  gl.clearColor(fogColor[0] * 0.82, fogColor[1] * 0.9, fogColor[2] * 1.08, 1);
   gl.clearDepth(1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -536,6 +567,11 @@ function render(): void {
   const viewProjection = multiplyMat4(projection, view);
 
   gl.uniformMatrix4fv(viewProjectionLocation, false, viewProjection);
+  gl.uniform3fv(cameraPositionLocation, new Float32Array(state.cameraPosition));
+  gl.uniform3fv(fogColorLocation, new Float32Array(fogColor));
+  gl.uniform1f(fogNearLocation, fogNearForRun());
+  gl.uniform1f(fogFarLocation, fogFarForRun());
+  gl.uniform1f(heatTintLocation, heatTintForRun());
 
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
@@ -729,7 +765,7 @@ function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
 
   if (state.crewActive) {
-    return `CREW WINDOW ${state.crewActionsRemaining} PICKS  TAP SUPPORT OR LEAVE FAST`;
+    return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
   }
 
   if (state.failureReason) {
@@ -741,26 +777,26 @@ function statusLine(speed: string): string {
   }
 
   if (isCoolingActive()) {
-    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S ${pace.label} ${speed}`;
+    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S  HEAT SUPPRESSED  ${speed}`;
   }
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
-    return `${crewChoiceSummary()} ${pace.label} ${speed}`;
+    return `${crewChoiceSummary()}  DESCENT CONTROL ${speed}`;
   }
 
   if (state.heat >= 90) {
-    return `HEAT CRITICAL ${pace.label} ${speed}  S/SHIFT CONTROL`;
+    return `CANYON HEAT CRITICAL  CONTROL NOW  ${speed}`;
   }
 
   if (state.hydration <= 20) {
-    return `BOTTLES LOW ${pace.label} ${speed}  S/SHIFT CONTROL`;
+    return `BOTTLES LOW  HEAT DEBT RISING  ${speed}`;
   }
 
   if (state.quadDamage >= 70) {
-    return `QUADS COOKED ${pace.label} ${speed}  S/SHIFT CONTROL`;
+    return `QUADS COOKED  DESCENT TAX DUE  ${speed}`;
   }
 
-  return `${input.brake ? "BRAKING" : pace.label} ${speed}  1-4 PACE  SPACE ICE`;
+  return `${input.brake ? "BRAKING" : pace.label} ${speed}  CAL ST DROP`;
 }
 
 function setCoolingText(): void {
@@ -1053,6 +1089,38 @@ function quadLevel(value: number): string {
   return "safe";
 }
 
+function fogColorForRun(): Vec3 {
+  const heatPressure = clamp((state.heat - 45) / 55, 0, 1);
+  const exposure = exposureAt(state.progress);
+  const coolingRelief = isCoolingActive() ? 0.08 : 0;
+
+  return [
+    clamp(0.52 + heatPressure * 0.2 + exposure * 0.05 - coolingRelief, 0, 1),
+    clamp(0.43 + exposure * 0.04 - heatPressure * 0.06, 0, 1),
+    clamp(0.31 - heatPressure * 0.11 + coolingRelief * 0.8, 0, 1),
+  ];
+}
+
+function fogNearForRun(): number {
+  const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
+
+  return 20 - heatPressure * 4;
+}
+
+function fogFarForRun(): number {
+  const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
+
+  return 58 - heatPressure * 9;
+}
+
+function heatTintForRun(): number {
+  if (isCoolingActive()) {
+    return 0;
+  }
+
+  return clamp((state.heat - 68) / 44, 0, 0.32);
+}
+
 function exposureAt(progress: number): number {
   if (progress > 0.42 && progress < 0.72) {
     return 1;
@@ -1129,12 +1197,12 @@ function createTrailMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
   const segments = 36;
-  const trailColorA: Vec3 = [0.43, 0.28, 0.17];
-  const trailColorB: Vec3 = [0.56, 0.37, 0.2];
-  const exposedColor: Vec3 = [0.64, 0.42, 0.22];
-  const shadeColor: Vec3 = [0.33, 0.25, 0.17];
-  const edgeColor: Vec3 = [0.22, 0.15, 0.1];
-  const shoulderColor: Vec3 = [0.24, 0.18, 0.11];
+  const trailColorA: Vec3 = [0.38, 0.23, 0.13];
+  const trailColorB: Vec3 = [0.5, 0.31, 0.15];
+  const exposedColor: Vec3 = [0.72, 0.39, 0.15];
+  const shadeColor: Vec3 = [0.22, 0.22, 0.13];
+  const edgeColor: Vec3 = [0.14, 0.09, 0.06];
+  const shoulderColor: Vec3 = [0.35, 0.22, 0.09];
 
   for (let index = 0; index < segments; index += 1) {
     const nearZ = -index * (TRAIL_LENGTH / segments) + 5;
@@ -1206,15 +1274,57 @@ function createTrailMesh(): Mesh {
 function createTerrainMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const ground: Vec3 = [0.18, 0.21, 0.13];
-  const canyonLeft: Vec3 = [0.42, 0.24, 0.15];
-  const canyonRight: Vec3 = [0.52, 0.3, 0.16];
-  const farFog: Vec3 = [0.62, 0.55, 0.45];
+  const ground: Vec3 = [0.26, 0.2, 0.11];
+  const canyonLeft: Vec3 = [0.5, 0.25, 0.12];
+  const canyonRight: Vec3 = [0.62, 0.31, 0.13];
+  const farFog: Vec3 = [0.58, 0.42, 0.25];
+  const heatShelf: Vec3 = [0.78, 0.43, 0.13];
 
-  addQuad(positions, colors, [-48, 0.08, 10], [48, 0.08, 10], [46, trailHeightAt(-164), -164], [-46, trailHeightAt(-164), -164], ground);
-  addQuad(positions, colors, [-8, 0.05, 8], [-40, 3.6, 0], [-36, trailHeightAt(-164) + 8, -164], [-10, trailHeightAt(-164), -164], canyonLeft);
-  addQuad(positions, colors, [8, 0.05, 8], [10, trailHeightAt(-164), -164], [36, trailHeightAt(-164) + 7, -164], [40, 3.1, 0], canyonRight);
-  addQuad(positions, colors, [-46, trailHeightAt(-164), -164], [46, trailHeightAt(-164), -164], [34, trailHeightAt(-190) + 7, -190], [-34, trailHeightAt(-190) + 7, -190], farFog);
+  addQuad(
+    positions,
+    colors,
+    [-48, 0.08, 10],
+    [48, 0.08, 10],
+    [46, trailHeightAt(-164), -164],
+    [-46, trailHeightAt(-164), -164],
+    ground,
+  );
+  addQuad(
+    positions,
+    colors,
+    [-8, 0.05, 8],
+    [-40, 3.6, 0],
+    [-36, trailHeightAt(-164) + 8, -164],
+    [-10, trailHeightAt(-164), -164],
+    canyonLeft,
+  );
+  addQuad(
+    positions,
+    colors,
+    [8, 0.05, 8],
+    [10, trailHeightAt(-164), -164],
+    [36, trailHeightAt(-164) + 7, -164],
+    [40, 3.1, 0],
+    canyonRight,
+  );
+  addQuad(
+    positions,
+    colors,
+    [-46, trailHeightAt(-164), -164],
+    [46, trailHeightAt(-164), -164],
+    [34, trailHeightAt(-190) + 7, -190],
+    [-34, trailHeightAt(-190) + 7, -190],
+    farFog,
+  );
+  addQuad(
+    positions,
+    colors,
+    [-28, trailHeightAt(-78) + 4.2, -78],
+    [-9, trailHeightAt(-88) + 1.2, -88],
+    [-12, trailHeightAt(-124) + 0.8, -124],
+    [-35, trailHeightAt(-122) + 5.8, -122],
+    heatShelf,
+  );
 
   return createMesh(positions, colors);
 }
@@ -1316,6 +1426,59 @@ function createCrewZoneObjects(): SceneObject[] {
       position: [center + xOffset, trailHeightAt(z) + 0.42, z],
       scale: [0.42, 0.84, 0.42],
       rotationY: z,
+    });
+  }
+
+  return objects;
+}
+
+function createAtmosphereObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+
+  objects.push({
+    mesh: sunMesh,
+    position: [12.5, trailHeightAt(-62) + 16.8, -62],
+    scale: [3.4, 3.4, 0.08],
+    rotationY: -0.3,
+  });
+
+  for (const z of [-38, -76, -116]) {
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const side = z === -76 ? 1 : -1;
+    const x = center + side * (width + 0.88);
+    const y = trailHeightAt(z);
+
+    objects.push(
+      {
+        mesh: cubeMesh,
+        position: [x, y + 0.85, z],
+        scale: [0.14, 1.7, 0.14],
+      },
+      {
+        mesh: heatSignMesh,
+        position: [x + side * 0.28, y + 1.62, z],
+        scale: [0.72, 0.34, 0.08],
+        rotationY: side * 0.2,
+      },
+    );
+  }
+
+  for (let index = 0; index < 30; index += 1) {
+    const z = -10 - index * 4.9;
+    const side = index % 2 === 0 ? -1 : 1;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+
+    objects.push({
+      mesh: dryGrassMesh,
+      position: [
+        center + side * (width + 1.35 + (index % 3) * 0.48),
+        trailHeightAt(z) + 0.36,
+        z,
+      ],
+      scale: [0.24 + (index % 2) * 0.08, 0.72 + (index % 3) * 0.14, 0.2],
+      rotationY: index * 0.6,
     });
   }
 
