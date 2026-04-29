@@ -234,6 +234,8 @@ interface InputState {
   brake: boolean;
 }
 
+type TouchHoldControl = keyof InputState;
+
 const canvas = requiredElement(
   document.querySelector<HTMLCanvasElement>("#game-canvas"),
   "Missing game canvas.",
@@ -338,6 +340,24 @@ const reportRestartButton = requiredElement(
   document.querySelector<HTMLButtonElement>("#report-restart-button"),
   "Missing report restart button.",
 );
+const touchControls = requiredElement(
+  document.querySelector<HTMLElement>("#touch-controls"),
+  "Missing touch controls.",
+);
+const touchHoldButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-touch-hold]"),
+);
+const touchPaceButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-touch-pace]"),
+);
+const touchCoolingButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("[data-touch-cooling]"),
+  "Missing touch cooling button.",
+);
+const touchCoolingStatus = requiredElement(
+  document.querySelector<HTMLElement>("[data-touch-cooling-status]"),
+  "Missing touch cooling status.",
+);
 const gl = requiredWebGlContext(canvas);
 
 const vertexShaderSource = `
@@ -431,6 +451,12 @@ const input: InputState = {
   brake: false,
 };
 
+const touchHoldPointerIds: Record<TouchHoldControl, number | null> = {
+  left: null,
+  right: null,
+  brake: null,
+};
+
 let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
@@ -444,6 +470,28 @@ for (const button of crewButtons) {
     }
   });
 }
+for (const button of touchHoldButtons) {
+  const holdControl = button.dataset.touchHold;
+
+  if (isTouchHoldControl(holdControl)) {
+    bindTouchHoldButton(button, holdControl);
+  }
+}
+for (const button of touchPaceButtons) {
+  button.addEventListener("click", (event) => {
+    const nextPace = button.dataset.touchPace;
+
+    event.preventDefault();
+
+    if (isDescentControlAvailable() && isPaceMode(nextPace)) {
+      setPaceMode(nextPace);
+    }
+  });
+}
+touchCoolingButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  useCooling();
+});
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
 
@@ -488,6 +536,7 @@ gl.enable(gl.DEPTH_TEST);
 gl.disable(gl.CULL_FACE);
 
 updateCrewUi();
+updateTouchControlsUi();
 requestAnimationFrame(tick);
 
 function createInitialState(): GameState {
@@ -545,8 +594,15 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
 
 function restart(): void {
   state = createInitialState();
+  resetTouchHoldControls();
   updateCrewUi();
   updateReportUi();
+  updateTouchControlsUi();
+}
+
+function setPaceMode(nextPace: PaceMode): void {
+  state.paceMode = nextPace;
+  updateTouchControlsUi();
 }
 
 function setPaceForKey(key: string): boolean {
@@ -556,8 +612,69 @@ function setPaceForKey(key: string): boolean {
     return false;
   }
 
-  state.paceMode = nextPace;
+  setPaceMode(nextPace);
   return true;
+}
+
+function bindTouchHoldButton(
+  button: HTMLButtonElement,
+  holdControl: TouchHoldControl,
+): void {
+  button.addEventListener("pointerdown", (event) => {
+    if (!isDescentControlAvailable()) {
+      return;
+    }
+
+    event.preventDefault();
+    touchHoldPointerIds[holdControl] = event.pointerId;
+    button.setPointerCapture(event.pointerId);
+    setTouchHoldControl(holdControl, true);
+    updateTouchControlsUi();
+  });
+
+  const releaseHold = (event: PointerEvent): void => {
+    if (touchHoldPointerIds[holdControl] !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    touchHoldPointerIds[holdControl] = null;
+    setTouchHoldControl(holdControl, false);
+    updateTouchControlsUi();
+  };
+
+  button.addEventListener("pointerup", releaseHold);
+  button.addEventListener("pointercancel", releaseHold);
+  button.addEventListener("lostpointercapture", releaseHold);
+  button.addEventListener("blur", () => {
+    touchHoldPointerIds[holdControl] = null;
+    setTouchHoldControl(holdControl, false);
+    updateTouchControlsUi();
+  });
+  button.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+}
+
+function setTouchHoldControl(holdControl: TouchHoldControl, isActive: boolean): void {
+  input[holdControl] = isActive;
+}
+
+function resetTouchHoldControls(): void {
+  for (const holdControl of Object.keys(touchHoldPointerIds) as TouchHoldControl[]) {
+    touchHoldPointerIds[holdControl] = null;
+    setTouchHoldControl(holdControl, false);
+  }
+}
+
+function isTouchHoldControl(
+  holdControl: string | undefined,
+): holdControl is TouchHoldControl {
+  return holdControl === "left" || holdControl === "right" || holdControl === "brake";
+}
+
+function isPaceMode(nextPace: string | undefined): nextPace is PaceMode {
+  return nextPace !== undefined && nextPace in PACE_SETTINGS;
 }
 
 function tick(timestamp: number): void {
@@ -702,6 +819,52 @@ function updateHud(): void {
   gameShell.dataset.alert = shellAlertLevel();
   gameShell.dataset.cooling = coolingLevel();
   statusText.textContent = statusLine(speed);
+  updateTouchControlsUi();
+}
+
+function updateTouchControlsUi(): void {
+  const controlsAvailable = isDescentControlAvailable();
+  const coolingState = isCoolingActive()
+    ? "active"
+    : state.coolingCharges > 0
+      ? "ready"
+      : "spent";
+
+  touchControls.hidden = !controlsAvailable;
+  touchControls.dataset.controlState = controlsAvailable ? "active" : "inactive";
+
+  for (const button of touchHoldButtons) {
+    const holdControl = button.dataset.touchHold;
+    const active =
+      controlsAvailable && isTouchHoldControl(holdControl) && input[holdControl];
+
+    button.disabled = !controlsAvailable;
+    button.dataset.active = active ? "true" : "false";
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  }
+
+  for (const button of touchPaceButtons) {
+    const selected = button.dataset.touchPace === state.paceMode;
+
+    button.disabled = !controlsAvailable;
+    button.dataset.selected = selected ? "true" : "false";
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
+  }
+
+  touchCoolingButton.disabled = !controlsAvailable || coolingState !== "ready";
+  touchCoolingButton.dataset.coolingState = coolingState;
+
+  if (coolingState === "active") {
+    touchCoolingStatus.textContent = `${Math.ceil(state.coolingRemaining)}s`;
+  } else if (coolingState === "ready") {
+    touchCoolingStatus.textContent = `${state.coolingCharges} ready`;
+  } else {
+    touchCoolingStatus.textContent = "Spent";
+  }
+}
+
+function isDescentControlAvailable(): boolean {
+  return !state.crewActive && !isRunTerminal();
 }
 
 function updateCamera(deltaSeconds: number): void {
@@ -803,6 +966,7 @@ function settleRunMotion(): void {
   state.speed = 0;
   state.lateralVelocity = 0;
   state.coolingRemaining = 0;
+  resetTouchHoldControls();
 }
 
 function updateCooling(deltaSeconds: number): void {
@@ -826,6 +990,7 @@ function useCooling(): void {
   state.coolingCharges -= 1;
   state.coolingRemaining = COOLING_DURATION_SECONDS;
   state.heat = clamp(state.heat - COOLING_IMMEDIATE_HEAT_DROP, 0, RESOURCE_MAX);
+  updateTouchControlsUi();
 }
 
 function isCoolingActive(): boolean {
