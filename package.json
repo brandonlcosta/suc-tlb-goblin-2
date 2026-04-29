@@ -16,7 +16,8 @@
     "goblin:resume": "node -e \"require('fs').rmSync('.goblin/PAUSED',{force:true})\"",
     "goblin:watch": "node scripts/local-goblin-watch.mjs",
     "goblin:watch:auto": "node scripts/local-goblin-watch.mjs --auto-merge",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:goblin": "tsc && vite build --outDir .goblin/dist --emptyOutDir"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
