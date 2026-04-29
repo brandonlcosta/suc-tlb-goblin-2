@@ -1208,7 +1208,7 @@ function updateHud(): void {
   progressText.textContent = `PROGRESS ${progress}%`;
   setRouteZoneText();
   setRiskLaneText();
-  paceText.textContent = `PACE ${pace.key} ${pace.label}`;
+  paceText.textContent = `PACE ${pace.label} / KEY ${pace.key}`;
   paceText.dataset.paceMode = state.paceMode;
   timeText.textContent = `TIME ${formatClock(state.elapsedSeconds)}`;
   setCoolingText();
@@ -1262,11 +1262,17 @@ function updateTouchControlsUi(): void {
   touchCoolingButton.dataset.coolingState = coolingState;
 
   if (coolingState === "active") {
-    touchCoolingStatus.textContent = `${Math.ceil(state.coolingRemaining)}s`;
+    touchCoolingStatus.textContent = `Active ${Math.ceil(state.coolingRemaining)}s`;
+    touchCoolingButton.setAttribute("aria-label", "Ice cooling active");
   } else if (coolingState === "ready") {
-    touchCoolingStatus.textContent = `${state.coolingCharges} ready`;
+    touchCoolingStatus.textContent = `Tap ready ${state.coolingCharges}`;
+    touchCoolingButton.setAttribute(
+      "aria-label",
+      `Use ice cooling, ${state.coolingCharges} charge${state.coolingCharges === 1 ? "" : "s"} ready`,
+    );
   } else {
-    touchCoolingStatus.textContent = "Spent";
+    touchCoolingStatus.textContent = "No charge";
+    touchCoolingButton.setAttribute("aria-label", "Ice cooling spent");
   }
 }
 
