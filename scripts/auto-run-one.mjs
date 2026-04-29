@@ -5,6 +5,7 @@ import {
   existsSync,
   readdirSync,
   readFileSync,
+  statSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -69,6 +70,142 @@ function resolveNpmCliPath() {
   throw new Error("Could not resolve npm CLI path.");
 }
 
+function quoteArg(arg) {
+  const value = String(arg);
+
+  if (value.length === 0) return '""';
+  if (!/[\s"]/.test(value)) return value;
+
+  return `"${value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+}
+
+function safeIsDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function findCodexInDirectory(path) {
+  for (const name of ["codex.cmd", "codex.exe", "codex"]) {
+    const candidate = join(path, name);
+    if (existsSync(candidate)) return candidate;
+  }
+
+  try {
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+      if (!/codex|openai/i.test(entry.name)) continue;
+
+      const candidate = join(path, entry.name);
+      if (entry.isFile()) return candidate;
+
+      if (entry.isDirectory()) {
+        const nested = findCodexInDirectory(candidate);
+        if (nested) return nested;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function findCodexCandidate(candidate) {
+  if (!candidate) return null;
+
+  if (process.platform === "win32" && !candidate.match(/\.(cmd|bat|exe)$/i)) {
+    const cmdShim = `${candidate}.cmd`;
+    if (existsSync(cmdShim)) return cmdShim;
+  }
+
+  if (!existsSync(candidate)) return null;
+
+  if (safeIsDirectory(candidate)) {
+    return findCodexInDirectory(candidate);
+  }
+
+  return candidate;
+}
+
+function findCodexOnPath() {
+  const pathEntries = (process.env.PATH || "")
+    .split(process.platform === "win32" ? ";" : ":")
+    .filter(Boolean);
+  const executableNames =
+    process.platform === "win32" ? ["codex.cmd", "codex.exe", "codex"] : ["codex"];
+
+  for (const pathEntry of pathEntries) {
+    for (const executableName of executableNames) {
+      const candidate = join(pathEntry, executableName);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+
+  return null;
+}
+
+function resolveWindowsCommand(command, args) {
+  if (process.platform === "win32" && /\.(cmd|bat)$/i.test(command)) {
+    return {
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", `"${command}" ${args.map(quoteArg).join(" ")}`],
+    };
+  }
+
+  return { command, args };
+}
+
+function codexNotFoundError() {
+  return new Error(
+    [
+      "Codex CLI was not found.",
+      `Current PATH: ${process.env.PATH || ""}`,
+      "Set CODEX_BIN to the full Codex executable path.",
+    ].join("\n"),
+  );
+}
+
+function resolveCodexCommand(args) {
+  if (process.env.CODEX_BIN) {
+    const explicitCommand = findCodexCandidate(process.env.CODEX_BIN);
+    if (!explicitCommand) {
+      throw new Error(
+        [
+          "Codex CLI was not found at CODEX_BIN.",
+          `CODEX_BIN: ${process.env.CODEX_BIN}`,
+          `Current PATH: ${process.env.PATH || ""}`,
+          "Set CODEX_BIN to the full Codex executable path.",
+        ].join("\n"),
+      );
+    }
+
+    return resolveWindowsCommand(explicitCommand, args);
+  }
+
+  if (process.platform === "win32") {
+    const candidates = [
+      "C:/Users/Brandon/AppData/Roaming/npm/codex.cmd",
+      process.env.APPDATA ? `${process.env.APPDATA}/npm/codex.cmd` : null,
+      process.env.LOCALAPPDATA ? `${process.env.LOCALAPPDATA}/OpenAI/Codex` : null,
+      "C:/Program Files/WindowsApps",
+    ];
+
+    for (const candidate of candidates) {
+      const codexCommand = findCodexCandidate(candidate);
+      if (codexCommand) return resolveWindowsCommand(codexCommand, args);
+    }
+
+    const pathCommand = findCodexOnPath();
+    if (pathCommand) return resolveWindowsCommand(pathCommand, args);
+
+    throw codexNotFoundError();
+  }
+
+  return { command: "codex", args };
+}
+
 function resolveCommand(command, args) {
   if (command === "npm") {
     return {
@@ -82,6 +219,10 @@ function resolveCommand(command, args) {
       command: process.execPath,
       args: [resolveNpmCliPath(), "exec", ...args],
     };
+  }
+
+  if (command === "codex") {
+    return resolveCodexCommand(args);
   }
 
   return { command, args };
