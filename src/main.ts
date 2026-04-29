@@ -637,7 +637,14 @@ interface InputState {
 }
 
 type TouchHoldControl = keyof InputState;
-type AudioCueName = "ice" | "heatWarning" | "finish" | "collapse";
+type AudioCueName =
+  | "ice"
+  | "heatWarning"
+  | "finish"
+  | "collapse"
+  | "water"
+  | "log"
+  | "aid";
 type AudioContextConstructor = new () => AudioContext;
 
 interface AudioFeedback {
@@ -913,12 +920,14 @@ uniform float uHeatTint;
 
 void main() {
   float fogAmount = smoothstep(uFogNear, uFogFar, vDistance);
+  float fogBand = floor(fogAmount * 7.0) / 7.0;
   float dither = (mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), 2.0) - 0.5) * 0.045;
   vec3 canyonHeat = vec3(1.0, 0.31, 0.08);
-  vec3 color = mix(vColor, uFogColor, fogAmount);
+  vec3 color = mix(vColor, uFogColor, fogBand);
 
   color = mix(color, canyonHeat, uHeatTint);
   color += dither;
+  color = floor(color * 18.0 + vec3(0.5)) / 18.0;
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
 `;
@@ -935,6 +944,7 @@ const fogFarLocation = requiredUniform(program, "uFogFar");
 const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
+const trailAtmosphereMesh = createTrailAtmosphereMesh();
 const riskLaneCueMesh = createRiskLaneCueMesh();
 const riverWaterMesh = createRiverWaterMesh();
 const terrainMesh = createTerrainMesh();
@@ -947,14 +957,18 @@ const runnerBibMesh = createCubeMesh([0.9, 0.86, 0.68]);
 const runnerShoeMesh = createCubeMesh([0.04, 0.04, 0.035]);
 const runnerShadowMesh = createCubeMesh([0.02, 0.018, 0.014]);
 const rockMesh = createLowPolyRockMesh();
+const wetRockMesh = createLowPolyRockMesh([0.12, 0.13, 0.11], [0.24, 0.28, 0.23]);
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
 const dryGrassMesh = createPyramidMesh([0.62, 0.46, 0.16]);
+const dustStripeMesh = createCubeMesh([0.72, 0.42, 0.14]);
 const heatSignMesh = createCubeMesh([0.82, 0.16, 0.08]);
 const sunMesh = createCubeMesh([0.94, 0.62, 0.18]);
 const crewTableMesh = createCubeMesh([0.46, 0.28, 0.15]);
 const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
+const crewBodyMesh = createCubeMesh([0.12, 0.15, 0.1]);
+const shadeTentMesh = createPyramidMesh([0.19, 0.15, 0.09]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
 const riverLogMesh = createCubeMesh([0.43, 0.22, 0.08]);
 const riverFoamMesh = createCubeMesh([0.66, 0.88, 0.84]);
@@ -1301,6 +1315,24 @@ function scheduleAudioCue(audioContext: AudioContext, cueName: AudioCueName): vo
   if (cueName === "finish") {
     scheduleAudioTone(audioContext, now, 440, 0.08, "triangle", 0.028, 540);
     scheduleAudioTone(audioContext, now + 0.09, 620, 0.1, "triangle", 0.026, 740);
+    return;
+  }
+
+  if (cueName === "water") {
+    scheduleAudioTone(audioContext, now, 310, 0.08, "sine", 0.022, 210);
+    scheduleAudioTone(audioContext, now + 0.06, 520, 0.07, "triangle", 0.018, 360);
+    return;
+  }
+
+  if (cueName === "log") {
+    scheduleAudioTone(audioContext, now, 190, 0.05, "square", 0.024, 150);
+    scheduleAudioTone(audioContext, now + 0.08, 240, 0.05, "square", 0.018, 170);
+    return;
+  }
+
+  if (cueName === "aid") {
+    scheduleAudioTone(audioContext, now, 640, 0.06, "triangle", 0.022, 760);
+    scheduleAudioTone(audioContext, now + 0.07, 360, 0.07, "sine", 0.018, 420);
     return;
   }
 
@@ -1659,6 +1691,7 @@ function updateRiverCrossing(previousProgress: number, deltaSeconds: number): vo
     state.riverCrossingOutcome = "water";
     state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
     state.heat = clamp(state.heat - WATER_SPLASH_HEAT_DROP, 0, RESOURCE_MAX);
+    playAudioCue("water");
     recordRunExtremes();
     return;
   }
@@ -1666,11 +1699,13 @@ function updateRiverCrossing(previousProgress: number, deltaSeconds: number): vo
   if (isCleanLogAttempt()) {
     state.riverCrossingOutcome = "log-clean";
     state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
+    playAudioCue("log");
     return;
   }
 
   state.riverCrossingOutcome = "log-missed";
   state.riverCrossingFeedbackSeconds = RIVER_FEEDBACK_SECONDS;
+  playAudioCue("log");
   state.speed = Math.min(state.speed, LOG_MISS_SPEED);
   state.lateralVelocity *= 0.28;
   state.quadDamage = clamp(
@@ -1735,6 +1770,7 @@ function render(): void {
 
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
+  drawMesh(trailAtmosphereMesh, identityMat4());
   drawMesh(riverWaterMesh, identityMat4());
   drawMesh(riskLaneCueMesh, identityMat4());
 
@@ -2700,6 +2736,7 @@ function chooseCrewAction(actionId: string): void {
       state.crewChoices.length === 0
         ? "Left fast. No bottles topped. No ice. Brave or dumb."
         : "Crew says go. No more standing around.";
+    playAudioCue("aid");
     startDescent(message, true);
     return;
   }
@@ -2749,6 +2786,7 @@ function applyCrewAction(actionId: CrewSupportAction): void {
     );
   }
 
+  playAudioCue("aid");
   recordRunExtremes();
 }
 
@@ -2811,6 +2849,7 @@ function applySecondAidAction(actionId: SecondAidAction): void {
     );
   }
 
+  playAudioCue("aid");
   recordRunExtremes();
 }
 
@@ -3495,13 +3534,30 @@ function quadBandLabel(value: number): string {
 
 function fogColorForRun(): Vec3 {
   const heatPressure = clamp((state.heat - 45) / 55, 0, 1);
+  const routeZone = routeZoneAt(state.progress);
   const exposure = exposureAt(state.progress);
   const coolingRelief = isCoolingActive() ? 0.08 : 0;
+  const waterRelief = routeZone.kind === "river" ? 0.08 : 0;
+  const aidRelief = routeZone.kind === "aid" ? 0.04 : 0;
+  const canyonBurn =
+    routeZone.kind === "steep" ||
+    routeZone.kind === "uphill" ||
+    routeZone.kind === "exposed"
+      ? 0.05
+      : 0;
 
   return [
-    clamp(0.52 + heatPressure * 0.2 + exposure * 0.05 - coolingRelief, 0, 1),
-    clamp(0.43 + exposure * 0.04 - heatPressure * 0.06, 0, 1),
-    clamp(0.31 - heatPressure * 0.11 + coolingRelief * 0.8, 0, 1),
+    clamp(
+      0.52 + heatPressure * 0.2 + exposure * 0.05 + canyonBurn - coolingRelief,
+      0,
+      1,
+    ),
+    clamp(
+      0.42 + exposure * 0.04 - heatPressure * 0.06 - canyonBurn * 0.35 + aidRelief,
+      0,
+      1,
+    ),
+    clamp(0.3 - heatPressure * 0.11 + coolingRelief * 0.8 + waterRelief, 0, 1),
   ];
 }
 
@@ -3674,6 +3730,96 @@ function createTrailMesh(): Mesh {
   }
 
   return createMesh(positions, colors);
+}
+
+function createTrailAtmosphereMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const marks = 68;
+  const dust: Vec3 = [0.56, 0.32, 0.12];
+  const darkCrack: Vec3 = [0.15, 0.09, 0.05];
+  const hotScrape: Vec3 = [0.76, 0.31, 0.08];
+  const switchbackDust: Vec3 = [0.68, 0.49, 0.16];
+  const wetStone: Vec3 = [0.08, 0.18, 0.18];
+  const uphillBurn: Vec3 = [0.42, 0.13, 0.08];
+
+  for (let index = 0; index < marks; index += 1) {
+    const progress = 0.025 + (index / marks) * 0.95;
+    const z = -TRAIL_LENGTH * progress;
+    const routeZone = routeZoneAt(progress);
+    const width = trailWidthAt(z);
+    const lateral =
+      ((((index * 37) % 100) / 100) - 0.5) * width * 1.34;
+    const halfWidth = 0.12 + (index % 4) * 0.055;
+    const length = 0.0048 + (index % 5) * 0.0014;
+    let color = index % 2 === 0 ? dust : shade(dust, 0.76);
+
+    if (routeZone.kind === "steep") {
+      color = index % 3 === 0 ? hotScrape : darkCrack;
+    } else if (routeZone.kind === "switchback") {
+      color = index % 2 === 0 ? switchbackDust : darkCrack;
+    } else if (routeZone.kind === "river") {
+      color = index % 2 === 0 ? wetStone : shade(wetStone, 1.35);
+    } else if (routeZone.kind === "uphill") {
+      color = index % 2 === 0 ? uphillBurn : hotScrape;
+    } else if (routeZone.kind === "exposed" || routeZone.kind === "finish") {
+      color = index % 2 === 0 ? hotScrape : shade(dust, 1.12);
+    }
+
+    addTrailSurfaceQuad(
+      positions,
+      colors,
+      progress,
+      length,
+      lateral,
+      halfWidth,
+      shade(color, 0.86 + (index % 3) * 0.08),
+      index,
+    );
+  }
+
+  return createMesh(positions, colors);
+}
+
+function addTrailSurfaceQuad(
+  positions: number[],
+  colors: number[],
+  progress: number,
+  length: number,
+  lateral: number,
+  halfWidth: number,
+  color: Vec3,
+  index: number,
+): void {
+  const nearProgress = clamp(progress - length * 0.5, 0, 1);
+  const farProgress = clamp(progress + length * 0.5, 0, 1);
+  const nearZ = -TRAIL_LENGTH * nearProgress;
+  const farZ = -TRAIL_LENGTH * farProgress;
+  const nearWidth = trailWidthAt(nearZ) - 0.24;
+  const farWidth = trailWidthAt(farZ) - 0.24;
+  const nearCenter = trailCenterAt(nearZ);
+  const farCenter = trailCenterAt(farZ);
+  const nearLateral = clamp(
+    lateral + Math.sin(index * 1.7) * 0.05,
+    -nearWidth + halfWidth,
+    nearWidth - halfWidth,
+  );
+  const farLateral = clamp(
+    lateral + Math.cos(index * 1.3) * 0.06,
+    -farWidth + halfWidth,
+    farWidth - halfWidth,
+  );
+  const lift = 0.062 + (index % 2) * 0.006;
+
+  addQuad(
+    positions,
+    colors,
+    [nearCenter + nearLateral - halfWidth, trailHeightAt(nearZ) + lift, nearZ],
+    [nearCenter + nearLateral + halfWidth, trailHeightAt(nearZ) + lift, nearZ],
+    [farCenter + farLateral + halfWidth, trailHeightAt(farZ) + lift, farZ],
+    [farCenter + farLateral - halfWidth, trailHeightAt(farZ) + lift, farZ],
+    color,
+  );
 }
 
 function createRiskLaneCueMesh(): Mesh {
@@ -3850,8 +3996,40 @@ function createCrewZoneObjects(): SceneObject[] {
   const signZ = -2.6;
   const signCenter = trailCenterAt(signZ);
   const signY = trailHeightAt(signZ);
+  const tentZ = tableZ - 0.1;
+  const tentY = trailHeightAt(tentZ);
 
   objects.push(
+    {
+      mesh: shadeTentMesh,
+      position: [tableCenter, tentY + 2.12, tentZ],
+      scale: [2.65, 0.78, 1.38],
+      rotationY: 0.08,
+    },
+    {
+      mesh: cubeMesh,
+      position: [tableCenter - 1.18, tentY + 1.1, tentZ - 0.62],
+      scale: [0.12, 2.02, 0.12],
+      rotationY: 0.08,
+    },
+    {
+      mesh: cubeMesh,
+      position: [tableCenter + 1.18, tentY + 1.1, tentZ - 0.62],
+      scale: [0.12, 2.02, 0.12],
+      rotationY: 0.08,
+    },
+    {
+      mesh: cubeMesh,
+      position: [tableCenter - 1.18, tentY + 1.1, tentZ + 0.62],
+      scale: [0.12, 2.02, 0.12],
+      rotationY: 0.08,
+    },
+    {
+      mesh: cubeMesh,
+      position: [tableCenter + 1.18, tentY + 1.1, tentZ + 0.62],
+      scale: [0.12, 2.02, 0.12],
+      rotationY: 0.08,
+    },
     {
       mesh: crewTableMesh,
       position: [tableCenter, tableY + 0.82, tableZ],
@@ -3923,6 +4101,9 @@ function createCrewZoneObjects(): SceneObject[] {
     },
   );
 
+  addCrewSilhouette(objects, tableCenter - 1.42, tableZ + 0.82, 0.28);
+  addCrewSilhouette(objects, coolerCenter + 0.78, coolerZ - 0.18, -0.34);
+
   for (const [xOffset, z] of [
     [-2.35, 2.8],
     [2.35, 2.8],
@@ -3953,6 +4134,24 @@ function createSecondAidStationObjects(): SceneObject[] {
   const rightMarkerX = stationCenter + stationWidth + 0.2;
 
   objects.push(
+    {
+      mesh: shadeTentMesh,
+      position: [sideX, stationY + 1.86, stationZ - 0.18],
+      scale: [1.85, 0.58, 1.04],
+      rotationY: -0.2,
+    },
+    {
+      mesh: cubeMesh,
+      position: [sideX - 0.82, stationY + 0.92, stationZ - 0.66],
+      scale: [0.1, 1.66, 0.1],
+      rotationY: -0.2,
+    },
+    {
+      mesh: cubeMesh,
+      position: [sideX + 0.82, stationY + 0.92, stationZ - 0.66],
+      scale: [0.1, 1.66, 0.1],
+      rotationY: -0.2,
+    },
     {
       mesh: crewSignMesh,
       position: [stationCenter, stationY + 2.18, stationZ],
@@ -4007,6 +4206,8 @@ function createSecondAidStationObjects(): SceneObject[] {
     },
   );
 
+  addCrewSilhouette(objects, sideX - 0.92, stationZ + 0.36, -0.25);
+
   for (const [xOffset, zOffset] of [
     [-stationWidth - 0.45, 1.45],
     [stationWidth + 0.45, 1.45],
@@ -4026,6 +4227,36 @@ function createSecondAidStationObjects(): SceneObject[] {
   }
 
   return objects;
+}
+
+function addCrewSilhouette(
+  objects: SceneObject[],
+  x: number,
+  z: number,
+  rotationY: number,
+): void {
+  const y = trailHeightAt(z);
+
+  objects.push(
+    {
+      mesh: crewBodyMesh,
+      position: [x, y + 0.86, z],
+      scale: [0.34, 0.68, 0.24],
+      rotationY,
+    },
+    {
+      mesh: skinMesh,
+      position: [x, y + 1.33, z - 0.02],
+      scale: [0.25, 0.28, 0.25],
+      rotationY,
+    },
+    {
+      mesh: accentMesh,
+      position: [x + Math.sin(rotationY) * 0.24, y + 0.64, z + Math.cos(rotationY) * 0.2],
+      scale: [0.11, 0.48, 0.1],
+      rotationY: rotationY + 0.28,
+    },
+  );
 }
 
 function createAtmosphereObjects(): SceneObject[] {
@@ -4063,7 +4294,27 @@ function createAtmosphereObjects(): SceneObject[] {
         scale: [0.72, 0.34, 0.08],
         rotationY: side * 0.2,
       },
+      {
+        mesh: dustStripeMesh,
+        position: [center, y + 0.078, z + 0.72],
+        scale: [width * 0.92, 0.035, 0.22],
+        rotationY: side * 0.11,
+      },
     );
+  }
+
+  for (const progress of [0.28, 0.5, 0.72, 0.87] as const) {
+    const z = -TRAIL_LENGTH * progress;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+
+    objects.push({
+      mesh: dustStripeMesh,
+      position: [center, y + 0.082, z - 0.18],
+      scale: [width * 1.18, 0.032, 0.34],
+      rotationY: progress > 0.6 ? -0.16 : 0.14,
+    });
   }
 
   for (let index = 0, z = -10; z > -TRAIL_LENGTH; index += 1, z -= 6.2) {
@@ -4127,6 +4378,32 @@ function createRiverCrossingObjects(): SceneObject[] {
         position: [center + 0.18, y + 0.12, z + 0.55],
         scale: [0.28, 0.05, 0.32],
         rotationY: -index * 0.35,
+      },
+    );
+  }
+
+  for (let index = 0; index < 8; index += 1) {
+    const progress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 0.35)) / 8;
+    const z = -TRAIL_LENGTH * progress;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+    const side = index % 2 === 0 ? -1 : 1;
+
+    objects.push(
+      {
+        mesh: wetRockMesh,
+        position: [center + side * (width + 0.34 + (index % 3) * 0.2), y + 0.14, z],
+        scale: [0.44 + (index % 2) * 0.14, 0.26, 0.36],
+        rotationY: index * 0.72,
+      },
+      {
+        mesh: zoneRiverMesh,
+        position: [center - 0.34 + (index % 2) * 0.54, y + 0.095, z + 0.18],
+        scale: [0.58, 0.032, 0.2],
+        rotationY: index % 2 === 0 ? -0.22 : 0.22,
       },
     );
   }
@@ -4205,6 +4482,15 @@ function addRouteZoneMarkerGate(
       rotationY: 0.18,
     },
   );
+
+  for (let stripe = 0; stripe < 3; stripe += 1) {
+    markers.push({
+      mesh,
+      position: [center, y + 0.074, z + 0.86 + stripe * 0.46],
+      scale: [width * (0.46 - stripe * 0.05) * scaleMultiplier, 0.035, 0.12],
+      rotationY: stripe % 2 === 0 ? -0.18 : 0.18,
+    });
+  }
 }
 
 function routeMarkerMeshFor(kind: RouteMarkerKind): Mesh {
@@ -4363,11 +4649,12 @@ function createCubeMesh(color: Vec3): Mesh {
   return createMesh(positions, colors);
 }
 
-function createLowPolyRockMesh(): Mesh {
+function createLowPolyRockMesh(
+  base: Vec3 = [0.34, 0.27, 0.22],
+  top: Vec3 = [0.58, 0.43, 0.3],
+): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const base: Vec3 = [0.34, 0.27, 0.22];
-  const top: Vec3 = [0.58, 0.43, 0.3];
 
   addTriangle(positions, colors, [-0.6, -0.35, 0.45], [0.55, -0.35, 0.38], [0, 0.42, 0.04], top);
   addTriangle(positions, colors, [0.55, -0.35, 0.38], [0.45, -0.35, -0.45], [0, 0.42, 0.04], shade(base, 0.86));

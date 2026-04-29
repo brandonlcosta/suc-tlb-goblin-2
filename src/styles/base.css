@@ -60,6 +60,12 @@ body {
 #game-shell::before {
   z-index: 1;
   background:
+    radial-gradient(
+      circle at 50% 34%,
+      transparent 0,
+      transparent 48%,
+      rgba(8, 8, 7, 0.22) 100%
+    ),
     linear-gradient(
       90deg,
       rgba(8, 8, 7, 0.26),
@@ -95,8 +101,22 @@ body {
   width: 100%;
   aspect-ratio: 9 / 16;
   background: #080807;
+  filter: saturate(1.08) contrast(1.07);
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+#game-shell[data-alert="danger"] #game-canvas {
+  filter: saturate(1.16) contrast(1.1) sepia(0.1);
+}
+
+#game-shell[data-alert="critical"] #game-canvas,
+#game-shell[data-alert="failure"] #game-canvas {
+  filter: saturate(1.24) contrast(1.16) sepia(0.18);
+}
+
+#game-shell[data-cooling="active"] #game-canvas {
+  filter: saturate(0.96) contrast(1.05) hue-rotate(-8deg);
 }
 
 #hud {
