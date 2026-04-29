@@ -159,6 +159,7 @@ function resolveWindowsCommand(command, args) {
     return {
       command: "cmd.exe",
       args: ["/d", "/s", "/c", commandLine],
+      spawnOptions: { windowsVerbatimArguments: true },
     };
   }
 
@@ -250,6 +251,7 @@ function run(command, args, options = {}) {
   const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     stdio: options.input ? ["pipe", "inherit", "inherit"] : "inherit",
+    ...resolved.spawnOptions,
     ...options,
   });
 
@@ -273,6 +275,7 @@ function output(command, args) {
   const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     encoding: "utf8",
+    ...resolved.spawnOptions,
   });
 
   if (result.error) {
