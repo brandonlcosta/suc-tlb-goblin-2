@@ -482,6 +482,32 @@ body {
   color: #837868;
 }
 
+#pause-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 2px solid #efe7cf;
+  color: #efe7cf;
+  background: rgba(8, 8, 7, 0.86);
+  font: inherit;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#pause-button[hidden] {
+  display: none;
+}
+
+#pause-button:focus-visible {
+  outline: 2px solid #9cff3a;
+  outline-offset: 2px;
+}
+
 #title-overlay,
 #route-intel-overlay {
   position: absolute;
@@ -832,6 +858,111 @@ body {
 .report-panel button:focus-visible {
   outline: 2px solid #efe7cf;
   outline-offset: 2px;
+}
+
+#pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 12px;
+  color: #efe7cf;
+  text-shadow: 2px 2px 0 #080807;
+  background: rgba(8, 8, 7, 0.68);
+}
+
+#pause-overlay[hidden] {
+  display: none;
+}
+
+.pause-panel {
+  width: min(100%, 380px);
+  border: 2px solid #efe7cf;
+  background: rgba(12, 11, 9, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(156, 255, 58, 0.22);
+  padding: 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.pause-panel > span,
+.pause-panel > strong,
+.pause-panel > p,
+.restart-confirmation > strong,
+.restart-confirmation > p {
+  margin: 0;
+  line-height: 1.14;
+}
+
+.pause-panel > span {
+  width: max-content;
+  padding: 3px 6px;
+  background: #1d2410;
+  color: #9cff3a;
+  font-size: 0.66rem;
+}
+
+.pause-panel > strong {
+  color: #efe7cf;
+  font-size: 0.88rem;
+}
+
+.pause-panel > p,
+.restart-confirmation > p {
+  color: #c8bda3;
+  font-size: 0.64rem;
+}
+
+.pause-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pause-actions button {
+  min-height: 42px;
+  min-width: 0;
+  border: 2px solid #9cff3a;
+  color: #080807;
+  background: #9cff3a;
+  font: inherit;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pause-actions button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.pause-actions button:focus-visible {
+  outline: 2px solid #efe7cf;
+  outline-offset: 2px;
+}
+
+.restart-confirmation {
+  border: 2px solid #ff8b3d;
+  background: rgba(42, 12, 10, 0.9);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.restart-confirmation[hidden] {
+  display: none;
+}
+
+.restart-confirmation > strong {
+  color: #ff8b3d;
+  font-size: 0.74rem;
+}
+
+.restart-confirmation .pause-actions button:first-child {
+  border-color: #ff8b3d;
+  background: #ff8b3d;
 }
 
 @media (max-width: 520px) {

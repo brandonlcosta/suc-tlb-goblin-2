@@ -45,6 +45,7 @@
             <span data-hud-status>ROUTE INTEL: CONTROL EARLY</span>
           </div>
         </div>
+        <button id="pause-button" type="button" hidden>Pause</button>
         <div id="touch-controls" aria-label="Descent touch controls" hidden>
           <div class="touch-controls__pace" aria-label="Pace mode">
             <button type="button" data-touch-pace="control">
@@ -205,6 +206,30 @@
             </dl>
             <p data-report-discipline>Decision discipline pending.</p>
             <button id="report-restart-button" type="button">Restart</button>
+          </div>
+        </div>
+        <div id="pause-overlay" aria-label="Run paused" hidden>
+          <div class="pause-panel">
+            <span>PAUSED</span>
+            <strong>CAL STREET HOLD</strong>
+            <p>Run clock held. Heat, hydration, quads, and trail movement are stopped.</p>
+            <div class="pause-actions">
+              <button id="resume-button" type="button">Resume</button>
+              <button id="pause-restart-button" type="button">Restart</button>
+            </div>
+            <div
+              id="restart-confirmation"
+              class="restart-confirmation"
+              aria-label="Restart confirmation"
+              hidden
+            >
+              <strong>Restart active descent?</strong>
+              <p>This drops the current run and returns to the title screen.</p>
+              <div class="pause-actions">
+                <button id="confirm-restart-button" type="button">Confirm restart</button>
+                <button id="cancel-restart-button" type="button">Cancel</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

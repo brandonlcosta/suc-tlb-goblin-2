@@ -364,6 +364,9 @@ interface GameState {
   titleActive: boolean;
   routeIntelActive: boolean;
   crewActive: boolean;
+  paused: boolean;
+  restartConfirmationActive: boolean;
+  resumeAfterRestartCancel: boolean;
   crewActionsRemaining: number;
   crewChoices: CrewSupportAction[];
   crewTimeSeconds: number;
@@ -558,6 +561,34 @@ const reportRestartButton = requiredElement(
   document.querySelector<HTMLButtonElement>("#report-restart-button"),
   "Missing report restart button.",
 );
+const pauseButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#pause-button"),
+  "Missing pause button.",
+);
+const pauseOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#pause-overlay"),
+  "Missing pause overlay.",
+);
+const resumeButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#resume-button"),
+  "Missing resume button.",
+);
+const pauseRestartButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#pause-restart-button"),
+  "Missing pause restart button.",
+);
+const restartConfirmation = requiredElement(
+  document.querySelector<HTMLElement>("#restart-confirmation"),
+  "Missing restart confirmation.",
+);
+const confirmRestartButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#confirm-restart-button"),
+  "Missing confirm restart button.",
+);
+const cancelRestartButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#cancel-restart-button"),
+  "Missing cancel restart button.",
+);
 const touchControls = requiredElement(
   document.querySelector<HTMLElement>("#touch-controls"),
   "Missing touch controls.",
@@ -678,8 +709,13 @@ const touchHoldPointerIds: Record<TouchHoldControl, number | null> = {
 
 let state = createInitialState();
 
-restartButton?.addEventListener("click", restart);
+restartButton?.addEventListener("click", requestRestart);
 reportRestartButton.addEventListener("click", restart);
+pauseButton.addEventListener("click", pauseRun);
+resumeButton.addEventListener("click", resumeRun);
+pauseRestartButton.addEventListener("click", requestRestart);
+confirmRestartButton.addEventListener("click", restart);
+cancelRestartButton.addEventListener("click", cancelRestartConfirmation);
 titleStartButton.addEventListener("click", startMissionIntel);
 routeIntelContinueButton.addEventListener("click", continueFromRouteIntel);
 for (const button of crewButtons) {
@@ -716,13 +752,16 @@ touchCoolingButton.addEventListener("click", (event) => {
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
 
-  if (key === "a" || key === "arrowleft") {
+  if ((key === "a" || key === "arrowleft") && isDescentControlAvailable()) {
     input.left = true;
     event.preventDefault();
-  } else if (key === "d" || key === "arrowright") {
+  } else if ((key === "d" || key === "arrowright") && isDescentControlAvailable()) {
     input.right = true;
     event.preventDefault();
-  } else if (key === "s" || key === "arrowdown" || key === "shift") {
+  } else if (
+    (key === "s" || key === "arrowdown" || key === "shift") &&
+    isDescentControlAvailable()
+  ) {
     input.brake = true;
     event.preventDefault();
   } else if (key === " " && isDescentControlAvailable()) {
@@ -730,8 +769,11 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   } else if (setPaceForKey(key)) {
     event.preventDefault();
+  } else if (key === "p") {
+    togglePause();
+    event.preventDefault();
   } else if (key === "r") {
-    restart();
+    requestRestart();
     event.preventDefault();
   }
 });
@@ -759,6 +801,7 @@ gl.disable(gl.CULL_FACE);
 updateTitleUi();
 updateRouteIntelUi();
 updateCrewUi();
+updatePauseUi();
 updateTouchControlsUi();
 requestAnimationFrame(tick);
 
@@ -770,6 +813,9 @@ function createInitialState(): GameState {
     titleActive: true,
     routeIntelActive: false,
     crewActive: false,
+    paused: false,
+    restartConfirmationActive: false,
+    resumeAfterRestartCancel: false,
     crewActionsRemaining: CREW_ACTION_LIMIT,
     crewChoices: [],
     crewTimeSeconds: 0,
@@ -846,7 +892,80 @@ function restart(): void {
   updateTitleUi();
   updateRouteIntelUi();
   updateCrewUi();
+  updatePauseUi();
   updateReportUi();
+  updateTouchControlsUi();
+}
+
+function requestRestart(): void {
+  if (isActiveDescentRun()) {
+    openRestartConfirmation(!state.paused);
+    return;
+  }
+
+  restart();
+}
+
+function pauseRun(): void {
+  if (!isActiveDescentRun() || state.paused) {
+    return;
+  }
+
+  state.paused = true;
+  state.restartConfirmationActive = false;
+  state.resumeAfterRestartCancel = false;
+  resetTouchHoldControls();
+  updatePauseUi();
+  updateTouchControlsUi();
+}
+
+function resumeRun(): void {
+  if (!state.paused || state.restartConfirmationActive) {
+    return;
+  }
+
+  state.paused = false;
+  state.resumeAfterRestartCancel = false;
+  state.lastTimestamp = performance.now();
+  resetTouchHoldControls();
+  updatePauseUi();
+  updateTouchControlsUi();
+}
+
+function togglePause(): void {
+  if (state.restartConfirmationActive) {
+    return;
+  }
+
+  if (state.paused) {
+    resumeRun();
+  } else {
+    pauseRun();
+  }
+}
+
+function openRestartConfirmation(resumeAfterCancel: boolean): void {
+  state.paused = true;
+  state.restartConfirmationActive = true;
+  state.resumeAfterRestartCancel = resumeAfterCancel;
+  resetTouchHoldControls();
+  updatePauseUi();
+  updateTouchControlsUi();
+}
+
+function cancelRestartConfirmation(): void {
+  if (!state.restartConfirmationActive) {
+    return;
+  }
+
+  const shouldResume = state.resumeAfterRestartCancel;
+
+  state.restartConfirmationActive = false;
+  state.resumeAfterRestartCancel = false;
+  state.paused = shouldResume ? false : state.paused;
+  state.lastTimestamp = performance.now();
+  resetTouchHoldControls();
+  updatePauseUi();
   updateTouchControlsUi();
 }
 
@@ -942,7 +1061,16 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
-  if (state.titleActive || state.routeIntelActive || state.crewActive || isRunTerminal()) {
+  if (state.paused) {
+    return;
+  }
+
+  if (
+    state.titleActive ||
+    state.routeIntelActive ||
+    state.crewActive ||
+    isRunTerminal()
+  ) {
     updateCamera(deltaSeconds);
     return;
   }
@@ -1054,7 +1182,7 @@ function render(): void {
 }
 
 function drawRunner(x: number, groundY: number, z: number): void {
-  const stride = Math.sin(performance.now() * 0.015) * 0.16;
+  const stride = state.paused ? 0 : Math.sin(performance.now() * 0.015) * 0.16;
 
   drawMesh(kitMesh, modelMat4([x, groundY + 0.95, z], [0.58, 1.08, 0.34], 0));
   drawMesh(skinMesh, modelMat4([x, groundY + 1.72, z + 0.02], [0.38, 0.38, 0.38], 0));
@@ -1097,6 +1225,7 @@ function updateHud(): void {
   gameShell.dataset.cooling = coolingLevel();
   setPressureReadout(runnerZ, downhillBoost);
   statusText.textContent = statusLine(speed);
+  updatePauseUi();
   updateTouchControlsUi();
 }
 
@@ -1142,6 +1271,17 @@ function updateTouchControlsUi(): void {
 }
 
 function isDescentControlAvailable(): boolean {
+  return (
+    !state.titleActive &&
+    !state.routeIntelActive &&
+    !state.crewActive &&
+    !state.paused &&
+    !state.restartConfirmationActive &&
+    !isRunTerminal()
+  );
+}
+
+function isActiveDescentRun(): boolean {
   return (
     !state.titleActive &&
     !state.routeIntelActive &&
@@ -1280,10 +1420,7 @@ function updateCooling(deltaSeconds: number): void {
 
 function useCooling(): void {
   if (
-    state.titleActive ||
-    state.routeIntelActive ||
-    state.crewActive ||
-    isRunTerminal() ||
+    !isDescentControlAvailable() ||
     state.coolingCharges <= 0 ||
     isCoolingActive()
   ) {
@@ -1327,6 +1464,14 @@ function statusLine(speed: string): string {
 
   if (state.crewActive) {
     return `ROUTE INTEL HOT DROP  ${state.crewActionsRemaining} CREW PICKS`;
+  }
+
+  if (state.restartConfirmationActive) {
+    return "RESTART CONFIRMATION OPEN  RUN HELD";
+  }
+
+  if (state.paused) {
+    return "PAUSED  RUN CLOCK AND RESOURCES HELD";
   }
 
   if (state.failureReason) {
@@ -1534,6 +1679,18 @@ function setCrewText(): void {
     return;
   }
 
+  if (state.restartConfirmationActive) {
+    crewText.textContent = "CONFIRM RESTART";
+    crewText.dataset.crewLevel = "risk";
+    return;
+  }
+
+  if (state.paused) {
+    crewText.textContent = "PAUSED";
+    crewText.dataset.crewLevel = "open";
+    return;
+  }
+
   if (state.crewChoices.length === 0) {
     crewText.textContent = "CREW LEFT FAST";
     crewText.dataset.crewLevel = "risk";
@@ -1678,6 +1835,16 @@ function updateCrewUi(): void {
       (actionId !== "leave" && (selected || state.crewActionsRemaining <= 0));
     button.dataset.selected = selected ? "true" : "false";
   }
+}
+
+function updatePauseUi(): void {
+  const activeRun = isActiveDescentRun();
+
+  pauseButton.hidden = !activeRun || state.paused;
+  pauseOverlay.hidden = !state.paused;
+  restartConfirmation.hidden = !state.restartConfirmationActive;
+  resumeButton.disabled = state.restartConfirmationActive;
+  pauseRestartButton.disabled = state.restartConfirmationActive;
 }
 
 function isCrewSupportAction(actionId: string): actionId is CrewSupportAction {
