@@ -943,6 +943,9 @@ const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
 const skinMesh = createCubeMesh([0.86, 0.76, 0.58]);
 const accentMesh = createCubeMesh([0.57, 1, 0.24]);
 const iceMesh = createCubeMesh([0.42, 0.86, 1]);
+const runnerBibMesh = createCubeMesh([0.9, 0.86, 0.68]);
+const runnerShoeMesh = createCubeMesh([0.04, 0.04, 0.035]);
+const runnerShadowMesh = createCubeMesh([0.02, 0.018, 0.014]);
 const rockMesh = createLowPolyRockMesh();
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
 const dryGrassMesh = createPyramidMesh([0.62, 0.46, 0.16]);
@@ -1748,20 +1751,154 @@ function render(): void {
 }
 
 function drawRunner(x: number, groundY: number, z: number): void {
-  const stride = state.paused ? 0 : Math.sin(performance.now() * 0.015) * 0.16;
+  const animationActive = isRunnerAnimationActive();
+  const runnerZ = -state.progress * TRAIL_LENGTH;
+  const downhillLean = input.brake
+    ? 0.06
+    : -0.24 *
+      clamp(downhillMomentumAt(runnerZ) / 4.8 + state.speed / MAX_RUN_SPEED * 0.18, 0, 1);
+  const brakeCrouch = input.brake ? 0.12 : 0;
+  const wobbleIntensity = clamp((state.quadDamage - 62) / 38, 0, 1);
+  const cycle = animationActive ? state.elapsedSeconds * (7.2 + state.speed * 1.15) : 0;
+  const strideAmount = animationActive
+    ? (0.1 + state.speed / MAX_RUN_SPEED * 0.18) * (input.brake ? 0.54 : 1)
+    : 0;
+  const stride = Math.sin(cycle) * strideAmount;
+  const oppositeStride = -stride;
+  const leftLift = Math.max(0, stride) * 0.22;
+  const rightLift = Math.max(0, oppositeStride) * 0.22;
+  const wobble =
+    animationActive && wobbleIntensity > 0
+      ? Math.sin(cycle * 0.72) * 0.08 * wobbleIntensity
+      : 0;
+  const stumbleDrop =
+    animationActive && wobbleIntensity > 0.62
+      ? Math.max(0, Math.sin(cycle * 0.54)) * 0.07 * wobbleIntensity
+      : 0;
+  const runnerX = x + wobble;
+  const steeringYaw = clamp(state.lateralVelocity * -0.035, -0.13, 0.13);
+  const wobbleYaw =
+    animationActive && wobbleIntensity > 0
+      ? Math.sin(cycle * 0.48) * 0.13 * wobbleIntensity
+      : 0;
+  const bodyYaw = steeringYaw + wobbleYaw;
+  const bodyZ = z + downhillLean;
+  const hipY = groundY + 0.69 - brakeCrouch * 0.55 - stumbleDrop;
+  const torsoY = groundY + 1.16 - brakeCrouch - stumbleDrop;
+  const headY = groundY + 1.76 - brakeCrouch * 0.72 - stumbleDrop;
+  const shoulderWidth = input.brake ? 0.46 : 0.38;
+  const legWidth = input.brake ? 0.24 : 0.18;
+  const legHeight = input.brake ? 0.5 : 0.64;
+  const armBack = input.brake ? 0.16 : 0;
 
-  drawMesh(kitMesh, modelMat4([x, groundY + 0.95, z], [0.58, 1.08, 0.34], 0));
-  drawMesh(skinMesh, modelMat4([x, groundY + 1.72, z + 0.02], [0.38, 0.38, 0.38], 0));
-  drawMesh(accentMesh, modelMat4([x, groundY + 1.16, z - 0.19], [0.66, 0.13, 0.08], 0));
-  drawMesh(accentMesh, modelMat4([x - 0.36, groundY + 1.02, z], [0.16, 0.7, 0.14], stride));
-  drawMesh(accentMesh, modelMat4([x + 0.36, groundY + 1.02, z], [0.16, 0.7, 0.14], -stride));
-  drawMesh(kitMesh, modelMat4([x - 0.2, groundY + 0.24, z], [0.18, 0.62, 0.16], -stride));
-  drawMesh(kitMesh, modelMat4([x + 0.2, groundY + 0.24, z], [0.18, 0.62, 0.16], stride));
+  drawMesh(
+    runnerShadowMesh,
+    modelMat4([runnerX, groundY + 0.035, z + 0.04], [0.86, 0.035, 0.56], bodyYaw),
+  );
+  drawMesh(kitMesh, modelMat4([runnerX, hipY, z + 0.01], [0.54, 0.36, 0.32], bodyYaw));
+  drawMesh(
+    kitMesh,
+    modelMat4([runnerX, torsoY, bodyZ], [0.48, 0.76, 0.3], bodyYaw),
+  );
+  drawMesh(
+    accentMesh,
+    modelMat4([runnerX, torsoY + 0.16, bodyZ + 0.19], [0.52, 0.08, 0.07], bodyYaw),
+  );
+  drawMesh(
+    runnerBibMesh,
+    modelMat4([runnerX, torsoY - 0.12, bodyZ + 0.21], [0.3, 0.22, 0.06], bodyYaw),
+  );
+  drawMesh(
+    accentMesh,
+    modelMat4([runnerX, torsoY + 0.08, bodyZ - 0.2], [0.2, 0.44, 0.06], bodyYaw),
+  );
+  drawMesh(
+    skinMesh,
+    modelMat4([runnerX, headY, bodyZ - 0.04], [0.34, 0.36, 0.34], bodyYaw),
+  );
+  drawMesh(
+    kitMesh,
+    modelMat4([runnerX, headY + 0.22, bodyZ - 0.06], [0.36, 0.12, 0.36], bodyYaw),
+  );
+  drawMesh(
+    accentMesh,
+    modelMat4([runnerX, headY + 0.2, bodyZ - 0.28], [0.28, 0.06, 0.16], bodyYaw),
+  );
+
+  drawRunnerLimb(
+    accentMesh,
+    [runnerX - shoulderWidth, torsoY - 0.12, bodyZ + armBack + oppositeStride * 0.56],
+    [0.14, 0.6, 0.12],
+    bodyYaw + oppositeStride * 0.72 - 0.12,
+  );
+  drawRunnerLimb(
+    accentMesh,
+    [runnerX + shoulderWidth, torsoY - 0.12, bodyZ + armBack + stride * 0.56],
+    [0.14, 0.6, 0.12],
+    bodyYaw + stride * 0.72 + 0.12,
+  );
+  drawRunnerLimb(
+    kitMesh,
+    [runnerX - legWidth, groundY + 0.34 + leftLift - brakeCrouch * 0.5, z + stride * 0.72],
+    [0.16, legHeight, 0.14],
+    bodyYaw + stride * 0.62,
+  );
+  drawRunnerLimb(
+    kitMesh,
+    [
+      runnerX + legWidth,
+      groundY + 0.34 + rightLift - brakeCrouch * 0.5,
+      z + oppositeStride * 0.72,
+    ],
+    [0.16, legHeight, 0.14],
+    bodyYaw + oppositeStride * 0.62,
+  );
+  drawMesh(
+    runnerShoeMesh,
+    modelMat4(
+      [runnerX - legWidth, groundY + 0.08 + leftLift * 0.2, z + stride * 0.9 - 0.04],
+      [0.26, 0.1, 0.3],
+      bodyYaw,
+    ),
+  );
+  drawMesh(
+    runnerShoeMesh,
+    modelMat4(
+      [
+        runnerX + legWidth,
+        groundY + 0.08 + rightLift * 0.2,
+        z + oppositeStride * 0.9 - 0.04,
+      ],
+      [0.26, 0.1, 0.3],
+      bodyYaw,
+    ),
+  );
 
   if (isCoolingActive()) {
-    drawMesh(iceMesh, modelMat4([x, groundY + 1.46, z - 0.18], [0.52, 0.14, 0.18], 0));
-    drawMesh(iceMesh, modelMat4([x, groundY + 1.94, z], [0.22, 0.12, 0.22], 0));
+    drawMesh(
+      iceMesh,
+      modelMat4([runnerX, torsoY + 0.18, bodyZ - 0.2], [0.5, 0.12, 0.16], bodyYaw),
+    );
+    drawMesh(
+      iceMesh,
+      modelMat4([runnerX, headY + 0.06, bodyZ], [0.22, 0.1, 0.22], bodyYaw),
+    );
   }
+}
+
+function drawRunnerLimb(mesh: Mesh, position: Vec3, scale: Vec3, rotationY: number): void {
+  drawMesh(mesh, modelMat4(position, scale, rotationY));
+}
+
+function isRunnerAnimationActive(): boolean {
+  return (
+    !state.paused &&
+    !state.titleActive &&
+    !state.routeIntelActive &&
+    !state.crewActive &&
+    !state.secondAidActive &&
+    !isRunTerminal()
+  );
 }
 
 function updateHud(): void {
