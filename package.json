@@ -11,6 +11,7 @@
     "prompt:generate": "node scripts/generate-queue-prompt.mjs",
     "agent:one": "node scripts/auto-run-one.mjs",
     "goblin:main": "node scripts/goblin-main.mjs",
+    "goblin:generate-and-run": "node scripts/goblin-generate-and-run.mjs",
     "goblin:pr": "node scripts/local-goblin-pr.mjs",
     "goblin:tick": "node scripts/local-goblin-tick.mjs",
     "goblin:tick:auto": "node scripts/local-goblin-tick.mjs --auto-merge --generate-if-needed",

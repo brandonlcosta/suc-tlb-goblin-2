@@ -1,4 +1,4 @@
-# Prompt 008 — Finish Line and Run Report
+# Prompt 008 â€” Finish Line and Run Report
 
 ## Goal
 
@@ -51,3 +51,4 @@ npm run build
 ## Playtest Note
 
 Finish once and fail once. Confirm the report describes what happened.
+

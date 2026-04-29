@@ -66,6 +66,40 @@
             <span data-crew-counter>2 crew picks available</span>
           </div>
         </div>
+        <div id="report-overlay" aria-label="Run report" hidden>
+          <div class="report-panel">
+            <span data-report-result>FINISHED</span>
+            <strong>CAL STREET RUN REPORT</strong>
+            <p data-report-verdict>Controlled the burn.</p>
+            <dl class="report-stats">
+              <div>
+                <dt>Elapsed</dt>
+                <dd data-report-elapsed>00:00</dd>
+              </div>
+              <div>
+                <dt>Max heat</dt>
+                <dd data-report-max-heat>000/100</dd>
+              </div>
+              <div>
+                <dt>Lowest hydration</dt>
+                <dd data-report-lowest-hydration>000/100</dd>
+              </div>
+              <div>
+                <dt>Final quads</dt>
+                <dd data-report-final-quads>000/100</dd>
+              </div>
+              <div>
+                <dt>Failure cause</dt>
+                <dd data-report-failure>NONE</dd>
+              </div>
+              <div>
+                <dt>Crew</dt>
+                <dd data-report-crew>CREW SKIPPED</dd>
+              </div>
+            </dl>
+            <button id="report-restart-button" type="button">Restart</button>
+          </div>
+        </div>
       </section>
       <button id="restart-button" type="button">Restart</button>
     </main>

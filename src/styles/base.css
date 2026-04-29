@@ -260,6 +260,110 @@ body {
   outline-offset: 2px;
 }
 
+#report-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 12px;
+  color: #efe7cf;
+  text-shadow: 2px 2px 0 #080807;
+  background: rgba(8, 8, 7, 0.72);
+}
+
+#report-overlay[hidden] {
+  display: none;
+}
+
+.report-panel {
+  width: min(100%, 420px);
+  border: 2px solid #efe7cf;
+  background: rgba(12, 11, 9, 0.94);
+  padding: 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.report-panel > span,
+.report-panel > strong,
+.report-panel > p {
+  margin: 0;
+  line-height: 1.14;
+}
+
+.report-panel > span {
+  width: max-content;
+  padding: 3px 6px;
+  background: #1d2410;
+  color: #9cff3a;
+  font-size: 0.66rem;
+}
+
+.report-panel > span[data-report-result="failed"] {
+  background: #2a1110;
+  color: #ff8b3d;
+}
+
+.report-panel > strong {
+  color: #efe7cf;
+  font-size: 0.88rem;
+}
+
+.report-panel > p {
+  color: #ffd15c;
+  font-size: 0.7rem;
+}
+
+.report-stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.report-stats div {
+  min-width: 0;
+  border: 1px solid #5d513f;
+  background: #15110c;
+  padding: 7px;
+}
+
+.report-stats dt,
+.report-stats dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.12;
+}
+
+.report-stats dt {
+  color: #c8bda3;
+  font-size: 0.54rem;
+  text-transform: uppercase;
+}
+
+.report-stats dd {
+  margin-top: 3px;
+  color: #efe7cf;
+  font-size: 0.66rem;
+}
+
+.report-panel button {
+  min-height: 40px;
+  border: 2px solid #9cff3a;
+  color: #080807;
+  background: #9cff3a;
+  font: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.report-panel button:focus-visible {
+  outline: 2px solid #efe7cf;
+  outline-offset: 2px;
+}
+
 @media (max-width: 520px) {
   .crew-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -267,6 +371,19 @@ body {
 
   .crew-actions button {
     min-height: 52px;
+  }
+
+  .report-panel {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .report-stats {
+    gap: 5px;
+  }
+
+  .report-stats div {
+    padding: 6px;
   }
 }
 

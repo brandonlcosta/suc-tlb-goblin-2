@@ -150,6 +150,8 @@ interface GameState {
   heat: number;
   hydration: number;
   quadDamage: number;
+  maxHeat: number;
+  lowestHydration: number;
   coolingCharges: number;
   coolingRemaining: number;
   gelSupportRemaining: number;
@@ -226,6 +228,46 @@ const crewCounterText = requiredElement(
 const crewButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>("[data-crew-action]"),
 );
+const reportOverlay = requiredElement(
+  document.querySelector<HTMLElement>("#report-overlay"),
+  "Missing report overlay.",
+);
+const reportResultText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-result]"),
+  "Missing report result element.",
+);
+const reportVerdictText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-verdict]"),
+  "Missing report verdict element.",
+);
+const reportElapsedText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-elapsed]"),
+  "Missing report elapsed element.",
+);
+const reportMaxHeatText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-max-heat]"),
+  "Missing report max heat element.",
+);
+const reportLowestHydrationText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-lowest-hydration]"),
+  "Missing report lowest hydration element.",
+);
+const reportFinalQuadsText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-final-quads]"),
+  "Missing report final quads element.",
+);
+const reportFailureText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-failure]"),
+  "Missing report failure element.",
+);
+const reportCrewText = requiredElement(
+  document.querySelector<HTMLElement>("[data-report-crew]"),
+  "Missing report crew element.",
+);
+const reportRestartButton = requiredElement(
+  document.querySelector<HTMLButtonElement>("#report-restart-button"),
+  "Missing report restart button.",
+);
 const gl = requiredWebGlContext(canvas);
 
 const vertexShaderSource = `
@@ -270,10 +312,12 @@ const crewTableMesh = createCubeMesh([0.46, 0.28, 0.15]);
 const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
+const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createTrailMarkers(),
+  ...createFinishLineObjects(),
   ...createRocks(),
   ...createTrees(),
 ];
@@ -287,6 +331,7 @@ const input: InputState = {
 let state = createInitialState();
 
 restartButton?.addEventListener("click", restart);
+reportRestartButton.addEventListener("click", restart);
 for (const button of crewButtons) {
   button.addEventListener("click", () => {
     const actionId = button.dataset.crewAction;
@@ -361,6 +406,8 @@ function createInitialState(): GameState {
     heat: STARTING_HEAT,
     hydration: STARTING_HYDRATION,
     quadDamage: STARTING_QUAD_DAMAGE,
+    maxHeat: STARTING_HEAT,
+    lowestHydration: STARTING_HYDRATION,
     coolingCharges: STARTING_COOLING_CHARGES,
     coolingRemaining: 0,
     gelSupportRemaining: 0,
@@ -396,6 +443,7 @@ function requiredWebGlContext(targetCanvas: HTMLCanvasElement): WebGLRenderingCo
 function restart(): void {
   state = createInitialState();
   updateCrewUi();
+  updateReportUi();
 }
 
 function setPaceForKey(key: string): boolean {
@@ -420,7 +468,7 @@ function tick(timestamp: number): void {
 }
 
 function update(deltaSeconds: number): void {
-  if (state.crewActive || state.failureReason || state.progress >= 1) {
+  if (state.crewActive || isRunTerminal()) {
     updateCamera(deltaSeconds);
     return;
   }
@@ -463,6 +511,11 @@ function update(deltaSeconds: number): void {
   state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
   updateResources(deltaSeconds, runnerZ, downhillBoost);
   updateCooling(deltaSeconds);
+
+  if (state.progress >= 1 && !state.failureReason) {
+    finishRun();
+  }
+
   updateCamera(deltaSeconds);
 }
 
@@ -496,6 +549,7 @@ function render(): void {
 
   drawRunner(runner.x, runner.y, runner.z);
   updateHud();
+  updateReportUi();
 }
 
 function drawRunner(x: number, groundY: number, z: number): void {
@@ -608,13 +662,36 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     0,
     RESOURCE_MAX,
   );
+  recordRunExtremes();
 
   if (state.heat >= RESOURCE_MAX) {
-    state.failureReason = "HEAT COLLAPSE";
-    state.speed = 0;
-    state.lateralVelocity = 0;
-    state.coolingRemaining = 0;
+    failRun("HEAT COLLAPSE");
+  } else if (state.hydration <= 0) {
+    failRun("DEHYDRATION COLLAPSE");
+  } else if (state.quadDamage >= RESOURCE_MAX) {
+    failRun("QUAD DAMAGE COLLAPSE");
   }
+}
+
+function recordRunExtremes(): void {
+  state.maxHeat = Math.max(state.maxHeat, state.heat);
+  state.lowestHydration = Math.min(state.lowestHydration, state.hydration);
+}
+
+function failRun(reason: string): void {
+  state.failureReason = reason;
+  settleRunMotion();
+}
+
+function finishRun(): void {
+  state.progress = 1;
+  settleRunMotion();
+}
+
+function settleRunMotion(): void {
+  state.speed = 0;
+  state.lateralVelocity = 0;
+  state.coolingRemaining = 0;
 }
 
 function updateCooling(deltaSeconds: number): void {
@@ -628,8 +705,7 @@ function updateCooling(deltaSeconds: number): void {
 function useCooling(): void {
   if (
     state.crewActive ||
-    state.failureReason ||
-    state.progress >= 1 ||
+    isRunTerminal() ||
     state.coolingCharges <= 0 ||
     isCoolingActive()
   ) {
@@ -645,6 +721,10 @@ function isCoolingActive(): boolean {
   return state.coolingRemaining > 0;
 }
 
+function isRunTerminal(): boolean {
+  return state.failureReason !== null || state.progress >= 1;
+}
+
 function statusLine(speed: string): string {
   const pace = PACE_SETTINGS[state.paceMode];
 
@@ -653,11 +733,11 @@ function statusLine(speed: string): string {
   }
 
   if (state.failureReason) {
-    return `${state.failureReason} - PRESS R`;
+    return `${state.failureReason} - RUN REPORT READY`;
   }
 
   if (state.progress >= 1) {
-    return "END OF PROTOTYPE SHELL - PRESS R";
+    return "FINISHED CAL STREET - RUN REPORT READY";
   }
 
   if (isCoolingActive()) {
@@ -777,6 +857,8 @@ function applyCrewAction(actionId: CrewSupportAction): void {
       CREW_CALM_SUPPORT_SECONDS,
     );
   }
+
+  recordRunExtremes();
 }
 
 function startDescent(message: string, leaveFast: boolean): void {
@@ -787,6 +869,7 @@ function startDescent(message: string, leaveFast: boolean): void {
   if (leaveFast && state.crewChoices.length === 0) {
     state.heat = clamp(state.heat + 5, 0, RESOURCE_MAX);
     state.hydration = clamp(state.hydration - 6, 0, RESOURCE_MAX);
+    recordRunExtremes();
   }
 
   updateCrewUi();
@@ -823,6 +906,69 @@ function crewChoiceSummary(): string {
   }
 
   return state.crewChoices.map((choice) => CREW_ACTIONS[choice].label).join("+");
+}
+
+function updateReportUi(): void {
+  reportOverlay.hidden = !isRunTerminal();
+
+  if (!isRunTerminal()) {
+    return;
+  }
+
+  const failed = state.failureReason !== null;
+
+  reportResultText.textContent = failed ? "FAILED" : "FINISHED";
+  reportResultText.dataset.reportResult = failed ? "failed" : "finished";
+  reportVerdictText.textContent = verdictLine();
+  reportElapsedText.textContent = formatClock(state.elapsedSeconds);
+  reportMaxHeatText.textContent = formatReportValue(state.maxHeat);
+  reportLowestHydrationText.textContent = formatReportValue(state.lowestHydration);
+  reportFinalQuadsText.textContent = formatReportValue(state.quadDamage);
+  reportFailureText.textContent = state.failureReason ?? "NONE";
+  reportCrewText.textContent = crewChoiceSummary();
+}
+
+function verdictLine(): string {
+  if (state.failureReason) {
+    if (state.failureReason.includes("HEAT")) {
+      return "Canyon tax collected.";
+    }
+
+    if (state.failureReason.includes("HYDRATION")) {
+      return "Bottles ran dry. The canyon noticed.";
+    }
+
+    if (state.failureReason.includes("QUAD")) {
+      return "The descent took your quads and kept the receipt.";
+    }
+
+    return "Good data. Bad execution.";
+  }
+
+  if (state.maxHeat < 70 && state.lowestHydration > 45 && state.quadDamage < 45) {
+    return "Controlled the burn.";
+  }
+
+  if (state.maxHeat >= 92) {
+    return "Finished cooked, but finished.";
+  }
+
+  if (state.quadDamage >= 76) {
+    return "Cal Street took a chunk out of you.";
+  }
+
+  if (state.lowestHydration <= 20) {
+    return "Bottles nearly gone. Not pretty. Very SUC.";
+  }
+
+  if (
+    state.crewChoices.some((choice) => choice === "ice" || choice === "water") &&
+    state.maxHeat < 86
+  ) {
+    return "Crew saved your race.";
+  }
+
+  return "You lived. Do it cleaner next time.";
 }
 
 function setResourceText(
@@ -1214,6 +1360,36 @@ function createTrailMarkers(): SceneObject[] {
   }
 
   return markers;
+}
+
+function createFinishLineObjects(): SceneObject[] {
+  const z = -TRAIL_LENGTH;
+  const center = trailCenterAt(z);
+  const width = trailWidthAt(z);
+  const groundY = trailHeightAt(z);
+
+  return [
+    {
+      mesh: cubeMesh,
+      position: [center - width - 0.36, groundY + 1.28, z],
+      scale: [0.2, 2.56, 0.2],
+    },
+    {
+      mesh: cubeMesh,
+      position: [center + width + 0.36, groundY + 1.28, z],
+      scale: [0.2, 2.56, 0.2],
+    },
+    {
+      mesh: finishTapeMesh,
+      position: [center, groundY + 2.5, z],
+      scale: [width * 2.18, 0.16, 0.14],
+    },
+    {
+      mesh: finishTapeMesh,
+      position: [center, groundY + 0.05, z + 0.32],
+      scale: [width * 1.95, 0.04, 0.46],
+    },
+  ];
 }
 
 function createRocks(): SceneObject[] {
@@ -1617,6 +1793,10 @@ function formatClock(seconds: number): string {
   const remainingSeconds = (wholeSeconds % 60).toString().padStart(2, "0");
 
   return `${minutes}:${remainingSeconds}`;
+}
+
+function formatReportValue(value: number): string {
+  return `${Math.round(value).toString().padStart(3, "0")}/100`;
 }
 
 function clamp(value: number, min: number, max: number): number {

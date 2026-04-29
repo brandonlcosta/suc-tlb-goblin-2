@@ -20,6 +20,49 @@ After generation, validate the ledger:
 npm run agent:check
 ```
 
+`npm run prompt:generate` only generates a queue prompt. It does not consume a
+prompt, run `npm run goblin:main`, run `npm run agent:one`, commit, push, or
+implement game features.
+
+## Generate And Run One Direct-Main Step
+
+Use the combined command when the sandbox should create one new prompt and then
+immediately run one direct-main goblin build step:
+
+```bash
+npm run goblin:generate-and-run
+```
+
+The combined command:
+
+1. Requires a clean worktree.
+2. Checks out `main`.
+3. Pulls latest `origin main` with `--ff-only`.
+4. Runs `npm run agent:check`.
+5. Runs `npm run prompt:generate`.
+6. Verifies prompt generation created exactly one pending prompt and only touched
+   allowed prompt-generation files.
+7. Runs `npm run agent:check` again.
+8. Commits the generated prompt and generator report.
+9. Pushes `main`.
+10. Runs exactly one `npm run goblin:main` step.
+
+The prompt commit message is:
+
+```txt
+Generate STLB prompt <number>: <slug>
+```
+
+For scheduled automation, prefer:
+
+```bash
+npm run goblin:generate-and-run -- --only-if-queue-low
+```
+
+With this flag, the command generates only when there are 3 or fewer pending
+prompts. If the queue already has more than 3 pending prompts, it exits cleanly
+without generating and without running `goblin:main`.
+
 ## What It Writes
 
 Each successful run writes exactly one new implementation prompt to:
@@ -35,6 +78,11 @@ reports/runs/
 ```
 
 The generated prompt becomes normal queue work. `npm run goblin:main` can consume it later only when it is the oldest pending prompt. The generator itself must never implement the prompt it creates.
+
+When `npm run goblin:generate-and-run` is used, the generated prompt is committed
+before the direct-main step starts. The later `goblin:main` run still consumes the
+oldest numbered file in `prompts/pending/`, not necessarily the prompt that was
+just generated. This is intentional FIFO queue behavior.
 
 ## Analysis Sources
 

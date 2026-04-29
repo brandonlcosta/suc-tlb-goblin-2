@@ -34,6 +34,19 @@ This writes exactly one new prompt into `prompts/pending/` plus a generation rep
 
 See `docs/PROMPT_GENERATION.md` for the review workflow and `docs/CODEX_PROMPT_GENERATOR_AUTOMATION.md` for a ready-to-paste Codex app automation prompt.
 
+`npm run prompt:generate` only generates. It never consumes queue work.
+
+`npm run goblin:main` only consumes the oldest numbered pending prompt. It does
+not generate new prompts.
+
+`npm run goblin:generate-and-run` combines the two sandbox actions: it generates
+one prompt, validates the generator output, commits and pushes that prompt
+generation commit to `main`, and then runs one `npm run goblin:main` step.
+
+The generated prompt is not guaranteed to be consumed immediately. If older
+pending prompts already exist, `goblin:main` consumes the oldest pending prompt
+first. This FIFO queue behavior is intentional.
+
 ## Required Context
 
 Every implementation run should read:
@@ -211,11 +224,63 @@ Block STLB prompt <number>: <slug>
 
 Use `git log --oneline` to inspect direct-main history. If a run is bad, use a revert commit rather than rewriting history.
 
+## Generate-And-Run Direct-Main Mode
+
+`npm run goblin:generate-and-run` is the direct-main automation path for keeping
+the queue fed and taking one build step in the same scheduled tick.
+
+The command requires a clean worktree, checks out `main`, pulls latest
+`origin main`, runs `npm run agent:check`, runs `npm run prompt:generate`,
+validates that generation created exactly one prompt and only touched allowed
+generator scope, runs `npm run agent:check` again, commits the generated prompt
+and generator report, pushes `main`, and then runs exactly one
+`npm run goblin:main`.
+
+Prompt generation may only touch:
+
+- `prompts/pending/*.md`
+- `reports/runs/*prompt-generator*.md`
+- prompt-generation docs explicitly produced by the generator
+
+Prompt generation must not touch `src/**`, `prompts/completed/**`,
+`prompts/blocked/**`, `.github/**`, `.agents/**`, `AGENTS.md`, package scripts,
+or goblin implementation scripts.
+
+The generated prompt commit message is:
+
+```txt
+Generate STLB prompt <number>: <slug>
+```
+
+Use the queue-low guard for full automation:
+
+```bash
+npm run goblin:generate-and-run -- --only-if-queue-low
+```
+
+With `--only-if-queue-low`, the command does nothing when more than 3 pending
+prompts already exist. When there are 3 or fewer pending prompts, it generates
+one new prompt, commits and pushes it, and then runs one direct-main goblin step.
+
 ## Full Goblin Automation via Windows Task Scheduler
 
 This mode is for sandbox automation only. It should not be used for serious production repos.
 
 The Windows scheduled task is named `STLB Full Goblin Main`. It runs every 15 minutes and calls `scripts/run-goblin-main.ps1`. Each scheduled tick runs one direct-main attempt by calling `npm run goblin:main`; it consumes at most one oldest pending prompt, validates the result, commits directly to `main`, pushes to `origin main`, and stops.
+
+For full queue-fed automation, schedule this command instead:
+
+```bash
+npm run goblin:generate-and-run -- --only-if-queue-low
+```
+
+This means:
+
+- if the queue has enough work, do nothing
+- if the queue is low, generate one new prompt
+- after generating, immediately run one direct-main build step
+- the build step still consumes the oldest pending prompt, not necessarily the
+  prompt just generated
 
 Direct-main scheduled automation validates with:
 
