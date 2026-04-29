@@ -70,13 +70,19 @@ function resolveNpmCliPath() {
   throw new Error("Could not resolve npm CLI path.");
 }
 
-function quoteArg(arg) {
-  const value = String(arg);
+function quoteForCmd(value) {
+  const normalized = String(value).replace(/\//g, "\\");
+
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function quoteCmdArg(arg) {
+  const value = String(arg).replace(/\//g, "\\");
 
   if (value.length === 0) return '""';
   if (!/[\s"]/.test(value)) return value;
 
-  return `"${value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function safeIsDirectory(path) {
@@ -147,10 +153,12 @@ function findCodexOnPath() {
 }
 
 function resolveWindowsCommand(command, args) {
-  if (process.platform === "win32" && /\.(cmd|bat)$/i.test(command)) {
+  if (process.platform === "win32" && /\.cmd$/i.test(command)) {
+    const commandLine = [quoteForCmd(command), ...args.map(quoteCmdArg)].join(" ");
+
     return {
       command: "cmd.exe",
-      args: ["/d", "/s", "/c", `"${command}" ${args.map(quoteArg).join(" ")}`],
+      args: ["/d", "/s", "/c", commandLine],
     };
   }
 
@@ -235,6 +243,9 @@ function commandLine(command, args) {
 function run(command, args, options = {}) {
   console.log(`\n> ${commandLine(command, args)}`);
   const resolved = resolveCommand(command, args);
+  if (command === "codex") {
+    console.log(`Resolved Codex command: ${commandLine(resolved.command, resolved.args)}`);
+  }
 
   const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
