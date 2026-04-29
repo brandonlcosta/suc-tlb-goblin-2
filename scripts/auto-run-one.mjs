@@ -54,11 +54,37 @@ const automationToolingPromptPatterns = [
   /\bscripts\//i,
 ];
 
-function commandFor(name) {
-  if (process.platform !== "win32") return name;
-  if (name === "npm") return "npm.cmd";
-  if (name === "npx") return "npx.cmd";
-  return name;
+function resolveNpmCliPath() {
+  if (process.env.npm_execpath) return process.env.npm_execpath;
+
+  const candidates = [
+    "C:/nvm4w/nodejs/node_modules/npm/bin/npm-cli.js",
+    "C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js",
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  throw new Error("Could not resolve npm CLI path.");
+}
+
+function resolveCommand(command, args) {
+  if (command === "npm") {
+    return {
+      command: process.execPath,
+      args: [resolveNpmCliPath(), ...args],
+    };
+  }
+
+  if (command === "npx") {
+    return {
+      command: process.execPath,
+      args: [resolveNpmCliPath(), "exec", ...args],
+    };
+  }
+
+  return { command, args };
 }
 
 function commandLine(command, args) {
@@ -67,8 +93,9 @@ function commandLine(command, args) {
 
 function run(command, args, options = {}) {
   console.log(`\n> ${commandLine(command, args)}`);
+  const resolved = resolveCommand(command, args);
 
-  const result = spawnSync(commandFor(command), args, {
+  const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     stdio: options.input ? ["pipe", "inherit", "inherit"] : "inherit",
     ...options,
@@ -90,7 +117,8 @@ function run(command, args, options = {}) {
 }
 
 function output(command, args) {
-  const result = spawnSync(commandFor(command), args, {
+  const resolved = resolveCommand(command, args);
+  const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     encoding: "utf8",
   });

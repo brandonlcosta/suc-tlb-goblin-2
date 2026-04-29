@@ -20,11 +20,37 @@ const codexApp = args.includes("--codex-app");
 const reuseBranch = args.includes("--reuse-branch");
 const unknownFlag = args.find((arg) => !allowedFlags.has(arg));
 
-function commandFor(name) {
-  if (process.platform !== "win32") return name;
-  if (name === "npm") return "npm.cmd";
-  if (name === "npx") return "npx.cmd";
-  return name;
+function resolveNpmCliPath() {
+  if (process.env.npm_execpath) return process.env.npm_execpath;
+
+  const candidates = [
+    "C:/nvm4w/nodejs/node_modules/npm/bin/npm-cli.js",
+    "C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js",
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  throw new Error("Could not resolve npm CLI path.");
+}
+
+function resolveCommand(command, commandArgs) {
+  if (command === "npm") {
+    return {
+      command: process.execPath,
+      args: [resolveNpmCliPath(), ...commandArgs],
+    };
+  }
+
+  if (command === "npx") {
+    return {
+      command: process.execPath,
+      args: [resolveNpmCliPath(), "exec", ...commandArgs],
+    };
+  }
+
+  return { command, args: commandArgs };
 }
 
 function commandLine(command, commandArgs) {
@@ -33,8 +59,9 @@ function commandLine(command, commandArgs) {
 
 function run(command, commandArgs, options = {}) {
   console.log(`\n> ${commandLine(command, commandArgs)}`);
+  const resolved = resolveCommand(command, commandArgs);
 
-  const result = spawnSync(commandFor(command), commandArgs, {
+  const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     encoding: options.capture ? "utf8" : undefined,
     stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
@@ -65,7 +92,8 @@ function output(command, commandArgs) {
 }
 
 function commandStatus(command, commandArgs) {
-  const result = spawnSync(commandFor(command), commandArgs, {
+  const resolved = resolveCommand(command, commandArgs);
+  const result = spawnSync(resolved.command, resolved.args, {
     cwd: root,
     stdio: "ignore",
   });
