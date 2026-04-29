@@ -17,12 +17,18 @@ const pauseFile = join(root, ".goblin", "PAUSED");
 function parseArgs(args) {
   const options = {
     autoMerge: false,
+    codexApp: false,
     generateIfNeeded: false,
   };
 
   for (const arg of args) {
     if (arg === "--auto-merge") {
       options.autoMerge = true;
+      continue;
+    }
+
+    if (arg === "--codex-app") {
+      options.codexApp = true;
       continue;
     }
 
@@ -379,9 +385,18 @@ function generateNextPrompt() {
 
 function runGoblinPr(options) {
   const args = ["run", "goblin:pr"];
+  const forwardedFlags = [];
+
+  if (options.codexApp) {
+    forwardedFlags.push("--codex-app");
+  }
 
   if (options.autoMerge) {
-    args.push("--", "--auto-merge");
+    forwardedFlags.push("--auto-merge");
+  }
+
+  if (forwardedFlags.length > 0) {
+    args.push("--", ...forwardedFlags);
   }
 
   run("npm", args, {
@@ -397,20 +412,35 @@ function main() {
     return;
   }
 
-  requireGh();
+  if (options.codexApp && options.autoMerge) {
+    console.log(
+      "Codex app mode will not call gh for auto-merge; connector support or normal gh mode is required.",
+    );
+  }
+
+  if (!options.codexApp) {
+    requireGh();
+  }
+
   assertCleanWorktree("before tick startup");
   prepareMainAndValidate();
 
-  const openAgentPrs = listOpenAgentPrs();
-  if (openAgentPrs.length > 0) {
-    const pr = openAgentPrs[0];
-    console.log(`Open agent PR exists: #${pr.number} ${pr.headRefName} ${pr.url}`);
-    writeState("open-agent-pr", {
-      number: pr.number,
-      headRefName: pr.headRefName,
-      url: pr.url,
-    });
-    return;
+  if (!options.codexApp) {
+    const openAgentPrs = listOpenAgentPrs();
+    if (openAgentPrs.length > 0) {
+      const pr = openAgentPrs[0];
+      console.log(`Open agent PR exists: #${pr.number} ${pr.headRefName} ${pr.url}`);
+      writeState("open-agent-pr", {
+        number: pr.number,
+        headRefName: pr.headRefName,
+        url: pr.url,
+      });
+      return;
+    }
+  } else {
+    console.log(
+      "Codex app mode: skipping gh checks and trusting the automation's GitHub connector PR gate.",
+    );
   }
 
   const pendingPrompts = listPromptFiles("pending");

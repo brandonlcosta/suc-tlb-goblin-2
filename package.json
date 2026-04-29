@@ -11,6 +11,7 @@
     "goblin:pr": "node scripts/local-goblin-pr.mjs",
     "goblin:tick": "node scripts/local-goblin-tick.mjs",
     "goblin:tick:auto": "node scripts/local-goblin-tick.mjs --auto-merge --generate-if-needed",
+    "goblin:tick:codex": "node scripts/local-goblin-tick.mjs --codex-app --generate-if-needed",
     "goblin:pause": "node -e \"require('fs').mkdirSync('.goblin',{recursive:true}); require('fs').writeFileSync('.goblin/PAUSED','paused\\n')\"",
     "goblin:resume": "node -e \"require('fs').rmSync('.goblin/PAUSED',{force:true})\"",
     "goblin:watch": "node scripts/local-goblin-watch.mjs",

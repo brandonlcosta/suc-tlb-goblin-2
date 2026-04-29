@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   statSync,
@@ -13,8 +14,9 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const args = process.argv.slice(2);
-const allowedFlags = new Set(["--auto-merge", "--reuse-branch"]);
+const allowedFlags = new Set(["--auto-merge", "--codex-app", "--reuse-branch"]);
 const autoMerge = args.includes("--auto-merge");
+const codexApp = args.includes("--codex-app");
 const reuseBranch = args.includes("--reuse-branch");
 const unknownFlag = args.find((arg) => !allowedFlags.has(arg));
 
@@ -190,8 +192,10 @@ function terminalQueue(promptFile) {
   return completed ? "completed" : "blocked";
 }
 
-function writePrBody(prompt, queue, reportFile) {
+function buildPrBody(prompt, queue, reportFile) {
   const body = [
+    `Local Codex worker completed prompt ${prompt.number}: ${prompt.slug}.`,
+    "",
     `Consumed prompt path: ${prompt.pendingPath}`,
     "",
     "Validation summary:",
@@ -206,9 +210,40 @@ function writePrBody(prompt, queue, reportFile) {
     "Reminder: inspect the files before merge.",
   ].join("\n");
 
+  return body;
+}
+
+function writePrBody(prompt, queue, reportFile) {
+  const body = buildPrBody(prompt, queue, reportFile);
   const bodyFile = join(root, ".git", "local-goblin-pr-body.md");
   writeFileSync(bodyFile, body, "utf8");
   return bodyFile;
+}
+
+function writeCodexAppHandoff(prompt, queue, reportFile) {
+  const handoffDir = join(root, ".goblin");
+  const handoffFile = join(handoffDir, "last-pr-ready.json");
+  const handoffPath = ".goblin/last-pr-ready.json";
+
+  mkdirSync(handoffDir, { recursive: true });
+  writeFileSync(
+    handoffFile,
+    `${JSON.stringify(
+      {
+        branch: prompt.branchName,
+        base: "main",
+        title: prompt.title,
+        body: buildPrBody(prompt, queue, reportFile),
+        prompt: prompt.pendingPath,
+        manualPlaytest: "Not performed; requires Brandon to run locally.",
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  return handoffPath;
 }
 
 function main() {
@@ -247,13 +282,23 @@ function main() {
     );
   }
 
-  run("gh", ["--version"], {
-    capture: true,
-    errorMessage: "gh is not installed or is not on PATH.",
-  });
-  run("gh", ["auth", "status"], {
-    errorMessage: "gh is not authenticated.",
-  });
+  if (codexApp && autoMerge) {
+    console.log(
+      "Codex app mode will not call gh for auto-merge; connector support or normal gh mode is required.",
+    );
+  }
+
+  if (!codexApp) {
+    run("gh", ["--version"], {
+      capture: true,
+      errorMessage: "gh is not installed or is not on PATH.",
+    });
+    run("gh", ["auth", "status"], {
+      errorMessage: "gh is not authenticated.",
+    });
+  } else {
+    console.log("Codex app mode: skipping gh version/auth checks.");
+  }
 
   if (reuseBranch && localExists) {
     run("git", ["checkout", prompt.branchName], {
@@ -323,6 +368,13 @@ function main() {
   assertCleanWorktree("before pushing");
   assertNotMain("push prompt branch");
   run("git", ["push", "-u", "origin", prompt.branchName]);
+
+  if (codexApp) {
+    const handoffFile = writeCodexAppHandoff(prompt, queue, reportFile);
+    console.log(`\nCodex app mode pushed ${prompt.branchName}.`);
+    console.log(`GOBLIN_PR_READY ${handoffFile}`);
+    return;
+  }
 
   const bodyFile = writePrBody(prompt, queue, reportFile);
   try {

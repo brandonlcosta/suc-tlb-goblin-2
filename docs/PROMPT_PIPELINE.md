@@ -152,12 +152,14 @@ npm run goblin:watch -- --auto-merge
 Codex app Automations should use the one-shot tick command, not an infinite loop:
 
 ```bash
-npm run goblin:tick -- --generate-if-needed
+npm run goblin:tick -- --codex-app --generate-if-needed
 ```
 
 Schedule the automation at a modest cadence, such as every 10 or 15 minutes at first. The Codex app automation start/pause control should be the normal operator control for the schedule.
 
-Each tick runs locally, validates the repo, checks GitHub with the authenticated `gh` CLI, and exits. If an `agent/*` PR is already open, the tick prints that PR and stops. If a pending prompt exists and no `agent/*` PR is open, the tick starts work only by calling `npm run goblin:pr`. It does not consume prompts directly, push directly to `main`, deploy, use the GitHub Codex Action, or require an `OPENAI_API_KEY`.
+Each Codex app tick runs locally, validates the repo, trusts the automation prompt to check GitHub with the GitHub connector, and exits. If a pending prompt exists, the tick starts work only by calling `npm run goblin:pr -- --codex-app`. It does not consume prompts directly, push directly to `main`, deploy, use the GitHub Codex Action, require an `OPENAI_API_KEY`, or call the local `gh` CLI.
+
+Terminal mode can still use `gh` by omitting `--codex-app`. In normal terminal mode, the tick checks GitHub with the authenticated `gh` CLI and stops when an `agent/*` PR is already open.
 
 GitHub checks still protect `main`. This mode builds through prompts and reviewable PRs, not direct self-mutation of game source.
 
@@ -182,6 +184,30 @@ Auto-merge is still opt-in. Only use it after several clean manual runs:
 ```bash
 npm run goblin:tick:auto
 ```
+
+## Codex App Goblin Mode Without gh
+
+Codex app Automations may not be able to spawn the local GitHub CLI. Use Codex app mode when the automation prompt has already checked GitHub state with the GitHub connector:
+
+```bash
+npm run goblin:tick -- --codex-app --generate-if-needed
+```
+
+or the package shortcut:
+
+```bash
+npm run goblin:tick:codex
+```
+
+In `--codex-app` mode, the repo scripts do local repo work only. They may use local `git`, `npm`, `node`, and Codex, but they do not call `gh --version`, `gh auth status`, `gh pr create`, `gh pr merge`, or `gh pr list`.
+
+PR creation is handled after the branch is pushed by the Codex app automation using the GitHub connector. The handoff file for that step is:
+
+```txt
+.goblin/last-pr-ready.json
+```
+
+Terminal mode can still use `gh`. Running `npm run goblin:pr` without `--codex-app` preserves the normal local flow that creates the PR through `gh pr create`.
 
 ## BC-OS Boundary
 
