@@ -26,9 +26,9 @@ const HYDRATION_PASSIVE_DRAIN = 0.18;
 const HYDRATION_EXPOSURE_DRAIN = 0.24;
 const HYDRATION_SPEED_DRAIN = 0.42;
 const HYDRATION_HEAT_DRAIN = 0.22;
-const QUAD_AGGRESSION_GAIN = 0.82;
+const QUAD_AGGRESSION_GAIN = 0.88;
 const BRAKE_HEAT_RELIEF = 0.62;
-const QUAD_BRAKE_RELIEF = 0.28;
+const QUAD_BRAKE_RELIEF = 0.24;
 const STARTING_COOLING_CHARGES = 0;
 const COOLING_DURATION_SECONDS = 13;
 const COOLING_HEAT_GAIN_MULTIPLIER = 0.28;
@@ -55,7 +55,7 @@ const PACE_SETTINGS = {
     downhillMultiplier: 0.5,
     heatMultiplier: 0.58,
     hydrationMultiplier: 0.68,
-    quadMultiplier: 0.46,
+    quadMultiplier: 0.42,
     maxSpeed: 5.2,
   },
   steady: {
@@ -75,7 +75,7 @@ const PACE_SETTINGS = {
     downhillMultiplier: 1.08,
     heatMultiplier: 1.42,
     hydrationMultiplier: 1.24,
-    quadMultiplier: 1.62,
+    quadMultiplier: 1.72,
     maxSpeed: 8.5,
   },
   send: {
@@ -85,7 +85,7 @@ const PACE_SETTINGS = {
     downhillMultiplier: 1.2,
     heatMultiplier: 1.72,
     hydrationMultiplier: 1.58,
-    quadMultiplier: 2.22,
+    quadMultiplier: 2.42,
     maxSpeed: MAX_RUN_SPEED,
   },
 } as const;
@@ -276,7 +276,7 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     status: "FAST OUTSIDE - SPEED HEAT",
     heatMultiplier: 1.22,
     hydrationMultiplier: 1.08,
-    quadMultiplier: 1.14,
+    quadMultiplier: 1.24,
     speedBonus: 0.52,
     color: [0.86, 0.36, 0.09],
   },
@@ -304,7 +304,7 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     status: "SAFE CENTER - QUAD RELIEF",
     heatMultiplier: 0.98,
     hydrationMultiplier: 1,
-    quadMultiplier: 0.74,
+    quadMultiplier: 0.7,
     speedBonus: -0.22,
     color: [0.46, 0.58, 0.27],
   },
@@ -332,7 +332,7 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     status: "EXPOSED RUNOUT - SPEED HEAT",
     heatMultiplier: 1.18,
     hydrationMultiplier: 1.06,
-    quadMultiplier: 1.2,
+    quadMultiplier: 1.34,
     speedBonus: 0.42,
     color: [0.9, 0.42, 0.12],
   },
@@ -1783,8 +1783,8 @@ function setPressureReadout(runnerZ: number, downhillBoost: number): void {
   } else {
     setPressureChip(
       pressureQuadText,
-      pressureLabel("QUAD", "+", pressure.quadGain, 0.22, 0.55, 0.95),
-      pressureLevel(pressure.quadGain, 0.22, 0.55, 0.95),
+      pressureLabel("QUAD", "+", pressure.quadGain, 0.28, 0.68, 1.2),
+      pressureLevel(pressure.quadGain, 0.28, 0.68, 1.2),
     );
   }
 
@@ -2686,7 +2686,15 @@ function speedPressureFor(speed: number): number {
 function technicalPressureAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
 
-  return depth > 0.62 && depth < 0.84 ? 0.85 : 0.25;
+  if (depth > 0.62 && depth < 0.84) {
+    return 0.85;
+  }
+
+  if (depth > 0.88) {
+    return 0.48;
+  }
+
+  return 0.25;
 }
 
 function runnerPositionAt(progress: number, lateral: number): {
