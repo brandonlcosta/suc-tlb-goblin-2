@@ -2,7 +2,7 @@
 
 ## Roadmap Philosophy
 
-This is now a serious low-poly 3D downhill ultra survival game.
+This is now a serious portrait-mode mobile, touchscreen-first low-poly 3D downhill ultra survival game.
 
 Do not build a huge race simulator.
 
@@ -39,6 +39,7 @@ Lock the revised identity.
 ### Done When
 
 - Everyone understands this is PS1-style 3D.
+- Everyone understands portrait mobile and touch are primary.
 - The first mission is Cal Street / Foresthill-inspired.
 - The core loop is downhill survival, not loop arcade.
 - Scope boundaries are clear.
@@ -53,7 +54,7 @@ Make the game exist as a 3D scene.
 
 ### Player Experience
 
-The player opens the game and sees a low-poly runner on a simple downhill trail.
+The player opens the game on a phone held vertically and sees a low-poly runner on a simple downhill trail.
 
 ### Features
 
@@ -64,6 +65,8 @@ The player opens the game and sees a low-poly runner on a simple downhill trail.
 - runner placeholder
 - simple downhill plane/trail
 - basic HUD
+- portrait mobile layout
+- basic touch input surface
 - restart
 
 ### Not Included
@@ -96,8 +99,8 @@ Make it feel like descending a serious trail section.
 - simple turns
 - limited draw distance / fog
 - line boundaries
-- left/right steering
-- basic braking/control
+- touch left/right steering
+- touch braking/control
 - speed changes by slope/pace
 - rocks or simple obstacles
 
@@ -106,6 +109,7 @@ Make it feel like descending a serious trail section.
 - The player can steer.
 - Downhill speed feels tempting.
 - Braking/control matters.
+- Touch controls are readable and do not hide the trail.
 - The section feels like a descent.
 
 ---
@@ -148,6 +152,7 @@ Make descent management tactical.
 - hydration drain by pace
 - quad damage by pace and speed
 - improved HUD feedback
+- portrait-safe pace controls
 
 ### Done When
 
@@ -167,7 +172,7 @@ Add the signature SUC heat-management mechanic.
 
 - cooling charge
 - ice active meter
-- spacebar cooling
+- tap-to-use cooling
 - heat reduction / heat gain reduction
 - visual feedback
 - heat shimmer reduction when cooling works
@@ -188,7 +193,7 @@ Make crew part of the mission identity.
 ### Features
 
 - start/crew zone
-- quick crew action menu
+- quick touch crew action menu
 - limited support choices
 - hydration refill
 - ice bandana
@@ -222,6 +227,7 @@ Make the mission complete.
 - crew choices
 - verdict
 - restart
+- portrait run report layout
 
 ### Done When
 
@@ -246,6 +252,7 @@ Make the game visually and emotionally distinct.
 - canyon color palette
 - harsh sun
 - retro HUD
+- mobile portrait HUD
 - serious warning text
 - subtle screen effects
 
@@ -269,6 +276,7 @@ Make Cal Street Heat Drop replayable.
 - multiple play styles viable
 - reckless play punishable
 - smart crew/cooling rewarded
+- portrait touch playability checks
 - manual playtest reports
 
 ### Done When

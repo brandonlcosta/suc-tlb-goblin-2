@@ -72,3 +72,5 @@ Do not build early:
 - custom character creator
 - large asset packs
 - advanced animation system
+- landscape mode
+- keyboard-only desktop mode

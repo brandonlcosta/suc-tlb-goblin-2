@@ -4,11 +4,13 @@ This is the revised planning package for **SUC: The Long Burn**.
 
 The game direction is now:
 
-> A PS1-style, low-poly 3D ultra-running survival game centered on a serious downhill trail section inspired by the Cal Street / Foresthill energy of Western States.
+> A portrait-mode mobile, touchscreen-first PS1-style low-poly 3D ultra-running survival game centered on a serious downhill trail section inspired by the Cal Street / Foresthill energy of Western States.
 
 This is not a goofy loop arcade game anymore.
 
 It should feel like:
+- a phone-first portrait trail survival game
+- thumb-driven touchscreen control
 - low-poly 3D trail running
 - serious downhill momentum
 - heat management
@@ -54,6 +56,8 @@ For the first build, use:
 - TypeScript
 - Vite
 - Three.js or another lightweight 3D renderer
+- Mobile-first portrait layout
+- Touchscreen controls as the primary input
 - Low-poly PS1-inspired visuals
 - No external APIs
 - No real maps
@@ -66,6 +70,7 @@ The game can be true 3D, but the scope must stay narrow:
 - simple terrain
 - simple low-poly props
 - simple HUD
+- portrait-safe on-screen controls
 - simple systems
 
 ## Package Contents

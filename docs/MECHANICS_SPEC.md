@@ -4,6 +4,8 @@
 
 This is a downhill ultra survival game.
 
+It is designed first for portrait-mode mobile play with touchscreen input. Mechanics should remain readable and controllable on a phone held vertically.
+
 The important question is:
 
 > How much speed can the player take before heat, hydration, and quad damage destroy the run?
@@ -180,13 +182,15 @@ Send should feel good immediately and expensive later.
 The player needs a manual way to control descent.
 
 Suggested behavior:
-- hold brake/control key to reduce speed
+- hold a thumb brake/control button or press-and-hold control zone to reduce speed
 - braking lowers immediate risk
 - braking can reduce future quad damage
 - braking costs time
 - panic braking at very high speed may still cause damage
 
 Do not over-simulate physics early.
+
+Keyboard braking can exist as a desktop fallback, but touch is the primary design target.
 
 ## Line Choice
 
@@ -213,9 +217,13 @@ Line types:
 
 Line choice does not need to be complex at first. It just needs to be visible and meaningful.
 
+On mobile, line choice should work through thumb steering or drag input without requiring precise cursor-like aiming.
+
 ## Crew Actions
 
 The first mission starts with crew.
+
+Crew actions should be presented as large tappable choices. The crew moment should be fast enough to operate on a phone without turning into menu management.
 
 ### Refill Bottles
 
@@ -264,6 +272,18 @@ Effect:
 
 Risk:
 - underprepared descent
+
+## Touch Control Requirements
+
+Primary actions:
+- steer / choose line
+- brake / control descent
+- select pace
+- use cooling
+- choose crew action
+- pause / restart
+
+All primary actions must be available through touch controls in portrait orientation. Keyboard shortcuts are optional fallback inputs, not acceptance criteria by themselves.
 
 ## Failure Conditions
 

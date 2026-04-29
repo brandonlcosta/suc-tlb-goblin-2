@@ -6,6 +6,7 @@ Use this after every meaningful change.
 
 - [ ] App starts.
 - [ ] Mission loads.
+- [ ] Portrait mobile layout is used by default.
 - [ ] No obvious console errors.
 - [ ] Restart works.
 
@@ -16,15 +17,17 @@ Use this after every meaningful change.
 - [ ] Trail ahead is readable.
 - [ ] Downhill direction is obvious.
 - [ ] Fog/draw distance does not confuse navigation.
+- [ ] Touch controls and HUD do not hide upcoming hazards.
 
 ## Controls
 
-- [ ] Left/right steering works.
-- [ ] Brake/control works.
-- [ ] Pace controls work.
-- [ ] Cooling control works if implemented.
-- [ ] Crew interaction works if implemented.
-- [ ] Controls feel stable.
+- [ ] Touch left/right steering works.
+- [ ] Touch brake/control works.
+- [ ] Touch pace controls work.
+- [ ] Touch cooling control works if implemented.
+- [ ] Touch crew interaction works if implemented.
+- [ ] Touch controls feel stable.
+- [ ] Keyboard fallback still works if present.
 
 ## Downhill Feel
 
@@ -56,6 +59,7 @@ Use this after every meaningful change.
 - [ ] PS1 low-poly vibe is present.
 - [ ] Environment feels hot/dry.
 - [ ] HUD is readable.
+- [ ] HUD is readable on a portrait phone viewport.
 - [ ] Warning states are clear.
 - [ ] The style does not look like a modern generic runner.
 

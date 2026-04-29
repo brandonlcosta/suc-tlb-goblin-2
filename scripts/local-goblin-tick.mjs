@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { generateQueuePrompt } from "./generate-queue-prompt.mjs";
 
 const root = process.cwd();
 const stateFile = join(root, ".goblin", "state.json");
@@ -344,70 +345,25 @@ Manual playtest: Not performed; requires Brandon to run locally.
 }
 
 function generateNextPrompt() {
-  const requiredDocs = [
-    "GAME.md",
-    "ROADMAP.md",
-    "docs/BACKLOG.md",
-    "docs/MECHANICS_SPEC.md",
-  ];
-  const missingDocs = requiredDocs.filter((path) => !existsSync(join(root, path)));
+  try {
+    const result = generateQueuePrompt({
+      root,
+      reason: "Local goblin tick requested queue-only prompt generation because the queue was empty.",
+    });
 
-  if (missingDocs.length > 0) {
     return {
-      generated: false,
-      reportFile: writeGenerationFailureReport(`Missing required docs: ${missingDocs.join(", ")}`),
+      generated: true,
+      fileName: result.fileName,
+      reportFile: result.reportFile,
     };
-  }
-
-  const game = readText("GAME.md");
-  const roadmap = readText("ROADMAP.md");
-  const backlog = readText("docs/BACKLOG.md");
-  const mechanics = readText("docs/MECHANICS_SPEC.md");
-
-  const hasUsefulSource =
-    /Trail Zones/i.test(game) &&
-    /shade\/exposure zone pass|shade/i.test(roadmap) &&
-    /shade line choice/i.test(backlog) &&
-    /### Shade/i.test(mechanics) &&
-    /### Exposed/i.test(mechanics);
-
-  if (!hasUsefulSource) {
+  } catch (error) {
     return {
       generated: false,
       reportFile: writeGenerationFailureReport(
-        "Required docs did not contain enough shade/exposure guidance.",
+        error instanceof Error ? error.message : String(error),
       ),
     };
   }
-
-  const numbers = allPromptNumbers();
-  const nextNumber = Math.max(0, ...numbers) + 1;
-  const fileName = promptFilename(nextNumber, "shade-and-exposure-zones");
-  const promptPath = join(root, "prompts", "pending", fileName);
-
-  if (existsSync(promptPath)) {
-    return {
-      generated: false,
-      reportFile: writeGenerationFailureReport(`Prompt already exists: ${fileName}`),
-    };
-  }
-
-  const completedNumbers = listPromptFiles("completed")
-    .map((file) => Number(file.match(/^(\d+)/)?.[1] ?? 0))
-    .filter((number) => number > 0)
-    .sort((a, b) => a - b);
-  const promptText = generatePromptText({
-    number: nextNumber,
-    completedNumbers,
-    recentReports: recentRunReports(),
-  });
-
-  writeFileSync(promptPath, promptText, "utf8");
-
-  return {
-    generated: true,
-    fileName,
-  };
 }
 
 function runGoblinPr(options) {

@@ -128,6 +128,19 @@ body {
   color: #ff4f4f;
 }
 
+#hud [data-cooling-level="ready"] {
+  color: #8fd2ff;
+}
+
+#hud [data-cooling-level="active"] {
+  color: #c9f5ff;
+  background: rgba(24, 79, 96, 0.84);
+}
+
+#hud [data-cooling-level="spent"] {
+  color: #837868;
+}
+
 #game-shell[data-alert="danger"] {
   border-color: #5e2a12;
 }
@@ -135,6 +148,11 @@ body {
 #game-shell[data-alert="critical"],
 #game-shell[data-alert="failure"] {
   border-color: #6d1414;
+}
+
+#game-shell[data-cooling="active"] {
+  border-color: #5cc9ff;
+  box-shadow: inset 0 0 0 2px rgba(201, 245, 255, 0.42);
 }
 
 [data-hud-status] {

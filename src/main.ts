@@ -27,6 +27,11 @@ const HYDRATION_SPEED_DRAIN = 1.65;
 const HYDRATION_HEAT_DRAIN = 1.35;
 const QUAD_AGGRESSION_GAIN = 4.8;
 const QUAD_BRAKE_RELIEF = 0.38;
+const STARTING_COOLING_CHARGES = 1;
+const COOLING_DURATION_SECONDS = 8;
+const COOLING_HEAT_GAIN_MULTIPLIER = 0.38;
+const COOLING_HEAT_DROP_PER_SECOND = 2.25;
+const COOLING_IMMEDIATE_HEAT_DROP = 5;
 
 const PACE_SETTINGS = {
   control: {
@@ -104,6 +109,8 @@ interface GameState {
   heat: number;
   hydration: number;
   quadDamage: number;
+  coolingCharges: number;
+  coolingRemaining: number;
   failureReason: string | null;
   cameraPosition: Vec3;
   cameraTarget: Vec3;
@@ -136,6 +143,10 @@ const paceText = requiredElement(
 const heatText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-heat]"),
   "Missing heat HUD element.",
+);
+const coolingText = requiredElement(
+  document.querySelector<HTMLElement>("[data-hud-cooling]"),
+  "Missing cooling HUD element.",
 );
 const hydrationText = requiredElement(
   document.querySelector<HTMLElement>("[data-hud-hydration]"),
@@ -186,6 +197,7 @@ const cubeMesh = createCubeMesh([0.05, 0.045, 0.04]);
 const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
 const skinMesh = createCubeMesh([0.86, 0.76, 0.58]);
 const accentMesh = createCubeMesh([0.57, 1, 0.24]);
+const iceMesh = createCubeMesh([0.42, 0.86, 1]);
 const rockMesh = createLowPolyRockMesh();
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
 
@@ -215,6 +227,9 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
   } else if (key === "s" || key === "arrowdown" || key === "shift") {
     input.brake = true;
+    event.preventDefault();
+  } else if (key === " ") {
+    useCooling();
     event.preventDefault();
   } else if (setPaceForKey(key)) {
     event.preventDefault();
@@ -259,6 +274,8 @@ function createInitialState(): GameState {
     heat: STARTING_HEAT,
     hydration: STARTING_HYDRATION,
     quadDamage: STARTING_QUAD_DAMAGE,
+    coolingCharges: STARTING_COOLING_CHARGES,
+    coolingRemaining: 0,
     failureReason: null,
     cameraPosition: camera.position,
     cameraTarget: camera.target,
@@ -353,6 +370,7 @@ function update(deltaSeconds: number): void {
 
   state.progress = Math.min(1, state.progress + (state.speed / TRAIL_LENGTH) * deltaSeconds);
   updateResources(deltaSeconds, runnerZ, downhillBoost);
+  updateCooling(deltaSeconds);
   updateCamera(deltaSeconds);
 }
 
@@ -398,6 +416,11 @@ function drawRunner(x: number, groundY: number, z: number): void {
   drawMesh(accentMesh, modelMat4([x + 0.36, groundY + 1.02, z], [0.16, 0.7, 0.14], -stride));
   drawMesh(kitMesh, modelMat4([x - 0.2, groundY + 0.24, z], [0.18, 0.62, 0.16], -stride));
   drawMesh(kitMesh, modelMat4([x + 0.2, groundY + 0.24, z], [0.18, 0.62, 0.16], stride));
+
+  if (isCoolingActive()) {
+    drawMesh(iceMesh, modelMat4([x, groundY + 1.46, z - 0.18], [0.52, 0.14, 0.18], 0));
+    drawMesh(iceMesh, modelMat4([x, groundY + 1.94, z], [0.22, 0.12, 0.22], 0));
+  }
 }
 
 function updateHud(): void {
@@ -408,6 +431,7 @@ function updateHud(): void {
   progressText.textContent = `PROGRESS ${progress}%`;
   paceText.textContent = `PACE ${pace.key} ${pace.label}`;
   paceText.dataset.paceMode = state.paceMode;
+  setCoolingText();
   setResourceText(heatText, "HEAT", state.heat, heatLevel(state.heat));
   setResourceText(
     hydrationText,
@@ -417,6 +441,7 @@ function updateHud(): void {
   );
   setResourceText(quadText, "QUADS", state.quadDamage, quadLevel(state.quadDamage));
   gameShell.dataset.alert = shellAlertLevel();
+  gameShell.dataset.cooling = coolingLevel();
   statusText.textContent = statusLine(speed);
 }
 
@@ -464,7 +489,11 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     pace.quadMultiplier *
     quadMultiplier;
 
-  state.heat = clamp(state.heat + heatGain * deltaSeconds, 0, RESOURCE_MAX);
+  const coolingHeatChange = isCoolingActive()
+    ? heatGain * COOLING_HEAT_GAIN_MULTIPLIER - COOLING_HEAT_DROP_PER_SECOND
+    : heatGain;
+
+  state.heat = clamp(state.heat + coolingHeatChange * deltaSeconds, 0, RESOURCE_MAX);
   state.hydration = clamp(
     state.hydration - hydrationDrain * deltaSeconds,
     0,
@@ -480,7 +509,35 @@ function updateResources(deltaSeconds: number, runnerZ: number, downhillBoost: n
     state.failureReason = "HEAT COLLAPSE";
     state.speed = 0;
     state.lateralVelocity = 0;
+    state.coolingRemaining = 0;
   }
+}
+
+function updateCooling(deltaSeconds: number): void {
+  if (state.coolingRemaining <= 0) {
+    return;
+  }
+
+  state.coolingRemaining = Math.max(0, state.coolingRemaining - deltaSeconds);
+}
+
+function useCooling(): void {
+  if (
+    state.failureReason ||
+    state.progress >= 1 ||
+    state.coolingCharges <= 0 ||
+    isCoolingActive()
+  ) {
+    return;
+  }
+
+  state.coolingCharges -= 1;
+  state.coolingRemaining = COOLING_DURATION_SECONDS;
+  state.heat = clamp(state.heat - COOLING_IMMEDIATE_HEAT_DROP, 0, RESOURCE_MAX);
+}
+
+function isCoolingActive(): boolean {
+  return state.coolingRemaining > 0;
 }
 
 function statusLine(speed: string): string {
@@ -492,6 +549,10 @@ function statusLine(speed: string): string {
 
   if (state.progress >= 1) {
     return "END OF PROTOTYPE SHELL - PRESS R";
+  }
+
+  if (isCoolingActive()) {
+    return `ICE ACTIVE ${Math.ceil(state.coolingRemaining)}S ${pace.label} ${speed}`;
   }
 
   if (state.heat >= 90) {
@@ -506,7 +567,26 @@ function statusLine(speed: string): string {
     return `QUADS COOKED ${pace.label} ${speed}  S/SHIFT CONTROL`;
   }
 
-  return `${input.brake ? "BRAKING" : pace.label} ${speed}  1-4 PACE  S/SHIFT BRAKE`;
+  return `${input.brake ? "BRAKING" : pace.label} ${speed}  1-4 PACE  SPACE ICE`;
+}
+
+function setCoolingText(): void {
+  const seconds = Math.ceil(state.coolingRemaining).toString().padStart(2, "0");
+
+  if (isCoolingActive()) {
+    coolingText.textContent = `ICE ACTIVE ${seconds}`;
+    coolingText.dataset.coolingLevel = "active";
+    return;
+  }
+
+  if (state.coolingCharges > 0) {
+    coolingText.textContent = `ICE READY ${state.coolingCharges}`;
+    coolingText.dataset.coolingLevel = "ready";
+    return;
+  }
+
+  coolingText.textContent = "ICE SPENT";
+  coolingText.dataset.coolingLevel = "spent";
 }
 
 function setResourceText(
@@ -533,6 +613,14 @@ function shellAlertLevel(): string {
   }
 
   return "stable";
+}
+
+function coolingLevel(): string {
+  if (isCoolingActive()) {
+    return "active";
+  }
+
+  return state.coolingCharges > 0 ? "ready" : "spent";
 }
 
 function heatLevel(value: number): string {

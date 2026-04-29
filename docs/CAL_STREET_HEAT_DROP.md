@@ -4,13 +4,15 @@
 
 **Cal Street Heat Drop** is the first mission for `SUC: The Long Burn`.
 
-It is a fictionalized, PS1-style 3D downhill trail section inspired by the Cal Street / Foresthill energy of Western States.
+It is a fictionalized, portrait-mode mobile, touchscreen-first PS1-style 3D downhill trail section inspired by the Cal Street / Foresthill energy of Western States.
 
 It should feel serious, hot, exposed, and dangerous.
 
 This is not an exact recreation of a real trail.
 
 It is a playable myth version:
+- phone-first portrait framing
+- touch-driven line choice and restraint
 - Foresthill-style crew start
 - fast downhill rhythm
 - exposed canyon heat
@@ -62,6 +64,8 @@ Purpose:
 - give the player resources before descent
 
 Player chooses limited support actions.
+
+Crew interaction is touch-first: choices should be large, fast to read, and easy to tap before the descent starts.
 
 Possible actions:
 - refill bottles
@@ -172,6 +176,8 @@ Track:
 - hazards hit
 - finish/failure state
 
+Also track whether touch controls remain usable during high-pressure states; warning effects should never make primary controls ambiguous.
+
 ## Terrain Feel
 
 The trail should include:
@@ -264,13 +270,14 @@ Serious/SUC-flavored:
 Cal Street Heat Drop V1 is done when:
 
 - game loads into a 3D downhill mission
+- layout is portrait mobile first
 - third-person camera works
-- player can steer
-- player can brake/control descent
+- player can steer with touch
+- player can brake/control descent with touch
 - heat rises
 - hydration drains
 - quad damage accumulates
-- crew start choices affect the run
+- crew start choices affect the run and are tappable
 - player can finish or fail
 - report appears
 - replay works

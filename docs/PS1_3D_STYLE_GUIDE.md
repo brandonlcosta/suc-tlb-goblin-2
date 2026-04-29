@@ -12,7 +12,7 @@ Not cartoony.
 
 The target is:
 
-> Low-poly 3D canyon heat with a tactical SUC HUD.
+> Low-poly 3D canyon heat with a tactical SUC HUD in a portrait mobile frame.
 
 ## Keywords
 
@@ -41,6 +41,8 @@ Recommended V1:
 - avoid complex cinematic camera work
 
 The camera must make downhill motion readable.
+
+Portrait mobile is the default composition. The runner can sit lower in the frame than on desktop so the player has enough vertical trail preview while touch controls occupy the bottom edge.
 
 ## Geometry
 
@@ -163,6 +165,24 @@ Use:
 - high contrast
 - black transparent panels
 - neon/signal accents
+
+## Portrait Mobile UI
+
+The primary layout is a narrow 9:16 phone viewport.
+
+Priorities:
+- trail readability before decoration
+- runner visible above bottom touch controls
+- resource meters readable at a glance
+- warning states visible without covering steering/brake zones
+- large tap targets for pace, cooling, crew, pause, and restart
+- safe spacing around phone browser edges and notches
+
+Avoid:
+- landscape-only HUD placement
+- tiny text that only works on desktop
+- controls that hide hazards or the runner
+- mouse-hover-only interactions
 
 ## Warning Effects
 

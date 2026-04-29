@@ -81,6 +81,14 @@ const reports = readMdFiles("reports/runs");
 const prompts = [...pending, ...completed, ...blocked];
 const byNumber = new Map();
 
+function isQueuePromptGenerationReport(report) {
+  return (
+    /queue[- ]only prompt generation run/i.test(report.text) ||
+    /queue[- ]generator setup/i.test(report.text) ||
+    /Queue Prompt Generator Report/i.test(report.text)
+  );
+}
+
 for (const prompt of prompts) {
   if (!prompt.number) {
     reportIssue("error", `Prompt filename must start with a sortable number: ${prompt.path}`);
@@ -160,6 +168,10 @@ for (const report of reports) {
   const number = promptMatch[1];
 
   if (!completedNumbers.has(number) && !blockedNumbers.has(number)) {
+    if (isQueuePromptGenerationReport(report) && pendingNumbers.has(number)) {
+      continue;
+    }
+
     reportIssue(
       "error",
       `Run report references prompt ${number}, but that prompt is not completed or blocked: ${report.path}`,

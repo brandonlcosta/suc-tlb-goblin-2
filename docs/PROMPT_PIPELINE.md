@@ -21,6 +21,19 @@ As of the 2026-04-28 reset, the active prompt queue has been rebuilt around the 
 
 `npm run agent:one` is a guarded harness for this loop. It refuses to start from a dirty working tree, asks Codex to consume only the oldest pending prompt, runs validation, checks bookkeeping, and commits only after the safety checks pass.
 
+## Queue-Only Prompt Generation
+
+Use the queue prompt generator when the project needs one more implementation prompt but should not implement anything yet:
+
+```bash
+npm run prompt:generate
+npm run agent:check
+```
+
+This writes exactly one new prompt into `prompts/pending/` plus a generation report in `reports/runs/`. It does not edit `src/`, consume prompts, move prompts, run `npm run goblin:main`, or run `npm run agent:one`.
+
+See `docs/PROMPT_GENERATION.md` for the review workflow and `docs/CODEX_PROMPT_GENERATOR_AUTOMATION.md` for a ready-to-paste Codex app automation prompt.
+
 ## Required Context
 
 Every implementation run should read:
@@ -257,7 +270,7 @@ npm run goblin:resume
 
 This creates or removes `.goblin/PAUSED`. When that file exists, `npm run goblin:tick` prints `Goblin paused` and exits cleanly.
 
-When the queue is empty, `--generate-if-needed` lets the tick create exactly one small structured implementation prompt from the existing design docs, backlog, mechanics spec, completed prompt numbers, and recent run reports. Self-analysis prompt generation only happens when the queue is empty and no `agent/*` PR is open.
+When the queue is empty, `--generate-if-needed` lets the tick call the queue-only prompt generator to create exactly one small structured implementation prompt from the existing design docs, backlog, mechanics spec, completed prompt numbers, recent reports, playtest artifacts, screenshots when present, current source files, and prompt ledger state. Self-analysis prompt generation only happens when the queue is empty and no `agent/*` PR is open.
 
 Auto-merge is still opt-in. Only use it after several clean manual runs:
 

@@ -76,3 +76,14 @@ Exact recreation adds unnecessary legal, data, and scope complexity.
 
 Implication:
 Use fictionalized terrain and names while preserving the feeling.
+
+## 008 - Portrait Mobile Touch-First
+
+Decision:
+`SUC: The Long Burn` is designed first as a portrait-mode mobile browser game with touchscreen interaction as the primary input.
+
+Reason:
+The downhill survival loop should be immediately playable in the most natural phone context: one vertical screen, thumbs on controls, trail readable above the hands, and quick tactical decisions under pressure.
+
+Implication:
+All core screens and mechanics must work in portrait orientation with touch controls. Keyboard, mouse, controller, landscape, and desktop layouts are fallback or later adaptation paths, not primary design drivers.

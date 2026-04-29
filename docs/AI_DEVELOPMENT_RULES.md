@@ -95,6 +95,7 @@ Do not edit `GAME.md` unless the prompt specifically says so.
 
 Do not add mechanics that conflict with:
 - PS1-style 3D
+- portrait mobile touch-first play
 - mission-based structure
 - no open world
 - no accounts

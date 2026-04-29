@@ -6,6 +6,8 @@ Build one corridor.
 
 Make it feel dangerous.
 
+Frame it for portrait mobile first.
+
 Do not build an open world.
 
 ## Mission Shape
@@ -58,6 +60,8 @@ Use:
 
 The player should feel gravity inviting bad decisions.
 
+Because the primary viewport is tall and narrow, the trail needs strong forward readability: clear horizon, readable upcoming turns, and hazards visible early enough for thumb input.
+
 ## Turns
 
 Turns should create pacing pressure.
@@ -70,6 +74,8 @@ A turn can punish:
 Do not make turns unfair.
 
 The player needs readable warning.
+
+Warnings should be visible in portrait without crowding the runner or the touch controls.
 
 ## Exposure Zones
 
@@ -120,6 +126,8 @@ The player should make decisions before descending.
 
 Crew start should not become a full menu sim. It is a quick tactical setup.
 
+Crew choices should be large tappable controls that work cleanly on a phone.
+
 ## Finish
 
 The finish should feel like relief.
@@ -138,6 +146,7 @@ The level is acceptable when:
 - there are distinct zones
 - there is at least one meaningful fast-vs-safe decision
 - heat and quad damage are affected by level sections
+- touch controls and HUD do not hide critical trail information
 - it can be completed in 3–7 minutes
 
 ## Avoid
@@ -149,3 +158,4 @@ The level is acceptable when:
 - long empty sections
 - invisible hazards
 - unfair turns
+- landscape-only readability

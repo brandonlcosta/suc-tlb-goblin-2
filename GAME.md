@@ -2,7 +2,7 @@
 
 ## One-line Pitch
 
-A PS1-style 3D ultra-running survival game where you descend a brutal Cal Street / Foresthill-inspired trail section while managing heat, hydration, ice, quad damage, pace, and crew execution.
+A portrait-mode mobile, touchscreen-first PS1-style 3D ultra-running survival game where you descend a brutal Cal Street / Foresthill-inspired trail section while managing heat, hydration, ice, quad damage, pace, and crew execution.
 
 ## Core Fantasy
 
@@ -40,6 +40,8 @@ The player must balance:
 - quad damage
 - crew support
 - finishing condition
+
+The primary play context is a phone held vertically. The game should be readable, controllable, and tense in portrait mode without requiring a keyboard, mouse, controller, or landscape rotation.
 
 ## Setting
 
@@ -114,6 +116,8 @@ The player controls:
 
 The runner can auto-forward, but the player must manage speed and control.
 
+Primary interaction is touchscreen input on a portrait phone. Keyboard controls may exist as a desktop/debug fallback, but the game should not be designed around them.
+
 ### Downhill Momentum
 
 Downhill speed is tempting but dangerous.
@@ -146,7 +150,7 @@ It is risk selection.
 The player needs a way to manage downhill aggression.
 
 Possible V1 control:
-- hold `Shift` or `S` to brake/control descent
+- hold a thumb control button or press-and-hold the lower screen to brake/control descent
 
 Braking:
 - lowers speed
@@ -386,11 +390,36 @@ Future audio:
 
 No licensed music.
 
+## Platform / Orientation
+
+Portrait mobile is the primary target.
+
+The game should assume:
+- a phone held vertically
+- touchscreen interaction
+- thumb-reachable controls
+- HUD readable on a narrow 9:16 viewport
+- runner and trail visible despite on-screen controls
+- no required keyboard, mouse, controller, or landscape rotation
+
+Desktop play is allowed as a fallback, but it must not drive layout, input design, or feature priorities.
+
 ## Controls
 
-Keyboard first.
+Touchscreen first.
 
-Recommended:
+Recommended portrait touch layout:
+
+- lower-left steering zone: drag or hold left/right to choose line
+- lower-right control button: hold to brake/control descent
+- pace selector: thumbable Control / Steady / Push / Send control
+- cooling button: tap to use ice/cooling when available
+- crew actions: tap large crew choice buttons at the start zone
+- pause/restart: small top-corner controls with restart confirmation
+
+Controls should be playable with one or two thumbs while keeping the trail readable.
+
+Keyboard fallback for desktop/debug:
 
 - `A` / `D` or left/right arrows: steer / choose line
 - `W` or up arrow: lean into pace / push if needed
@@ -408,18 +437,20 @@ Recommended:
 
 The smallest playable version must include:
 
-- browser app starts
+- browser app starts in a portrait mobile layout
 - simple PS1-style 3D scene renders
 - third-person camera follows runner
 - downhill trail corridor exists
 - runner moves downhill/forward
-- player can steer left/right
-- player can slow/control descent
+- player can steer left/right with touch
+- player can slow/control descent with touch
 - heat meter rises
 - hydration meter drains
 - quad damage exists
 - pace modes affect speed and resource pressure
+- cooling is usable with touch
 - one crew/start zone exists
+- crew choices are usable with touch
 - finish line exists
 - game-over exists
 - run report exists
@@ -433,6 +464,8 @@ The smallest playable version must include:
 - route intel screen
 - gameplay screen
 - run report screen
+
+All V1 screens should be designed for portrait mobile first.
 
 ### Mission
 
@@ -484,7 +517,8 @@ Do not build yet:
 - huge animation system
 - detailed nutrition inventory
 - sponsor/brand systems
-- mobile port
+- landscape/desktop-focused mode
+- keyboard-only desktop mode
 
 ## Hard Constraints
 
@@ -501,6 +535,9 @@ Do not build yet:
 - No broad refactors without explicit approval.
 - No dependency sprawl.
 - No modern realistic asset chase.
+- No desktop-only controls.
+- No keyboard-required core actions.
+- No landscape-only screens.
 - No auto-push.
 - No auto-merge.
 - No auto-deploy.
@@ -522,7 +559,8 @@ A feature is only done if:
 
 - the game still starts
 - the mission still loads
-- controls are not broken
+- touch controls are not broken
+- keyboard fallback is not broken if present
 - validation/build passes
 - no obvious console errors appear
 - the feature is visible or testable in-game

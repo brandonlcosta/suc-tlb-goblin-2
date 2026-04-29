@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "build:goblin": "tsc && vite build --outDir .goblin/dist --emptyOutDir=false",
     "agent:check": "node scripts/check-prompt-ledger.mjs",
+    "prompt:generate": "node scripts/generate-queue-prompt.mjs",
     "agent:one": "node scripts/auto-run-one.mjs",
     "goblin:main": "node scripts/goblin-main.mjs",
     "goblin:pr": "node scripts/local-goblin-pr.mjs",
