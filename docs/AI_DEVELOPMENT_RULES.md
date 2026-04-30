@@ -61,6 +61,9 @@ Approved direction includes:
 - Foresthill crew start
 - second aid station / support point
 - cleaner PS1-style runner readability and simple animation
+- trail-race course markers instead of checkpoint arches
+- lightweight other runners, spectators, volunteers, and aid-station life as atmosphere
+- richer dirt, rock, brush, water, log, fog, dust, and retro surface detail when it preserves readability
 
 These are canon direction, but they must still be implemented one small prompt at a time.
 
@@ -77,6 +80,9 @@ Prefer:
 - resource feedback
 - terrain readability
 - crossing choice clarity
+- course marker clarity
+- other-runner and spectator readability
+- trail surface clarity
 - crew/aid choice clarity
 - report clarity
 
@@ -159,6 +165,10 @@ Flag prompts that try to add:
 - complex water simulation
 - advanced log balance physics
 - complex animation rig
+- full race AI
+- crowd simulation
+- sponsor or checkpoint-arch systems
+- heavy post-processing or high-resolution asset packs
 
 Move those ideas to `docs/BACKLOG.md` unless explicitly approved.
 

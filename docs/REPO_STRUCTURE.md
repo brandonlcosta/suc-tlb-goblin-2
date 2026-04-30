@@ -78,11 +78,11 @@ Heat, hydration, quad damage, pace, braking, terrain modifiers, water slowdown/c
 
 ### `docs/PS1_3D_STYLE_GUIDE.md`
 
-Visual target, cleaner low-poly runner direction, simple animation guidance, and canyon terrain art cues.
+Visual target, cleaner low-poly runner direction, simple animation guidance, race-marker language, lightweight race actors, and canyon terrain art cues.
 
 ### `docs/LEVEL_DESIGN_GUIDE.md`
 
-How to shape the downhill course: one corridor, readable turns, switchbacks, steeper downhill, short uphill, river/log placement, second aid placement, and fair hazards.
+How to shape the downhill course: one corridor, readable turns, switchbacks, steeper downhill, short uphill, river/log placement, trail-race markers, simple race atmosphere, second aid placement, and fair hazards.
 
 ### `docs/AUDIO_STYLE_GUIDE.md`
 

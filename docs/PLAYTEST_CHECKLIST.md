@@ -90,6 +90,12 @@ Use this after every meaningful change.
 - [ ] Environment feels hot/dry.
 - [ ] River/log visuals fit the PS1 style.
 - [ ] Second aid props fit the world if implemented.
+- [ ] Runner stride, downhill lean, and braking posture read at gameplay size.
+- [ ] Course markers use flags, ribbon, stakes, signs, or chute language instead of arches.
+- [ ] Other runners add race atmosphere without confusing the player's route.
+- [ ] Spectators/volunteers add event life without crowding the playable line.
+- [ ] Trail surface detail improves place feel without visual noise.
+- [ ] Retro polish improves heat, water, dust, fog, or distance without modern-realism drift.
 - [ ] HUD is readable.
 - [ ] HUD is readable on a portrait phone viewport.
 - [ ] Warning states are clear.

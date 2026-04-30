@@ -18,12 +18,17 @@ It should feel like:
 - one short uphill heat check
 - river crossings that slow rhythm
 - a faster/riskier log crossing line
+- course flags, ribbon, stakes, and marker boards instead of arcade arches
+- other runners and spectators used as lightweight race atmosphere
+- rougher dirt, rock, brush, water, and trail-edge detail
 - heat management
 - hydration pressure
 - quad damage
 - ice and crew execution
 - a second aid/support point before the final push
 - cleaner PS1-style runner readability
+- readable running stride, downhill lean, and braking posture
+- advanced retro polish that stays low-poly and readable
 - old-school PlayStation atmosphere
 
 The first mission is:
@@ -98,14 +103,15 @@ reports/
 
 The queue should keep implementation small and staged. Current future work should move through:
 
-1. Terrain variation: curves, switchbacks, steeper downhill, and one short uphill.
-2. River and log crossing mechanics.
-3. Water slowdown and small water-cooling tuning.
-4. Foresthill crew continuity plus second aid station.
-5. Finish/report updates for the expanded mission.
-6. Cleaner retro runner model and basic animation pass.
-7. PS1 atmosphere pass for the expanded canyon terrain.
-8. First balance pass against the new mission structure.
+1. Replace arches with trail-race flags, ribbon, stakes, and course markers.
+2. Model switchbacks, curves, and varied trail geometry.
+3. Add visible river water and modeled log crossing visuals.
+4. Improve the retro runner model and readable running stride.
+5. Add real trail surface and canyon environment detail.
+6. Add other runners as lightweight race actors.
+7. Add spectators, volunteers, and aid-station life.
+8. Add advanced retro graphics polish without moving toward modern realism.
+9. Balance performance, readability, and visual clarity after the atmosphere pass.
 
 Completed prompts remain historical ledger entries. The active queue is the source for the next automation runs.
 

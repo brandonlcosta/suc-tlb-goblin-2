@@ -71,7 +71,11 @@ It should feel like:
 - one memorable log crossing option
 - water slowing the runner while possibly cooling them slightly
 - a second aid station / support point before the final push
+- flags, ribbon, stakes, and trail markers replacing arcade checkpoint arches
+- other runners moving through the same race without becoming full competitors
+- spectators, crew, and volunteers clustered where a real trail race would have life
 - oak shade pockets
+- rougher trail surface detail that still reads at speed
 - harsh downhill rhythm
 - late-day ultra pressure
 
@@ -355,11 +359,13 @@ Keep this simple early.
 The runner should become cleaner and more readable inside the PS1 style.
 
 Target:
-- cleaner low-poly runner model
+- cleaner and slightly more detailed low-poly runner model
 - better silhouette
+- clearer head, torso, arm, and leg separation
 - readable posture
 - obvious running direction
 - basic but cleaner run animation
+- visible stride cadence and arm swing
 - downhill lean
 - braking / controlled descent posture
 - optional stumble or wobble under high quad damage
@@ -479,11 +485,17 @@ Visual traits:
 - angular rocks and trees
 - simple canyon geometry
 - readable river water and logs
+- course flags, ribbon, stakes, and marker boards instead of checkpoint arches
+- a few simple other runners and spectator silhouettes for race atmosphere
+- dirt, rocks, brush, banks, and trail-edge detail kept readable in motion
+- selective retro polish such as shimmer, dust, fog, and low-res surface treatment
 - retro HUD overlays
 
 Do not chase modern realism.
 
 The roughness is part of the identity. Cleaner readability is the goal, not higher fidelity.
+
+Arches are not the intended visual language for the course. If a gameplay trigger needs an invisible gate, the visible art should be flags, tape, stakes, signs, cones, aid markers, or a marked finish chute.
 
 ## Audio Style
 
@@ -594,6 +606,8 @@ All V1 screens should be designed for portrait mobile first.
 - second aid station / support point
 - final survival push
 - finish line
+- trail-race course markers instead of arcade arches
+- lightweight race atmosphere from other runners, spectators, crew, and volunteers
 
 ### Systems
 
@@ -620,6 +634,9 @@ All V1 screens should be designed for portrait mobile first.
 - serious route intel
 - heat warning effects
 - canyon fog / limited draw distance
+- flags, ribbon, stakes, and marker boards as the course language
+- ambient other runners and spectators kept simple and readable
+- more detailed trail surface while staying low-poly
 - gritty crew text
 
 ## Later Ideas
@@ -642,6 +659,9 @@ Do not build yet:
 - full swimming
 - complex water physics
 - many aid stations
+- full race AI / pack simulation
+- dense crowd simulation
+- sponsor/finish-arch system
 - huge animation system or complex animation trees
 - detailed nutrition inventory
 - sponsor/brand systems

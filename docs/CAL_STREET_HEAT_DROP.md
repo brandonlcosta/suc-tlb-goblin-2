@@ -22,6 +22,10 @@ It is a playable myth version:
 - faster/riskier log crossing line
 - one short uphill heat check
 - second aid station / support point
+- course flags, ribbon, stakes, and marker boards instead of checkpoint arches
+- simple other runners on course
+- spectators, crew, and volunteers where the race would naturally feel alive
+- rougher dirt, rock, brush, bank, and trail-edge detail
 - shade pockets
 - quad damage risk
 - final survival push
@@ -106,6 +110,8 @@ Mood:
 - folding table
 - coolers
 - orange cones
+- flags and taped-off course edges
+- crew, volunteer, and spectator silhouettes
 - harsh sun
 - serious start energy
 
@@ -152,7 +158,7 @@ Conditions:
 - one or more switchback-style turns if useful
 - braking matters before the turn
 - fast outside line versus safer controlled line
-- warning markers readable in portrait
+- flags, tape, stakes, and warning markers readable in portrait
 
 Design note:
 Switchbacks should increase control pressure without making the route feel like a maze.
@@ -170,6 +176,7 @@ Water route:
 - deeper sections slow more if represented
 - may reduce heat slightly
 - interrupts pace rhythm
+- visible low-poly water surface, hard-edged banks, and simple splash feedback if lightweight
 
 Log route:
 - faster
@@ -177,6 +184,7 @@ Log route:
 - requires better steering/control
 - missing or falling off the log slows the runner
 - may add fatigue or quad damage
+- visible modeled log broad enough to read on a phone
 
 Design note:
 This should feel like crossing canyon terrain, not playing a platformer. One memorable log crossing is better than many cheap ones.
@@ -209,6 +217,11 @@ Possible quick choices:
 - water dump
 - grab fuel
 - skip to save time
+
+Visual cues:
+- table, coolers, jugs, simple volunteer shapes
+- flags, tape, and aid marker boards
+- a few spectators if they do not clutter the route
 
 Effects:
 - hydration
@@ -281,10 +294,32 @@ The trail should include:
 - sparse shade
 - low-poly trees
 - rocks
+- brush and trail-edge detail
+- river banks and wet-rock color
 - dust
-- trail markers
+- trail markers, flags, ribbon, and stakes instead of arches
 - canyon fog
 - simple distant terrain
+- a few other runners
+- spectators and volunteers at selected event moments
+
+## Race Atmosphere
+
+Race atmosphere should make Cal Street Heat Drop feel occupied without changing the game into a crowd or AI simulation.
+
+Use:
+- a few low-poly runners ahead, behind, or near aid areas
+- simple spectator and volunteer silhouettes at the crew start, second aid station, river crossing, or switchback overlooks
+- flags, tape, stakes, cones, and marker boards as the course language
+- finish chute markers rather than a checkpoint arch
+- light motion cues only when they stay cheap and readable
+
+Avoid:
+- dense crowds
+- pathfinding spectators
+- full rival AI systems
+- named NPC rosters
+- sponsor-branded arches
 
 ## Hazards
 
@@ -405,6 +440,8 @@ Cal Street Heat Drop V1 is done when:
 - river water slows the runner
 - log crossing provides a faster/riskier line choice
 - second aid station affects the final push
+- course markers use flags, ribbon, stakes, signs, or chute language rather than arches
+- lightweight race atmosphere appears without blocking the route
 - player can finish or fail
 - report appears
 - replay works

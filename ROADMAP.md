@@ -18,7 +18,9 @@ The first mission should make the player think:
 
 That is the heart of the game.
 
-The new direction adds canyon-terrain identity without broadening the game into an open world: curves, switchbacks, steeper downhill pitches, one short uphill, river/log crossing choices, a second aid station, and a cleaner readable PS1 runner.
+The new direction adds canyon-terrain identity without broadening the game into an open world: curves, switchbacks, steeper downhill pitches, one short uphill, river/log crossing choices, a second aid station, a cleaner readable PS1 runner, real trail-race markers, simple race atmosphere actors, and stronger retro environmental detail.
+
+The next environment phase should make the mission look less like an abstract test course and more like a marked hot canyon race while staying low-poly, readable, and narrow in scope.
 
 ## Phase 0 - Direction Lock
 
@@ -45,7 +47,25 @@ Lock the revised identity.
 - The first mission is Cal Street / Foresthill-inspired, not GPS-accurate.
 - The core loop is downhill survival, not loop arcade.
 - River/log crossings and terrain variation are part of the first-mission direction.
+- Arches are not the intended course language; use flags, ribbon, stakes, signs, cones, and marked finish chutes.
+- Other runners, spectators, crew, and volunteers are atmosphere actors, not a broad AI or crowd simulation.
 - Scope boundaries are clear.
+
+## Near-Term Environment and Race Atmosphere Queue
+
+After the existing survival loop, the active queue should improve the visible race world in small passes:
+
+1. Replace arches with flags, tape, and course markers.
+2. Improve switchbacks, curves, and varied trail geometry.
+3. Add visible river water and modeled log crossings.
+4. Improve the runner model and running stride animation.
+5. Add trail surface, rocks, brush, banks, and canyon detail.
+6. Add other runners as lightweight race actors.
+7. Add spectators, volunteers, and aid-station life.
+8. Add advanced retro graphics polish such as fog, shimmer, dust, and low-res surface treatment.
+9. Run a balance, performance, and clarity pass over the combined additions.
+
+Each pass must preserve portrait readability, touch control space, and the core downhill survival loop.
 
 ---
 
@@ -315,15 +335,20 @@ Make the game visually and emotionally distinct.
 - readable river water and logs
 - second aid-station props
 - steep/uphill visual cues
+- flags, ribbon, stakes, marker boards, and finish chute details instead of checkpoint arches
+- other runner silhouettes used sparingly to sell race context
+- spectator / volunteer clusters at crew, aid, river, and overlook moments
+- rough dirt, rocks, brush, banks, and trail-edge variation
 - retro HUD
 - mobile portrait HUD
 - serious warning text
-- subtle screen effects
+- subtle screen effects, dust, heat shimmer, and water movement if lightweight
 
 ### Done When
 
 - A screenshot says "lost PS1 ultra-running game."
 - River/log/aid/terrain additions fit the same style.
+- Race atmosphere reads as trail-race pressure without becoming crowd simulation.
 - It feels SUC-coded without needing explanation.
 
 ---
@@ -394,7 +419,7 @@ Start support and the second aid decision affect the run.
 
 ### Milestone F - "It Feels Like a Lost PS1 Ultra Game"
 
-Low-poly, serious, hot, weird, readable, SUC.
+Low-poly, serious, hot, weird, readable, marked like a trail race, and unmistakably SUC.
 
 ### Milestone G - "Cal Street Is Replayable"
 

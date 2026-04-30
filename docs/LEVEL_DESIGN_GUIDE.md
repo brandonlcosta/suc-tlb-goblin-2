@@ -65,6 +65,7 @@ Use:
 - foreground motion
 - dust/rocks
 - descent warnings
+- flags, tape, stakes, and marker boards instead of checkpoint arches
 
 The player should feel gravity inviting bad decisions.
 
@@ -190,6 +191,76 @@ Effects:
 - quad damage
 - control wobble if hit too fast
 
+## Course Marker Language
+
+Use trail-race course markings as the level's readable guidance system.
+
+Preferred markers:
+- flags and small feather flags
+- ribbon or tape between stakes
+- wooden stakes with arrows
+- caution boards before steep drops, switchbacks, water, and logs
+- cones and aid marker boards
+- finish chute flags, tape, timing mat shape, or a clear finish sign
+
+Avoid visible checkpoint arches as the default marker or finish language. If an internal gate is useful for triggers, the player-facing art should still look like a marked trail race.
+
+Markers should:
+- preview turns and hazards early
+- create readable fast/safe line hints
+- stand out from dirt, rocks, and water
+- stay chunky enough for portrait mobile
+- never block the route, runner, HUD, or touch controls
+
+## Trail Surface and Environment Detail
+
+The course should look more like a real dirt trail without becoming noisy.
+
+Use:
+- dirt color variation
+- embedded rocks
+- brush and dry grass clumps
+- trail shoulders and bank edges
+- wet-rock color near water
+- simple canyon walls and distant forms
+- dust and rough-patch cues
+
+Keep all detail subordinate to route readability. A player should still read the lane, upcoming turn, marker, crossing choice, and runner state at speed.
+
+## Other Runners
+
+Other runners can sell race atmosphere when used sparingly.
+
+Placement:
+- ahead on wide sections
+- behind or beside the player only when it does not confuse controls
+- near aid stations
+- exiting a switchback or crossing in the distance
+
+Rules:
+- keep count low
+- keep movement simple
+- avoid unfair blocking
+- avoid collision-heavy pack behavior
+- make them visually distinct enough from course markers and spectators
+
+## Spectators and Volunteers
+
+Spectators, volunteers, and crew should make event locations feel alive.
+
+Best locations:
+- Foresthill crew start
+- second aid station
+- river crossing edge
+- switchback overlook
+- finish chute
+
+Rules:
+- cluster them off the playable line
+- use simple silhouettes and low-poly props
+- make them support readability, not clutter
+- avoid pathfinding or crowd simulation
+
 ## Crew Start
 
 The mission starts at crew.
@@ -235,7 +306,7 @@ The finish should appear late enough to feel earned.
 The finish should feel like relief.
 
 Visuals:
-- checkpoint arch or sign
+- flags, tape, stakes, sign, or marked finish chute
 - crew/aid marker
 - brighter clearing
 - route report trigger
@@ -252,6 +323,8 @@ The level is acceptable when:
 - river water slows the runner
 - log crossing offers a faster/riskier line
 - second aid station affects the final push
+- course markers replace arcade-style arches
+- other runners and spectators add atmosphere without blocking route readability
 - heat and quad damage are affected by level sections
 - touch controls and HUD do not hide critical trail information
 - it can be completed in 3-7 minutes

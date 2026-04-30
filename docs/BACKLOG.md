@@ -4,7 +4,7 @@ Cool ideas live here.
 
 Nothing here is approved until turned into a small prompt.
 
-Core first-mission direction does **not** belong here. River/log crossing, water slowdown, one short uphill, steeper downhill, curves/switchbacks, second aid station, and cleaner PS1 runner readability are canonical direction now.
+Core first-mission direction does **not** belong here. River/log crossing, water slowdown, one short uphill, steeper downhill, curves/switchbacks, second aid station, cleaner PS1 runner readability, trail-race course markers, lightweight other runners, spectator/volunteer atmosphere, richer trail surface detail, and advanced low-poly retro polish are canonical direction now.
 
 ## Mission Ideas
 
@@ -62,6 +62,26 @@ Community chaos mission.
 - mission modifiers
 - split-time ghosts
 
+## Race Actor Extras
+
+- full competitor AI
+- pack tactics
+- collision-heavy passing
+- named runner roster
+- rival storylines
+- online ghosts or leaderboards
+- dense runner traffic
+
+## Spectator / Event Extras
+
+- full crowd simulation
+- pathfinding spectators
+- voice acting
+- detailed crew personalities
+- sponsor systems
+- branded finish arches
+- large aid-station management layer
+
 ## Animation Extras
 
 - advanced animation rig
@@ -79,8 +99,9 @@ Community chaos mission.
 - VHS/CRT overlay
 - save-screen style run report
 - canyon ambience
-- polygonal crew silhouettes
 - harsh sun lens blocks
+- aggressive post-process presets
+- expanded weather variants
 
 ## Hard Not Yet
 
@@ -103,5 +124,8 @@ Do not build early:
 - high-poly runner model
 - complex water simulation
 - advanced animation system
+- full race AI
+- crowd simulation
+- sponsor/finish-arch system
 - landscape mode
 - keyboard-only desktop mode

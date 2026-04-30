@@ -31,6 +31,9 @@ Current canon direction to protect:
 - terrain variation with curves, switchbacks, steeper downhill, and one short uphill
 - river/log crossing decisions as canyon terrain
 - cleaner readable runner model/animation inside PS1 style
+- trail-race course markers instead of checkpoint arches
+- lightweight other runners, spectators, volunteers, and aid-station life
+- richer trail surface and retro graphics polish while preserving readability
 
 ## BC-OS Should Not Do
 
@@ -44,6 +47,9 @@ BC-OS should not:
 - directly rewrite the game without a prompt
 - turn river/log crossings into platformer spam
 - turn aid stations into a full management sim
+- turn other runners into full competitor AI
+- turn spectators into a crowd simulation
+- bring back arcade checkpoint arches as the main course language
 
 ## Game Repo Boundary
 

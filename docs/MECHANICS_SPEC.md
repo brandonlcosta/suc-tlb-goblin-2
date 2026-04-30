@@ -314,6 +314,48 @@ Line choice does not need to be complex at first. It just needs to be visible an
 
 On mobile, line choice should work through thumb steering or drag input without requiring precise cursor-like aiming.
 
+## Course Markers
+
+Course markers are visual guidance, not a new resource system.
+
+Use:
+- flags
+- ribbon or tape between stakes
+- small course arrow boards
+- caution signs before steeps, switchbacks, water, or logs
+- cones or aid-station markers where appropriate
+- a marked finish chute
+
+Do not use checkpoint arches as the default course language. If trigger volumes remain useful internally, keep their visible art grounded in trail-race markers.
+
+Markers should:
+- preview turns and crossings early enough for thumb input
+- reinforce safe/fast line choices without overexplaining
+- stay readable in fog, heat tint, and portrait framing
+- avoid covering the runner, HUD, or touch controls
+
+## Race Actors and Spectators
+
+Other runners and spectators are atmosphere first.
+
+Other runners may:
+- appear ahead, behind, or near aid areas
+- move with simple path-following
+- sell race context and passing pressure
+- share the low-poly runner language
+
+Spectators, crew, and volunteers may:
+- cluster at the Foresthill start, second aid station, river crossing, switchback overlook, or finish
+- use static or very simple idle poses
+- help the route feel human and event-like
+
+They should not:
+- become a full AI competitor system
+- require collision-heavy avoidance
+- block fair line choice
+- create dense crowd simulation
+- distract from heat, hydration, quad damage, and terrain decisions
+
 ## Crew and Aid Actions
 
 The first mission starts with crew and later includes a second aid station.
@@ -374,6 +416,8 @@ Animation should communicate state without a large animation system.
 
 Useful states:
 - basic run cycle
+- visible stride cadence by pace or speed
+- simple arm swing and leg cycle
 - downhill lean when speed/grade rises
 - braking / controlled descent posture
 - heavier wobble under high quad damage

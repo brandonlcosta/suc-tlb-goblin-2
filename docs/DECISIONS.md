@@ -142,3 +142,36 @@ Portrait mobile readability needs a stronger silhouette and more obvious movemen
 
 Implication:
 Add a cleaner low-poly runner, basic run cycle, downhill lean, braking posture, and optional wobble/stumble later. Do not add high-poly asset requirements or animation-system bloat.
+
+## 014 - Trail-Race Markers Replace Arches
+
+Decision:
+The course should use flags, ribbon, stakes, signs, cones, aid markers, and marked finish chutes instead of visible checkpoint arches.
+
+Reason:
+Arches make the mission feel like an arcade checkpoint course. Cal Street Heat Drop should feel like a marked trail race in a hot canyon.
+
+Implication:
+If gate-like trigger volumes remain useful internally, their visible art should be trail-race markers. Do not build a sponsor-arch or checkpoint-tunnel visual language.
+
+## 015 - Race Actors Are Atmosphere, Not Simulation
+
+Decision:
+Other runners, spectators, volunteers, and crew can appear in the first mission as lightweight atmosphere actors.
+
+Reason:
+The world should feel like an actual race instead of a solo test corridor, but the game is still about downhill survival and resource pressure.
+
+Implication:
+Use sparse low-poly actors, simple poses, and simple movement. Do not add full race AI, pathfinding crowds, multiplayer, named NPC rosters, or collision-heavy pack behavior.
+
+## 016 - Advanced Retro Detail Must Preserve Readability
+
+Decision:
+Trail surface detail, water/log visuals, fog, shimmer, dust, and low-res polish are approved only when they improve atmosphere without hurting route readability.
+
+Reason:
+The next phase needs a stronger sense of place, but portrait mobile play still depends on seeing turns, hazards, the runner, and touch controls clearly.
+
+Implication:
+Prefer chunky low-poly detail, high-contrast markers, readable water/log silhouettes, and lightweight retro effects. Do not chase modern realism, high-resolution asset packs, heavy post-processing, or visual clutter.
