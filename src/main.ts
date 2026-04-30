@@ -619,6 +619,21 @@ interface SceneObject {
   rotationY?: number;
 }
 
+interface OtherRunnerActor {
+  appearAt: number;
+  disappearAt: number;
+  offsetProgress: number;
+  progressDriftPerSecond: number;
+  lateralBase: number;
+  lateralSway: number;
+  lateralSwaySpeed: number;
+  phase: number;
+  strideRate: number;
+  scale: number;
+  kitMesh: Mesh;
+  accentMesh: Mesh;
+}
+
 interface GameState {
   titleActive: boolean;
   routeIntelActive: boolean;
@@ -988,6 +1003,14 @@ const iceMesh = createCubeMesh([0.42, 0.86, 1]);
 const runnerBibMesh = createCubeMesh([0.9, 0.86, 0.68]);
 const runnerShoeMesh = createCubeMesh([0.04, 0.04, 0.035]);
 const runnerShadowMesh = createCubeMesh([0.02, 0.018, 0.014]);
+const otherRunnerKitBlueMesh = createCubeMesh([0.06, 0.15, 0.3]);
+const otherRunnerKitRustMesh = createCubeMesh([0.5, 0.16, 0.08]);
+const otherRunnerKitOliveMesh = createCubeMesh([0.15, 0.22, 0.09]);
+const otherRunnerKitMaroonMesh = createCubeMesh([0.36, 0.06, 0.08]);
+const otherRunnerAccentBoneMesh = createCubeMesh([0.86, 0.82, 0.66]);
+const otherRunnerAccentGoldMesh = createCubeMesh([0.95, 0.72, 0.22]);
+const otherRunnerAccentBlueMesh = createCubeMesh([0.18, 0.62, 0.86]);
+const otherRunnerAccentRedMesh = createCubeMesh([0.94, 0.22, 0.14]);
 const rockMesh = createLowPolyRockMesh();
 const wetRockMesh = createLowPolyRockMesh([0.12, 0.13, 0.11], [0.24, 0.28, 0.23]);
 const embeddedStoneMesh = createLowPolyRockMesh([0.18, 0.14, 0.1], [0.42, 0.31, 0.2]);
@@ -1017,6 +1040,79 @@ const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
 const zoneRiverMesh = createCubeMesh([0.08, 0.5, 0.62]);
 const zoneUphillMesh = createCubeMesh([0.86, 0.12, 0.1]);
 const zoneAidMesh = createCubeMesh([0.57, 1, 0.24]);
+
+const OTHER_RUNNER_ACTORS: readonly OtherRunnerActor[] = [
+  {
+    appearAt: 0,
+    disappearAt: 0.42,
+    offsetProgress: 0.038,
+    progressDriftPerSecond: -0.00018,
+    lateralBase: -1.04,
+    lateralSway: 0.1,
+    lateralSwaySpeed: 1.1,
+    phase: 0.4,
+    strideRate: 8.2,
+    scale: 0.86,
+    kitMesh: otherRunnerKitRustMesh,
+    accentMesh: otherRunnerAccentBoneMesh,
+  },
+  {
+    appearAt: 0,
+    disappearAt: 0.66,
+    offsetProgress: 0.095,
+    progressDriftPerSecond: -0.00004,
+    lateralBase: 1.12,
+    lateralSway: 0.13,
+    lateralSwaySpeed: 0.9,
+    phase: 2.1,
+    strideRate: 8.7,
+    scale: 0.78,
+    kitMesh: otherRunnerKitBlueMesh,
+    accentMesh: otherRunnerAccentGoldMesh,
+  },
+  {
+    appearAt: 0.16,
+    disappearAt: 0.76,
+    offsetProgress: -0.052,
+    progressDriftPerSecond: 0.00068,
+    lateralBase: -1.18,
+    lateralSway: 0.12,
+    lateralSwaySpeed: 1.35,
+    phase: 4.7,
+    strideRate: 9.15,
+    scale: 0.82,
+    kitMesh: otherRunnerKitOliveMesh,
+    accentMesh: otherRunnerAccentBlueMesh,
+  },
+  {
+    appearAt: 0.46,
+    disappearAt: 0.74,
+    offsetProgress: 0.058,
+    progressDriftPerSecond: -0.00008,
+    lateralBase: LOG_CENTER,
+    lateralSway: 0.06,
+    lateralSwaySpeed: 0.7,
+    phase: 1.3,
+    strideRate: 7.7,
+    scale: 0.76,
+    kitMesh: otherRunnerKitMaroonMesh,
+    accentMesh: otherRunnerAccentBoneMesh,
+  },
+  {
+    appearAt: 0.68,
+    disappearAt: 1.01,
+    offsetProgress: 0.074,
+    progressDriftPerSecond: 0.00003,
+    lateralBase: 0.98,
+    lateralSway: 0.11,
+    lateralSwaySpeed: 0.95,
+    phase: 3.2,
+    strideRate: 8.45,
+    scale: 0.84,
+    kitMesh: otherRunnerKitBlueMesh,
+    accentMesh: otherRunnerAccentRedMesh,
+  },
+];
 
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
@@ -1828,6 +1924,7 @@ function render(): void {
     );
   }
 
+  drawOtherRunners();
   drawRiverSplashFeedback(runner.x, runner.y, runner.z);
   drawRunner(runner.x, runner.y, runner.z);
   updateHud();
@@ -1968,6 +2065,276 @@ function drawRunner(x: number, groundY: number, z: number): void {
       modelMat4YawPitch([runnerX, headY + 0.06, bodyZ], [0.22, 0.1, 0.22], bodyYaw, bodyPitch * 0.28),
     );
   }
+}
+
+function drawOtherRunners(): void {
+  for (const actor of OTHER_RUNNER_ACTORS) {
+    if (state.progress < actor.appearAt || state.progress > actor.disappearAt) {
+      continue;
+    }
+
+    const actorProgress = otherRunnerProgressAt(actor);
+    const z = -actorProgress * TRAIL_LENGTH;
+    const lateral = otherRunnerLateralAt(actor, z);
+
+    if (!shouldDrawOtherRunner(actorProgress, lateral)) {
+      continue;
+    }
+
+    const x = trailCenterAt(z) + lateral;
+    const groundY = trailHeightAt(z);
+    const laneMotion =
+      Math.cos(state.elapsedSeconds * actor.lateralSwaySpeed + actor.phase) *
+      actor.lateralSway *
+      actor.lateralSwaySpeed;
+    const yaw = trailYawAt(z) + clamp(laneMotion * -0.04, -0.12, 0.12);
+
+    drawOtherRunner(actor, x, groundY, z, yaw);
+  }
+}
+
+function otherRunnerProgressAt(actor: OtherRunnerActor): number {
+  return clamp(
+    state.progress + actor.offsetProgress + state.elapsedSeconds * actor.progressDriftPerSecond,
+    0.012,
+    0.988,
+  );
+}
+
+function otherRunnerLateralAt(actor: OtherRunnerActor, z: number): number {
+  const lateralLimit = Math.max(0.4, playableLateralLimitAt(z) - 0.16);
+  const sway =
+    Math.sin(state.elapsedSeconds * actor.lateralSwaySpeed + actor.phase) *
+    actor.lateralSway;
+
+  return clamp(actor.lateralBase + sway, -lateralLimit, lateralLimit);
+}
+
+function shouldDrawOtherRunner(actorProgress: number, lateral: number): boolean {
+  const progressDelta = actorProgress - state.progress;
+  const lateralDelta = Math.abs(lateral - state.lateral);
+
+  return Math.abs(progressDelta) >= 0.008 || lateralDelta >= 0.62;
+}
+
+function drawOtherRunner(
+  actor: OtherRunnerActor,
+  x: number,
+  groundY: number,
+  z: number,
+  bodyYaw: number,
+): void {
+  const scale = actor.scale;
+  const runnerZ = -otherRunnerProgressAt(actor) * TRAIL_LENGTH;
+  const downhillPressure = clamp(downhillMomentumAt(runnerZ) / 5.2, 0, 1);
+  const bodyPitch = -0.09 - downhillPressure * 0.16;
+  const cycle = state.elapsedSeconds * actor.strideRate + actor.phase;
+  const stridePhase = Math.sin(cycle);
+  const liftPhase = Math.cos(cycle);
+  const strideAmount = 0.23 * scale;
+  const leftLift = Math.max(0, liftPhase) * 0.08 * scale;
+  const rightLift = Math.max(0, -liftPhase) * 0.08 * scale;
+  const bodyZ = z - 0.06 * scale;
+  const hipY = groundY + 0.64 * scale;
+  const torsoY = groundY + 1.08 * scale;
+  const shoulderY = torsoY + 0.14 * scale;
+  const headY = groundY + 1.5 * scale;
+
+  drawMesh(
+    runnerShadowMesh,
+    modelMat4([x, groundY + 0.032, z + 0.04], [0.64 * scale, 0.026, 0.46 * scale], bodyYaw),
+  );
+  drawMesh(
+    actor.kitMesh,
+    modelMat4YawPitch(
+      [x, hipY, bodyZ + 0.03 * scale],
+      [0.4 * scale, 0.23 * scale, 0.25 * scale],
+      bodyYaw,
+      bodyPitch * 0.45,
+    ),
+  );
+  drawMesh(
+    actor.kitMesh,
+    modelMat4YawPitch(
+      [x, torsoY, bodyZ],
+      [0.34 * scale, 0.56 * scale, 0.22 * scale],
+      bodyYaw,
+      bodyPitch,
+    ),
+  );
+  drawMesh(
+    actor.accentMesh,
+    modelMat4YawPitch(
+      [x, torsoY + 0.12 * scale, bodyZ + 0.16 * scale],
+      [0.34 * scale, 0.06 * scale, 0.05 * scale],
+      bodyYaw,
+      bodyPitch,
+    ),
+  );
+  drawMesh(
+    runnerBibMesh,
+    modelMat4YawPitch(
+      [x, torsoY - 0.08 * scale, bodyZ + 0.18 * scale],
+      [0.2 * scale, 0.14 * scale, 0.05 * scale],
+      bodyYaw,
+      bodyPitch,
+    ),
+  );
+  drawMesh(
+    skinMesh,
+    modelMat4YawPitch(
+      [x, headY, bodyZ - 0.04 * scale],
+      [0.25 * scale, 0.26 * scale, 0.24 * scale],
+      bodyYaw,
+      bodyPitch * 0.35,
+    ),
+  );
+  drawMesh(
+    actor.kitMesh,
+    modelMat4YawPitch(
+      [x, headY + 0.17 * scale, bodyZ - 0.06 * scale],
+      [0.28 * scale, 0.08 * scale, 0.26 * scale],
+      bodyYaw,
+      bodyPitch * 0.25,
+    ),
+  );
+
+  drawOtherRunnerArm(
+    actor,
+    -1,
+    x,
+    shoulderY,
+    bodyZ,
+    bodyYaw,
+    bodyPitch,
+    -stridePhase,
+    strideAmount,
+    scale,
+  );
+  drawOtherRunnerArm(
+    actor,
+    1,
+    x,
+    shoulderY,
+    bodyZ,
+    bodyYaw,
+    bodyPitch,
+    stridePhase,
+    strideAmount,
+    scale,
+  );
+  drawOtherRunnerLeg(
+    actor,
+    -1,
+    x,
+    groundY,
+    z,
+    bodyZ,
+    bodyYaw,
+    stridePhase,
+    leftLift,
+    strideAmount,
+    scale,
+  );
+  drawOtherRunnerLeg(
+    actor,
+    1,
+    x,
+    groundY,
+    z,
+    bodyZ,
+    bodyYaw,
+    -stridePhase,
+    rightLift,
+    strideAmount,
+    scale,
+  );
+}
+
+function drawOtherRunnerArm(
+  actor: OtherRunnerActor,
+  side: number,
+  runnerX: number,
+  shoulderY: number,
+  bodyZ: number,
+  bodyYaw: number,
+  bodyPitch: number,
+  swingPhase: number,
+  swingAmount: number,
+  actorScale: number,
+): void {
+  const handForward = -swingPhase * swingAmount;
+  const shoulderX = runnerX + side * 0.29 * actorScale;
+  const elbowX = runnerX + side * 0.31 * actorScale;
+  const upperPitch = bodyPitch * 0.45 - swingPhase * 0.58;
+  const forearmPitch = bodyPitch * 0.28 + swingPhase * 0.72 - 0.16;
+
+  drawRunnerSegment(
+    skinMesh,
+    [shoulderX, shoulderY - 0.16 * actorScale, bodyZ + handForward * 0.28],
+    [0.08 * actorScale, 0.27 * actorScale, 0.07 * actorScale],
+    bodyYaw + side * 0.05,
+    upperPitch,
+  );
+  drawRunnerSegment(
+    skinMesh,
+    [elbowX, shoulderY - 0.4 * actorScale, bodyZ - handForward * 0.34],
+    [0.074 * actorScale, 0.24 * actorScale, 0.066 * actorScale],
+    bodyYaw + side * 0.08,
+    forearmPitch,
+  );
+  drawRunnerSegment(
+    actor.accentMesh,
+    [elbowX, shoulderY - 0.54 * actorScale, bodyZ - handForward * 0.44],
+    [0.08 * actorScale, 0.04 * actorScale, 0.068 * actorScale],
+    bodyYaw + side * 0.08,
+    forearmPitch,
+  );
+}
+
+function drawOtherRunnerLeg(
+  actor: OtherRunnerActor,
+  side: number,
+  runnerX: number,
+  groundY: number,
+  z: number,
+  bodyZ: number,
+  bodyYaw: number,
+  stridePhase: number,
+  lift: number,
+  strideAmount: number,
+  actorScale: number,
+): void {
+  const footForward = -stridePhase * (0.29 * actorScale + strideAmount * 0.72);
+  const kneeForward = footForward * 0.42;
+  const hipX = runnerX + side * 0.15 * actorScale;
+  const kneeX = runnerX + side * 0.14 * actorScale;
+  const footX = runnerX + side * 0.16 * actorScale;
+  const thighPitch = -stridePhase * 0.58;
+  const shinPitch = stridePhase * 0.72;
+  const shoePitch = stridePhase * 0.16;
+
+  drawRunnerSegment(
+    actor.kitMesh,
+    [hipX, groundY + 0.5 * actorScale + lift * 0.15, bodyZ + kneeForward],
+    [0.11 * actorScale, 0.34 * actorScale, 0.1 * actorScale],
+    bodyYaw,
+    thighPitch,
+  );
+  drawRunnerSegment(
+    skinMesh,
+    [kneeX, groundY + 0.24 * actorScale + lift * 0.52, z + footForward * 0.7],
+    [0.09 * actorScale, 0.31 * actorScale, 0.085 * actorScale],
+    bodyYaw,
+    shinPitch,
+  );
+  drawRunnerSegment(
+    runnerShoeMesh,
+    [footX, groundY + 0.07 * actorScale + lift * 0.14, z + footForward - 0.03 * actorScale],
+    [0.19 * actorScale, 0.07 * actorScale, 0.22 * actorScale],
+    bodyYaw,
+    shoePitch,
+  );
 }
 
 function drawRunnerArm(
@@ -3893,6 +4260,15 @@ function runnerPositionAt(progress: number, lateral: number): {
     y: trailHeightAt(z),
     z,
   };
+}
+
+function trailYawAt(z: number): number {
+  const sampleDistance = 2.6;
+  const aheadZ = z - sampleDistance;
+  const behindZ = z + sampleDistance;
+  const centerDelta = trailCenterAt(aheadZ) - trailCenterAt(behindZ);
+
+  return -Math.atan2(centerDelta, sampleDistance * 2);
 }
 
 function desiredCameraFor(runner: { x: number; y: number; z: number }, lateral: number): {
