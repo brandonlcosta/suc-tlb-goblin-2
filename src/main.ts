@@ -976,6 +976,8 @@ const trailMesh = createTrailMesh();
 const trailAtmosphereMesh = createTrailAtmosphereMesh();
 const riskLaneCueMesh = createRiskLaneCueMesh();
 const riverWaterMesh = createRiverWaterMesh();
+const riverBankMesh = createRiverBankMesh();
+const riverShimmerMesh = createRiverShimmerMesh();
 const terrainMesh = createTerrainMesh();
 const cubeMesh = createCubeMesh([0.05, 0.045, 0.04]);
 const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
@@ -1004,6 +1006,7 @@ const courseTapeMesh = createCubeMesh([0.95, 0.88, 0.48]);
 const markerBoardMesh = createCubeMesh([0.62, 0.38, 0.16]);
 const riverLogMesh = createCubeMesh([0.43, 0.22, 0.08]);
 const riverFoamMesh = createCubeMesh([0.66, 0.88, 0.84]);
+const riverSplashMesh = createCubeMesh([0.72, 0.95, 0.92]);
 const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSteepMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
@@ -1805,6 +1808,11 @@ function render(): void {
   drawMesh(trailMesh, identityMat4());
   drawMesh(trailAtmosphereMesh, identityMat4());
   drawMesh(riverWaterMesh, identityMat4());
+  drawMesh(riverBankMesh, identityMat4());
+  drawMesh(
+    riverShimmerMesh,
+    modelMat4([0, 0, Math.sin(state.elapsedSeconds * 2.7) * 0.18], [1, 1, 1], 0),
+  );
   drawMesh(riskLaneCueMesh, identityMat4());
 
   for (const object of sceneObjects) {
@@ -1814,6 +1822,7 @@ function render(): void {
     );
   }
 
+  drawRiverSplashFeedback(runner.x, runner.y, runner.z);
   drawRunner(runner.x, runner.y, runner.z);
   updateHud();
   updateReportUi();
@@ -1957,6 +1966,56 @@ function drawRunner(x: number, groundY: number, z: number): void {
 
 function drawRunnerLimb(mesh: Mesh, position: Vec3, scale: Vec3, rotationY: number): void {
   drawMesh(mesh, modelMat4(position, scale, rotationY));
+}
+
+function drawRiverSplashFeedback(x: number, groundY: number, z: number): void {
+  const intensity = riverSplashIntensity();
+
+  if (intensity <= 0) {
+    return;
+  }
+
+  const splashCount = state.riverCrossingOutcome === "log-missed" ? 5 : 3;
+  const cycle = state.elapsedSeconds * 16;
+
+  for (let index = 0; index < splashCount; index += 1) {
+    const side = index % 2 === 0 ? -1 : 1;
+    const phase = cycle + index * 1.7;
+    const lift = Math.max(0, Math.sin(phase)) * 0.08 * intensity;
+    const spread = (0.18 + index * 0.035) * intensity;
+    const offsetX = side * spread + Math.sin(phase * 0.7) * 0.035;
+    const offsetZ = (index - (splashCount - 1) / 2) * 0.2;
+
+    drawMesh(
+      riverSplashMesh,
+      modelMat4(
+        [x + offsetX, groundY + 0.11 + lift, z + offsetZ],
+        [0.2 + intensity * 0.12, 0.035, 0.16 + intensity * 0.08],
+        side * 0.28 + Math.sin(phase) * 0.08,
+      ),
+    );
+  }
+}
+
+function riverSplashIntensity(): number {
+  const riskLane = riskLaneAt(state.progress, state.lateral);
+  let intensity =
+    isInRiverCrossing(state.progress) && riskLane.kind === "water"
+      ? 0.64 + Math.sin(state.elapsedSeconds * 8) * 0.1
+      : 0;
+
+  if (
+    state.riverCrossingFeedbackSeconds > 0 &&
+    (state.riverCrossingOutcome === "water" ||
+      state.riverCrossingOutcome === "log-missed")
+  ) {
+    intensity = Math.max(
+      intensity,
+      state.riverCrossingFeedbackSeconds / RIVER_FEEDBACK_SECONDS,
+    );
+  }
+
+  return clamp(intensity, 0, 1);
 }
 
 function isRunnerAnimationActive(): boolean {
@@ -3990,9 +4049,12 @@ function createRiskLaneCueMesh(): Mesh {
 function createRiverWaterMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const slices = 9;
-  const waterA: Vec3 = [0.06, 0.36, 0.45];
-  const waterB: Vec3 = [0.08, 0.48, 0.56];
+  const slices = 12;
+  const waterA: Vec3 = [0.05, 0.31, 0.42];
+  const waterB: Vec3 = [0.07, 0.42, 0.5];
+  const deepWater: Vec3 = [0.03, 0.24, 0.34];
+  const shallowWater: Vec3 = [0.1, 0.5, 0.5];
+  const riffle: Vec3 = [0.34, 0.68, 0.66];
 
   for (let index = 0; index < slices; index += 1) {
     const nearProgress =
@@ -4003,24 +4065,232 @@ function createRiverWaterMesh(): Mesh {
       ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 1)) / slices;
     const nearZ = -TRAIL_LENGTH * nearProgress;
     const farZ = -TRAIL_LENGTH * farProgress;
-    const nearCenter = trailCenterAt(nearZ);
-    const farCenter = trailCenterAt(farZ);
-    const nearWidth = trailWidthAt(nearZ) + 1.16;
-    const farWidth = trailWidthAt(farZ) + 1.16;
-    const color = index % 2 === 0 ? waterA : waterB;
+    const nearWidth = trailWidthAt(nearZ) + 1.22;
+    const farWidth = trailWidthAt(farZ) + 1.22;
+    const baseColor = index % 2 === 0 ? waterA : waterB;
 
-    addQuad(
+    addRiverSurfaceStrip(
       positions,
       colors,
-      [nearCenter - nearWidth, trailHeightAt(nearZ) + 0.055, nearZ],
-      [nearCenter + nearWidth, trailHeightAt(nearZ) + 0.055, nearZ],
-      [farCenter + farWidth, trailHeightAt(farZ) + 0.055, farZ],
-      [farCenter - farWidth, trailHeightAt(farZ) + 0.055, farZ],
+      nearZ,
+      farZ,
+      -nearWidth,
+      nearWidth,
+      -farWidth,
+      farWidth,
+      0.055,
+      baseColor,
+    );
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      -nearWidth + 0.34,
+      Math.min(0.48, nearWidth - 0.2),
+      -farWidth + 0.34,
+      Math.min(0.48, farWidth - 0.2),
+      0.071,
+      index % 2 === 0 ? deepWater : shade(deepWater, 1.18),
+    );
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      Math.max(LOG_LANE_MIN - 0.18, -nearWidth + 0.16),
+      Math.min(LOG_LANE_MAX + 0.2, nearWidth - 0.16),
+      Math.max(LOG_LANE_MIN - 0.18, -farWidth + 0.16),
+      Math.min(LOG_LANE_MAX + 0.2, farWidth - 0.16),
+      0.077,
+      index % 2 === 0 ? shallowWater : shade(shallowWater, 0.82),
+    );
+
+    if (index % 2 === 0) {
+      addRiverSurfaceStrip(
+        positions,
+        colors,
+        nearZ,
+        farZ,
+        -0.74,
+        0.28,
+        -0.7,
+        0.24,
+        0.086,
+        riffle,
+      );
+    }
+  }
+
+  return createMesh(positions, colors);
+}
+
+function createRiverBankMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const sideBank: Vec3 = [0.16, 0.15, 0.1];
+  const wetShelf: Vec3 = [0.22, 0.2, 0.13];
+  const entryMud: Vec3 = [0.3, 0.24, 0.14];
+  const slices = 8;
+
+  for (let index = 0; index < slices; index += 1) {
+    const nearProgress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * index) / slices;
+    const farProgress =
+      RIVER_CROSSING_START +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START) * (index + 1)) / slices;
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const nearWidth = trailWidthAt(nearZ);
+    const farWidth = trailWidthAt(farZ);
+    const color = index % 2 === 0 ? sideBank : shade(sideBank, 1.2);
+
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      -nearWidth - 1.32,
+      -nearWidth - 0.84,
+      -farWidth - 1.32,
+      -farWidth - 0.84,
+      0.122,
       color,
+    );
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      nearWidth + 0.84,
+      nearWidth + 1.32,
+      farWidth + 0.84,
+      farWidth + 1.32,
+      0.122,
+      shade(color, 0.9),
+    );
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      -nearWidth - 0.18,
+      -nearWidth + 0.08,
+      -farWidth - 0.18,
+      -farWidth + 0.08,
+      0.098,
+      wetShelf,
+    );
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      nearWidth - 0.08,
+      nearWidth + 0.18,
+      farWidth - 0.08,
+      farWidth + 0.18,
+      0.098,
+      shade(wetShelf, 0.86),
+    );
+  }
+
+  for (const progress of [RIVER_CROSSING_START - 0.012, RIVER_CROSSING_END + 0.006] as const) {
+    const nearZ = -TRAIL_LENGTH * Math.max(0, progress - 0.0038);
+    const farZ = -TRAIL_LENGTH * Math.min(1, progress + 0.0038);
+    const nearWidth = trailWidthAt(nearZ) + 0.92;
+    const farWidth = trailWidthAt(farZ) + 0.92;
+
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      -nearWidth,
+      nearWidth,
+      -farWidth,
+      farWidth,
+      0.092,
+      entryMud,
     );
   }
 
   return createMesh(positions, colors);
+}
+
+function createRiverShimmerMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const bands = 16;
+  const shimmerA: Vec3 = [0.48, 0.8, 0.74];
+  const shimmerB: Vec3 = [0.2, 0.62, 0.6];
+
+  for (let index = 0; index < bands; index += 1) {
+    const progress =
+      RIVER_CROSSING_START +
+      0.006 +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START - 0.012) * index) / bands;
+    const length = 0.0026 + (index % 3) * 0.0008;
+    const nearProgress = clamp(progress - length * 0.5, RIVER_CROSSING_START, RIVER_CROSSING_END);
+    const farProgress = clamp(progress + length * 0.5, RIVER_CROSSING_START, RIVER_CROSSING_END);
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const laneCenter =
+      index % 4 === 0
+        ? -1.12
+        : index % 4 === 1
+          ? -0.42
+          : index % 4 === 2
+            ? 0.24
+            : LOG_CENTER;
+    const halfWidth = 0.16 + (index % 2) * 0.08;
+
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      laneCenter - halfWidth,
+      laneCenter + halfWidth,
+      laneCenter - halfWidth * 0.8,
+      laneCenter + halfWidth * 0.8,
+      0.105,
+      index % 2 === 0 ? shimmerA : shimmerB,
+    );
+  }
+
+  return createMesh(positions, colors);
+}
+
+function addRiverSurfaceStrip(
+  positions: number[],
+  colors: number[],
+  nearZ: number,
+  farZ: number,
+  nearMin: number,
+  nearMax: number,
+  farMin: number,
+  farMax: number,
+  lift: number,
+  color: Vec3,
+): void {
+  if (nearMax <= nearMin || farMax <= farMin) {
+    return;
+  }
+
+  const nearCenter = trailCenterAt(nearZ);
+  const farCenter = trailCenterAt(farZ);
+
+  addQuad(
+    positions,
+    colors,
+    [nearCenter + nearMin, trailHeightAt(nearZ) + lift, nearZ],
+    [nearCenter + nearMax, trailHeightAt(nearZ) + lift, nearZ],
+    [farCenter + farMax, trailHeightAt(farZ) + lift, farZ],
+    [farCenter + farMin, trailHeightAt(farZ) + lift, farZ],
+    color,
+  );
 }
 
 function addRiskLaneCueSlice(
@@ -4046,7 +4316,8 @@ function addRiskLaneCueSlice(
 
   const nearCenter = trailCenterAt(nearZ);
   const farCenter = trailCenterAt(farZ);
-  const lift = 0.04 + (index % 2) * 0.004;
+  const isRiverCue = cue.kind === "water" || cue.kind === "log";
+  const lift = isRiverCue ? 0.118 + (index % 2) * 0.004 : 0.04 + (index % 2) * 0.004;
   const color = index % 2 === 0 ? cue.color : shade(cue.color, 0.78);
 
   addQuad(
@@ -4586,6 +4857,52 @@ function createAtmosphereObjects(): SceneObject[] {
 function createRiverCrossingObjects(): SceneObject[] {
   const objects: SceneObject[] = [];
   const logSegments = 11;
+
+  for (const marker of [
+    {
+      progress: RIVER_CROSSING_START - 0.018,
+      lateral: -1.04,
+      boardMesh: zoneRiverMesh,
+      boardScale: [0.5, 0.28, 0.08] as Vec3,
+    },
+    {
+      progress: RIVER_CROSSING_START - 0.014,
+      lateral: LOG_CENTER,
+      boardMesh: zoneSwitchbackMesh,
+      boardScale: [0.44, 0.3, 0.08] as Vec3,
+    },
+  ] as const) {
+    const z = -TRAIL_LENGTH * marker.progress;
+    const center = trailCenterAt(z);
+    const y = trailHeightAt(z);
+
+    objects.push(
+      {
+        mesh: courseStakeMesh,
+        position: [center + marker.lateral, y + 0.62, z],
+        scale: [0.1, 1.22, 0.1],
+      },
+      {
+        mesh: marker.boardMesh,
+        position: [center + marker.lateral, y + 1.22, z - 0.16],
+        scale: marker.boardScale,
+        rotationY: marker.lateral < 0 ? -0.18 : 0.22,
+      },
+    );
+  }
+
+  for (const progress of [RIVER_CROSSING_START - 0.006, RIVER_CROSSING_END + 0.006] as const) {
+    const z = -TRAIL_LENGTH * progress;
+    const center = trailCenterAt(z);
+    const y = trailHeightAt(z);
+
+    objects.push({
+      mesh: riverLogMesh,
+      position: [center + LOG_CENTER, y + 0.16, z],
+      scale: [0.76, 0.1, 0.54],
+      rotationY: progress < RIVER_CROSSING_START ? 0.16 : -0.12,
+    });
+  }
 
   for (let index = 0; index < logSegments; index += 1) {
     const progress =

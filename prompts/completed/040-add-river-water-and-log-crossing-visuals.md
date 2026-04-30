@@ -1,4 +1,4 @@
-# Prompt 040 — Add River, Water, and Log Crossing Visuals
+# Prompt 040 â€” Add River, Water, and Log Crossing Visuals
 
 ## Goal
 
