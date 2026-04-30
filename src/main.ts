@@ -51,6 +51,9 @@ const ROUTE_MARKER_LEAD_PROGRESS = 0.075;
 const ROUTE_MARKER_CLOSE_LEAD_PROGRESS = 0.03;
 const ROUTE_TRANSITION_PREVIEW_PROGRESS = 0.1;
 const ROUTE_TRANSITION_CLOSE_PROGRESS = 0.035;
+const RISK_LANE_PREVIEW_PROGRESS = 0.065;
+const RISK_LANE_PREVIEW_CLOSE_PROGRESS = 0.025;
+const RISK_LANE_APPROACH_LEAD_PROGRESS = 0.045;
 const RIVER_CROSSING_START = 0.58;
 const RIVER_CROSSING_END = 0.68;
 const RIVER_LOG_CHECK_PROGRESS = 0.635;
@@ -386,6 +389,13 @@ interface RiskLaneCue extends RiskLaneEffect {
   minLateral: number;
   maxLateral: number;
   color: Vec3;
+}
+
+interface RiskLanePreviewNotice {
+  cues: readonly RiskLaneCue[];
+  remainingProgress: number;
+  percentText: string;
+  isClose: boolean;
 }
 
 interface CoolingUseMoment {
@@ -2286,6 +2296,7 @@ function statusLine(speed: string): string {
   const zone = routeZoneAt(state.progress);
   const transition = nextRouteTransitionAt(state.progress);
   const riskLane = riskLaneAt(state.progress, state.lateral);
+  const lanePreview = nextRiskLanePreviewAt(state.progress);
 
   if (state.titleActive) {
     return "TITLE READY  CAL STREET HEAT DROP";
@@ -2349,6 +2360,14 @@ function statusLine(speed: string): string {
 
   if (state.gelSupportRemaining > 0 || state.calmSupportRemaining > 0) {
     return `${activeSupportStatusLine()}  ${zone.shortLabel} ${speed}`;
+  }
+
+  if (lanePreview && riskLane.kind === "main") {
+    const previewPrefix = lanePreview.isClose ? "LINE COMMIT" : "NEXT LINE";
+
+    return `${previewPrefix} ${riskLanePreviewLabel(lanePreview)} ${
+      lanePreview.percentText
+    } - ${riskLanePreviewCue(lanePreview)}  ${speed}`;
   }
 
   if (transition && transition.remainingProgress <= ROUTE_TRANSITION_PREVIEW_PROGRESS) {
@@ -2638,6 +2657,84 @@ function nextRouteTransitionAt(progress: number): RouteTransitionNotice | null {
     percentText: `${Math.max(1, Math.ceil(remainingProgress * 100))}%`,
     isClose: remainingProgress <= ROUTE_TRANSITION_CLOSE_PROGRESS,
   };
+}
+
+function nextRiskLanePreviewAt(progress: number): RiskLanePreviewNotice | null {
+  const clampedProgress = clamp(progress, 0, 1);
+  const nextCue = RISK_LANE_CUES.find((cue) => cue.start > clampedProgress);
+
+  if (!nextCue) {
+    return null;
+  }
+
+  const remainingProgress = nextCue.start - clampedProgress;
+
+  if (remainingProgress > RISK_LANE_PREVIEW_PROGRESS) {
+    return null;
+  }
+
+  const cues = RISK_LANE_CUES.filter(
+    (cue) => Math.abs(cue.start - nextCue.start) < 0.001,
+  );
+
+  return {
+    cues,
+    remainingProgress,
+    percentText: `${Math.max(1, Math.ceil(remainingProgress * 100))}%`,
+    isClose: remainingProgress <= RISK_LANE_PREVIEW_CLOSE_PROGRESS,
+  };
+}
+
+function riskLanePreviewLabel(preview: RiskLanePreviewNotice): string {
+  const kinds = preview.cues.map((cue) => cue.kind);
+
+  if (kinds.includes("water") && kinds.includes("log")) {
+    return "WATER / LOG";
+  }
+
+  const [cue] = preview.cues;
+
+  return cue?.label ?? "MAIN TRAIL";
+}
+
+function riskLanePreviewCue(preview: RiskLanePreviewNotice): string {
+  const kinds = preview.cues.map((cue) => cue.kind);
+
+  if (kinds.includes("water") && kinds.includes("log")) {
+    return "SAFE LEFT / LOG RIGHT";
+  }
+
+  const cue = preview.cues[0];
+
+  if (!cue) {
+    return "HOLD FORM";
+  }
+
+  if (cue.kind === "shade") {
+    return "LEFT RELIEF";
+  }
+
+  if (cue.kind === "rocky") {
+    return "LEFT QUAD TAX";
+  }
+
+  if (cue.kind === "fast") {
+    return "RIGHT SPEED HEAT";
+  }
+
+  if (cue.kind === "safe") {
+    return "CENTER RELIEF";
+  }
+
+  if (cue.kind === "water") {
+    return "SAFE DRAG";
+  }
+
+  if (cue.kind === "log") {
+    return "CENTER THE LOG";
+  }
+
+  return "HOLD FORM";
 }
 
 function setCoolingText(): void {
@@ -3825,6 +3922,27 @@ function createRiskLaneCueMesh(): Mesh {
   const colors: number[] = [];
 
   for (const cue of RISK_LANE_CUES) {
+    const approachStart = Math.max(0.02, cue.start - RISK_LANE_APPROACH_LEAD_PROGRESS);
+    const approachEnd = Math.max(approachStart, cue.start - 0.006);
+    const approachSlices = 4;
+
+    for (let index = 0; index < approachSlices; index += 1) {
+      const sliceStart =
+        approachStart + ((approachEnd - approachStart) * index) / approachSlices;
+      const sliceEnd =
+        approachStart +
+        ((approachEnd - approachStart) * (index + 0.62)) / approachSlices;
+
+      addRiskLaneApproachMarkerSlice(
+        positions,
+        colors,
+        cue,
+        sliceStart,
+        Math.min(approachEnd, sliceEnd),
+        index,
+      );
+    }
+
     const slices = Math.max(2, Math.ceil((cue.end - cue.start) * 54));
 
     for (let index = 0; index < slices; index += 1) {
@@ -3908,6 +4026,113 @@ function addRiskLaneCueSlice(
   const lift = 0.04 + (index % 2) * 0.004;
   const color = index % 2 === 0 ? cue.color : shade(cue.color, 0.78);
 
+  addQuad(
+    positions,
+    colors,
+    [nearCenter + nearMin, trailHeightAt(nearZ) + lift, nearZ],
+    [nearCenter + nearMax, trailHeightAt(nearZ) + lift, nearZ],
+    [farCenter + farMax, trailHeightAt(farZ) + lift, farZ],
+    [farCenter + farMin, trailHeightAt(farZ) + lift, farZ],
+    color,
+  );
+}
+
+function addRiskLaneApproachMarkerSlice(
+  positions: number[],
+  colors: number[],
+  cue: RiskLaneCue,
+  nearProgress: number,
+  farProgress: number,
+  index: number,
+): void {
+  const nearZ = -TRAIL_LENGTH * nearProgress;
+  const farZ = -TRAIL_LENGTH * farProgress;
+  const nearWidth = trailWidthAt(nearZ) - 0.12;
+  const farWidth = trailWidthAt(farZ) - 0.12;
+  const nearMin = clamp(cue.minLateral, -nearWidth, nearWidth);
+  const nearMax = clamp(cue.maxLateral, -nearWidth, nearWidth);
+  const farMin = clamp(cue.minLateral, -farWidth, farWidth);
+  const farMax = clamp(cue.maxLateral, -farWidth, farWidth);
+
+  if (nearMax <= nearMin || farMax <= farMin) {
+    return;
+  }
+
+  const nearCenter = trailCenterAt(nearZ);
+  const farCenter = trailCenterAt(farZ);
+  const lift = 0.072 + (index % 2) * 0.006;
+  const color = index % 2 === 0 ? shade(cue.color, 1.16) : shade(cue.color, 0.88);
+  const nearLaneWidth = nearMax - nearMin;
+  const farLaneWidth = farMax - farMin;
+  const nearStripeWidth = clamp(nearLaneWidth * 0.14, 0.06, 0.14);
+  const farStripeWidth = clamp(farLaneWidth * 0.14, 0.06, 0.14);
+
+  addRiskLaneApproachStrip(
+    positions,
+    colors,
+    nearCenter,
+    farCenter,
+    nearZ,
+    farZ,
+    nearMin,
+    nearMin + nearStripeWidth,
+    farMin,
+    farMin + farStripeWidth,
+    lift,
+    color,
+  );
+  addRiskLaneApproachStrip(
+    positions,
+    colors,
+    nearCenter,
+    farCenter,
+    nearZ,
+    farZ,
+    nearMax - nearStripeWidth,
+    nearMax,
+    farMax - farStripeWidth,
+    farMax,
+    lift,
+    color,
+  );
+
+  if (nearLaneWidth > 0.72 && farLaneWidth > 0.72 && index % 2 === 0) {
+    const nearCenterLine = (nearMin + nearMax) / 2;
+    const farCenterLine = (farMin + farMax) / 2;
+    const nearDashWidth = clamp(nearLaneWidth * 0.08, 0.05, 0.1);
+    const farDashWidth = clamp(farLaneWidth * 0.08, 0.05, 0.1);
+
+    addRiskLaneApproachStrip(
+      positions,
+      colors,
+      nearCenter,
+      farCenter,
+      nearZ,
+      farZ,
+      nearCenterLine - nearDashWidth,
+      nearCenterLine + nearDashWidth,
+      farCenterLine - farDashWidth,
+      farCenterLine + farDashWidth,
+      lift + 0.006,
+      shade(color, 1.18),
+    );
+  }
+}
+
+function addRiskLaneApproachStrip(
+  positions: number[],
+  colors: number[],
+  nearCenter: number,
+  farCenter: number,
+  nearZ: number,
+  farZ: number,
+  nearMin: number,
+  nearMax: number,
+  farMin: number,
+  farMax: number,
+  lift: number,
+  color: Vec3,
+): void {
   addQuad(
     positions,
     colors,
