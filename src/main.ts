@@ -980,6 +980,9 @@ const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 const crewBodyMesh = createCubeMesh([0.12, 0.15, 0.1]);
 const shadeTentMesh = createPyramidMesh([0.19, 0.15, 0.09]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
+const courseStakeMesh = createCubeMesh([0.2, 0.13, 0.07]);
+const courseTapeMesh = createCubeMesh([0.95, 0.88, 0.48]);
+const markerBoardMesh = createCubeMesh([0.62, 0.38, 0.16]);
 const riverLogMesh = createCubeMesh([0.43, 0.22, 0.08]);
 const riverFoamMesh = createCubeMesh([0.66, 0.88, 0.84]);
 const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
@@ -4642,13 +4645,13 @@ function createRouteZoneMarkers(): SceneObject[] {
       continue;
     }
 
-    addRouteZoneMarkerGate(
+    addRouteZoneMarkerCluster(
       markers,
       zone.markerKind,
       Math.max(0.02, zone.start - ROUTE_MARKER_LEAD_PROGRESS),
       0.78,
     );
-    addRouteZoneMarkerGate(
+    addRouteZoneMarkerCluster(
       markers,
       zone.markerKind,
       Math.max(0.02, zone.start - ROUTE_MARKER_CLOSE_LEAD_PROGRESS),
@@ -4659,7 +4662,7 @@ function createRouteZoneMarkers(): SceneObject[] {
   return markers;
 }
 
-function addRouteZoneMarkerGate(
+function addRouteZoneMarkerCluster(
   markers: SceneObject[],
   kind: RouteMarkerKind,
   markerProgress: number,
@@ -4671,40 +4674,52 @@ function addRouteZoneMarkerGate(
   const y = trailHeightAt(z);
   const mesh = routeMarkerMeshFor(kind);
   const sideRotation = kind === "switchback" ? 0.55 : 0.18;
-  const gateHeight = 2.16 * scaleMultiplier;
+  const stakeHeight = 1.5 * scaleMultiplier;
 
-  markers.push(
-    {
-      mesh,
-      position: [center - width - 0.42, y + gateHeight * 0.5, z],
-      scale: [0.2, gateHeight, 0.2],
-      rotationY: -sideRotation,
-    },
-    {
-      mesh,
-      position: [center + width + 0.42, y + gateHeight * 0.5, z],
-      scale: [0.2, gateHeight, 0.2],
-      rotationY: sideRotation,
-    },
-    {
-      mesh,
-      position: [center, y + gateHeight + 0.06, z],
-      scale: [width * (1.7 + scaleMultiplier * 0.46), 0.16, 0.18],
-      rotationY: 0,
-    },
-    {
-      mesh,
-      position: [center - width * 0.48, y + 0.09, z + 0.5],
-      scale: [0.64 + scaleMultiplier * 0.28, 0.05, 0.22],
-      rotationY: -0.18,
-    },
-    {
-      mesh,
-      position: [center + width * 0.48, y + 0.09, z + 0.5],
-      scale: [0.64 + scaleMultiplier * 0.28, 0.05, 0.22],
-      rotationY: 0.18,
-    },
-  );
+  for (const side of [-1, 1] as const) {
+    const edgeX = center + side * (width + 0.46);
+    const tapeX = center + side * (width + 0.2);
+    const outwardRotation = side * sideRotation;
+
+    markers.push(
+      {
+        mesh: courseStakeMesh,
+        position: [edgeX, y + stakeHeight * 0.5, z],
+        scale: [0.13, stakeHeight, 0.13],
+        rotationY: outwardRotation,
+      },
+      {
+        mesh: courseStakeMesh,
+        position: [edgeX, y + 0.72 * scaleMultiplier, z + 0.88 * scaleMultiplier],
+        scale: [0.1, 1.44 * scaleMultiplier, 0.1],
+        rotationY: outwardRotation,
+      },
+      {
+        mesh: courseTapeMesh,
+        position: [tapeX, y + 0.72 * scaleMultiplier, z + 0.42 * scaleMultiplier],
+        scale: [0.08, 0.045, 1.02 * scaleMultiplier],
+        rotationY: side * 0.06,
+      },
+      {
+        mesh,
+        position: [edgeX + side * 0.22, y + 1.28 * scaleMultiplier, z - 0.08],
+        scale: [0.44, 0.68 * scaleMultiplier, 0.06],
+        rotationY: outwardRotation + side * 0.2,
+      },
+      {
+        mesh: markerBoardMesh,
+        position: [edgeX + side * 0.14, y + 0.82 * scaleMultiplier, z + 0.38],
+        scale: [0.62, 0.32, 0.08],
+        rotationY: outwardRotation + side * 0.12,
+      },
+      {
+        mesh,
+        position: [edgeX + side * 0.16, y + 0.83 * scaleMultiplier, z + 0.32],
+        scale: [0.36, 0.06, 0.09],
+        rotationY: outwardRotation + side * 0.12,
+      },
+    );
+  }
 
   for (let stripe = 0; stripe < 3; stripe += 1) {
     markers.push({
@@ -4755,32 +4770,66 @@ function createTrailMarkers(): SceneObject[] {
     const side = index % 2 === 0 ? -1 : 1;
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
-    markers.push({
-      mesh: cubeMesh,
-      position: [center + side * (width + 0.55), trailHeightAt(z) + 0.58, z],
-      scale: [0.16, 1.16, 0.16],
-    });
+    const y = trailHeightAt(z);
+    const markerX = center + side * (width + 0.55);
+
+    markers.push(
+      {
+        mesh: courseStakeMesh,
+        position: [markerX, y + 0.58, z],
+        scale: [0.14, 1.16, 0.14],
+      },
+      {
+        mesh: courseTapeMesh,
+        position: [markerX - side * 0.12, y + 0.78, z + 0.38],
+        scale: [0.08, 0.04, 0.76],
+        rotationY: side * 0.08,
+      },
+      {
+        mesh: accentMesh,
+        position: [markerX + side * 0.18, y + 1.12, z - 0.06],
+        scale: [0.28, 0.46, 0.06],
+        rotationY: side * 0.16,
+      },
+    );
   }
 
   for (const zone of [0.33, 0.62, 0.95]) {
     const z = -TRAIL_LENGTH * zone;
     const center = trailCenterAt(z);
     const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+
+    for (const side of [-1, 1] as const) {
+      const markerX = center + side * (width + 0.28);
+
+      markers.push(
+        {
+          mesh: courseStakeMesh,
+          position: [markerX, y + 1.1, z],
+          scale: [0.16, 2.2, 0.16],
+          rotationY: side * 0.12,
+        },
+        {
+          mesh: accentMesh,
+          position: [markerX + side * 0.25, y + 1.78, z - 0.1],
+          scale: [0.44, 0.78, 0.07],
+          rotationY: side * 0.24,
+        },
+        {
+          mesh: courseTapeMesh,
+          position: [center + side * (width + 0.04), y + 0.76, z + 0.48],
+          scale: [0.08, 0.04, 1.02],
+          rotationY: side * 0.08,
+        },
+      );
+    }
+
     markers.push(
       {
-        mesh: cubeMesh,
-        position: [center - width - 0.18, trailHeightAt(z) + 1.2, z],
-        scale: [0.22, 2.4, 0.22],
-      },
-      {
-        mesh: cubeMesh,
-        position: [center + width + 0.18, trailHeightAt(z) + 1.2, z],
-        scale: [0.22, 2.4, 0.22],
-      },
-      {
         mesh: accentMesh,
-        position: [center, trailHeightAt(z) + 2.45, z],
-        scale: [width * 2.1, 0.16, 0.16],
+        position: [center, y + 0.06, z + 0.32],
+        scale: [width * 1.45, 0.04, 0.36],
       },
     );
   }
@@ -4793,29 +4842,53 @@ function createFinishLineObjects(): SceneObject[] {
   const center = trailCenterAt(z);
   const width = trailWidthAt(z);
   const groundY = trailHeightAt(z);
+  const objects: SceneObject[] = [];
 
-  return [
-    {
-      mesh: cubeMesh,
-      position: [center - width - 0.36, groundY + 1.28, z],
-      scale: [0.2, 2.56, 0.2],
-    },
-    {
-      mesh: cubeMesh,
-      position: [center + width + 0.36, groundY + 1.28, z],
-      scale: [0.2, 2.56, 0.2],
-    },
-    {
-      mesh: finishTapeMesh,
-      position: [center, groundY + 2.5, z],
-      scale: [width * 2.18, 0.16, 0.14],
-    },
+  for (const side of [-1, 1] as const) {
+    const markerX = center + side * (width + 0.36);
+
+    objects.push(
+      {
+        mesh: courseStakeMesh,
+        position: [markerX, groundY + 1.28, z],
+        scale: [0.18, 2.56, 0.18],
+      },
+      {
+        mesh: finishTapeMesh,
+        position: [markerX + side * 0.25, groundY + 2.02, z - 0.08],
+        scale: [0.46, 0.88, 0.07],
+        rotationY: side * 0.18,
+      },
+      {
+        mesh: courseTapeMesh,
+        position: [center + side * (width + 0.08), groundY + 0.72, z + 0.58],
+        scale: [0.08, 0.045, 1.16],
+        rotationY: side * 0.05,
+      },
+      {
+        mesh: markerBoardMesh,
+        position: [markerX + side * 0.18, groundY + 1.08, z + 0.12],
+        scale: [0.68, 0.36, 0.08],
+        rotationY: side * 0.2,
+      },
+      {
+        mesh: finishTapeMesh,
+        position: [markerX + side * 0.18, groundY + 1.1, z + 0.06],
+        scale: [0.42, 0.07, 0.09],
+        rotationY: side * 0.2,
+      },
+    );
+  }
+
+  objects.push(
     {
       mesh: finishTapeMesh,
       position: [center, groundY + 0.05, z + 0.32],
       scale: [width * 1.95, 0.04, 0.46],
     },
-  ];
+  );
+
+  return objects;
 }
 
 function createRocks(): SceneObject[] {
