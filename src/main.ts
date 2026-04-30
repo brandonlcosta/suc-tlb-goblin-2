@@ -974,6 +974,7 @@ const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
 const trailAtmosphereMesh = createTrailAtmosphereMesh();
+const trailEdgeDetailMesh = createTrailEdgeDetailMesh();
 const riskLaneCueMesh = createRiskLaneCueMesh();
 const riverWaterMesh = createRiverWaterMesh();
 const riverBankMesh = createRiverBankMesh();
@@ -989,8 +990,11 @@ const runnerShoeMesh = createCubeMesh([0.04, 0.04, 0.035]);
 const runnerShadowMesh = createCubeMesh([0.02, 0.018, 0.014]);
 const rockMesh = createLowPolyRockMesh();
 const wetRockMesh = createLowPolyRockMesh([0.12, 0.13, 0.11], [0.24, 0.28, 0.23]);
+const embeddedStoneMesh = createLowPolyRockMesh([0.18, 0.14, 0.1], [0.42, 0.31, 0.2]);
 const treeMesh = createPyramidMesh([0.12, 0.18, 0.08]);
 const dryGrassMesh = createPyramidMesh([0.62, 0.46, 0.16]);
+const scrubBrushMesh = createPyramidMesh([0.29, 0.31, 0.11]);
+const bankCutMesh = createCubeMesh([0.32, 0.19, 0.08]);
 const dustStripeMesh = createCubeMesh([0.72, 0.42, 0.14]);
 const heatSignMesh = createCubeMesh([0.82, 0.16, 0.08]);
 const sunMesh = createCubeMesh([0.94, 0.62, 0.18]);
@@ -1021,6 +1025,7 @@ const sceneObjects: SceneObject[] = [
   ...createSwitchbackFlowMarkers(),
   ...createRiverCrossingObjects(),
   ...createSecondAidStationObjects(),
+  ...createTrailSurfaceObjects(),
   ...createTrailMarkers(),
   ...createFinishLineObjects(),
   ...createRocks(),
@@ -1807,6 +1812,7 @@ function render(): void {
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
   drawMesh(trailAtmosphereMesh, identityMat4());
+  drawMesh(trailEdgeDetailMesh, identityMat4());
   drawMesh(riverWaterMesh, identityMat4());
   drawMesh(riverBankMesh, identityMat4());
   drawMesh(
@@ -4011,13 +4017,14 @@ function createTrailMesh(): Mesh {
 function createTrailAtmosphereMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const marks = 92;
+  const marks = 132;
   const dust: Vec3 = [0.56, 0.32, 0.12];
   const darkCrack: Vec3 = [0.15, 0.09, 0.05];
   const hotScrape: Vec3 = [0.76, 0.31, 0.08];
   const switchbackDust: Vec3 = [0.68, 0.49, 0.16];
   const wetStone: Vec3 = [0.08, 0.18, 0.18];
   const uphillBurn: Vec3 = [0.42, 0.13, 0.08];
+  const rutDust: Vec3 = [0.24, 0.14, 0.07];
 
   for (let index = 0; index < marks; index += 1) {
     const progress = 0.025 + (index / marks) * 0.95;
@@ -4054,6 +4061,143 @@ function createTrailAtmosphereMesh(): Mesh {
     );
   }
 
+  for (let index = 0; index < 58; index += 1) {
+    const progress = 0.035 + (index / 58) * 0.91;
+    const routeZone = routeZoneAt(progress);
+
+    if (routeZone.kind === "river" || routeZone.kind === "aid") {
+      continue;
+    }
+
+    const routeTint =
+      routeZone.kind === "steep" || routeZone.kind === "exposed"
+        ? hotScrape
+        : routeZone.kind === "switchback"
+          ? darkCrack
+          : rutDust;
+    const length = 0.0038 + (index % 3) * 0.0011;
+    const rutOffset = 0.34 + Math.sin(index * 0.7) * 0.05;
+
+    addTrailSurfaceQuad(
+      positions,
+      colors,
+      progress,
+      length,
+      -rutOffset,
+      0.035,
+      shade(routeTint, 0.72),
+      index,
+      0.026,
+    );
+    addTrailSurfaceQuad(
+      positions,
+      colors,
+      progress + 0.0012,
+      length * 0.86,
+      rutOffset * 0.92,
+      0.03,
+      shade(routeTint, 0.8),
+      index + 9,
+      0.026,
+    );
+  }
+
+  return createMesh(positions, colors);
+}
+
+function createTrailEdgeDetailMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const slices = 84;
+  const shoulderDust: Vec3 = [0.42, 0.27, 0.11];
+  const dryShoulder: Vec3 = [0.54, 0.38, 0.14];
+  const edgeCut: Vec3 = [0.12, 0.075, 0.045];
+  const bankShadow: Vec3 = [0.18, 0.12, 0.06];
+  const embeddedRock: Vec3 = [0.32, 0.25, 0.18];
+
+  for (let index = 0; index < slices; index += 1) {
+    const progress = 0.018 + (index / slices) * 0.964;
+    const length = 0.0042 + (index % 4) * 0.0012;
+    const nearProgress = clamp(progress - length * 0.5, 0, 1);
+    const farProgress = clamp(progress + length * 0.5, 0, 1);
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const nearWidth = trailWidthAt(nearZ);
+    const farWidth = trailWidthAt(farZ);
+    const routeZone = routeZoneAt(progress);
+    const shoulderColor =
+      routeZone.kind === "river"
+        ? shade(bankShadow, 1.3)
+        : routeZone.kind === "uphill" || routeZone.kind === "exposed"
+          ? dryShoulder
+          : index % 2 === 0
+            ? shoulderDust
+            : shade(shoulderDust, 0.82);
+
+    for (const side of [-1, 1] as const) {
+      const jitter = ((index * 19) % 5) * 0.045;
+      const nearInner = side * (nearWidth + 0.2);
+      const nearOuter = side * (nearWidth + 0.76 + jitter);
+      const farInner = side * (farWidth + 0.22);
+      const farOuter = side * (farWidth + 0.72 + jitter * 0.7);
+
+      addRiverSurfaceStrip(
+        positions,
+        colors,
+        nearZ,
+        farZ,
+        Math.min(nearInner, nearOuter),
+        Math.max(nearInner, nearOuter),
+        Math.min(farInner, farOuter),
+        Math.max(farInner, farOuter),
+        0.034,
+        shoulderColor,
+      );
+
+      if ((index + side) % 2 === 0) {
+        const nearLipInner = side * (nearWidth + 0.02);
+        const nearLipOuter = side * (nearWidth + 0.16);
+        const farLipInner = side * (farWidth + 0.02);
+        const farLipOuter = side * (farWidth + 0.16);
+
+        addRiverSurfaceStrip(
+          positions,
+          colors,
+          nearZ,
+          farZ,
+          Math.min(nearLipInner, nearLipOuter),
+          Math.max(nearLipInner, nearLipOuter),
+          Math.min(farLipInner, farLipOuter),
+          Math.max(farLipInner, farLipOuter),
+          0.052,
+          index % 3 === 0 ? edgeCut : bankShadow,
+        );
+      }
+    }
+
+    if (
+      index % 3 === 0 &&
+      routeZone.kind !== "river" &&
+      routeZone.kind !== "aid"
+    ) {
+      const z = -TRAIL_LENGTH * progress;
+      const lateral =
+        ((((index * 29) % 100) / 100) - 0.5) * trailWidthAt(z) * 1.42;
+
+      addTrailSurfaceQuad(
+        positions,
+        colors,
+        progress,
+        length * 0.74,
+        lateral,
+        0.052 + (index % 2) * 0.018,
+        index % 2 === 0 ? embeddedRock : shade(embeddedRock, 0.76),
+        index,
+        0.032,
+      );
+    }
+  }
+
   return createMesh(positions, colors);
 }
 
@@ -4066,6 +4210,7 @@ function addTrailSurfaceQuad(
   halfWidth: number,
   color: Vec3,
   index: number,
+  liftOverride?: number,
 ): void {
   const nearProgress = clamp(progress - length * 0.5, 0, 1);
   const farProgress = clamp(progress + length * 0.5, 0, 1);
@@ -4085,7 +4230,7 @@ function addTrailSurfaceQuad(
     -farWidth + halfWidth,
     farWidth - halfWidth,
   );
-  const lift = 0.062 + (index % 2) * 0.006;
+  const lift = liftOverride ?? 0.062 + (index % 2) * 0.006;
 
   addQuad(
     positions,
@@ -4545,6 +4690,9 @@ function createTerrainMesh(): Mesh {
   const canyonRight: Vec3 = [0.62, 0.31, 0.13];
   const farFog: Vec3 = [0.58, 0.42, 0.25];
   const heatShelf: Vec3 = [0.78, 0.43, 0.13];
+  const canyonShadow: Vec3 = [0.21, 0.13, 0.07];
+  const canyonShelf: Vec3 = [0.46, 0.25, 0.1];
+  const farRidge: Vec3 = [0.38, 0.26, 0.16];
   const terrainEndZ = -TRAIL_LENGTH - 8;
   const terrainFarZ = -TRAIL_LENGTH - 34;
   const heatShelfStartZ = -TRAIL_LENGTH * 0.5;
@@ -4597,6 +4745,40 @@ function createTerrainMesh(): Mesh {
     [-35, trailHeightAt(heatShelfBackZ) + 5.8, heatShelfBackZ],
     heatShelf,
   );
+
+  for (let index = 0; index < 8; index += 1) {
+    const nearProgress = 0.08 + index * 0.108;
+    const farProgress = Math.min(0.98, nearProgress + 0.076);
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const side = index % 2 === 0 ? -1 : 1;
+    const nearCenter = trailCenterAt(nearZ);
+    const farCenter = trailCenterAt(farZ);
+    const nearWidth = trailWidthAt(nearZ);
+    const farWidth = trailWidthAt(farZ);
+    const nearInner = nearCenter + side * (nearWidth + 4.8 + (index % 3) * 0.7);
+    const nearOuter = nearCenter + side * (13.5 + (index % 4) * 2.1);
+    const farInner = farCenter + side * (farWidth + 5.3 + (index % 2) * 0.8);
+    const farOuter = farCenter + side * (15.2 + (index % 3) * 2.4);
+    const nearY = trailHeightAt(nearZ);
+    const farY = trailHeightAt(farZ);
+    const color =
+      index % 3 === 0
+        ? canyonShadow
+        : index % 3 === 1
+          ? canyonShelf
+          : farRidge;
+
+    addQuad(
+      positions,
+      colors,
+      [nearInner, nearY + 0.4, nearZ],
+      [nearOuter, nearY + 4.2 + (index % 2) * 0.8, nearZ - 1.2],
+      [farOuter, farY + 5.4 + (index % 3) * 0.9, farZ],
+      [farInner, farY + 0.8, farZ + 0.6],
+      color,
+    );
+  }
 
   return createMesh(positions, colors);
 }
@@ -5375,6 +5557,63 @@ function createFinishLineObjects(): SceneObject[] {
       scale: [width * 1.95, 0.04, 0.46],
     },
   );
+
+  return objects;
+}
+
+function createTrailSurfaceObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+
+  for (let index = 0, z = -8; z > -TRAIL_LENGTH; index += 1, z -= 7.2) {
+    const progress = clamp(-z / TRAIL_LENGTH, 0, 1);
+    const routeZone = routeZoneAt(progress);
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+    const side = index % 2 === 0 ? -1 : 1;
+
+    if (
+      index % 2 === 0 &&
+      routeZone.kind !== "river" &&
+      routeZone.kind !== "aid"
+    ) {
+      const lateral =
+        ((((index * 43) % 100) / 100) - 0.5) * width * 1.52;
+
+      objects.push({
+        mesh: embeddedStoneMesh,
+        position: [center + lateral, y + 0.095, z],
+        scale: [
+          0.18 + (index % 3) * 0.05,
+          0.08,
+          0.15 + (index % 4) * 0.04,
+        ],
+        rotationY: index * 0.63,
+      });
+    }
+
+    if (index % 3 === 0) {
+      objects.push({
+        mesh: bankCutMesh,
+        position: [center + side * (width + 0.58), y + 0.13, z - 0.1],
+        scale: [0.72 + (index % 4) * 0.12, 0.2, 0.26],
+        rotationY: side * (0.22 + (index % 3) * 0.08),
+      });
+    }
+
+    if (index % 2 === 1 && routeZone.kind !== "river") {
+      objects.push({
+        mesh: scrubBrushMesh,
+        position: [
+          center + side * (width + 1.05 + (index % 4) * 0.24),
+          y + 0.43,
+          z + 0.18,
+        ],
+        scale: [0.28 + (index % 2) * 0.07, 0.82 + (index % 3) * 0.16, 0.24],
+        rotationY: index * 0.48,
+      });
+    }
+  }
 
   return objects;
 }
