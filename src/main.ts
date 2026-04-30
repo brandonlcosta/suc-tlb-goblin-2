@@ -57,6 +57,11 @@ const RISK_LANE_APPROACH_LEAD_PROGRESS = 0.045;
 const RIVER_CROSSING_START = 0.58;
 const RIVER_CROSSING_END = 0.68;
 const RIVER_LOG_CHECK_PROGRESS = 0.635;
+const SWITCHBACK_START = 0.405;
+const SWITCHBACK_ENTRY_PROGRESS = 0.425;
+const SWITCHBACK_FIRST_APEX_PROGRESS = 0.485;
+const SWITCHBACK_SECOND_APEX_PROGRESS = 0.545;
+const SWITCHBACK_EXIT_PROGRESS = 0.572;
 const RIVER_FEEDBACK_SECONDS = 3.2;
 const WATER_ROUTE_SPEED_BONUS = -2.05;
 const WATER_ROUTE_MAX_SPEED = 3.55;
@@ -232,9 +237,9 @@ interface RouteTransitionNotice {
 const ROUTE_ZONES: readonly RouteZone[] = [
   {
     start: 0,
-    end: 0.25,
+    end: 0.23,
     shortLabel: "FAST ROLLOUT",
-    cue: "SPEED FEELS FREE",
+    cue: "WIDE BEND OPENS",
     kind: "mixed",
     speedBonus: 0.18,
     downhillBoostFloor: 0.95,
@@ -246,10 +251,10 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     exposure: 0.48,
   },
   {
-    start: 0.25,
-    end: 0.43,
+    start: 0.23,
+    end: SWITCHBACK_START,
     shortLabel: "STEEP DROP",
-    cue: "BRAKE BEFORE GRAVITY",
+    cue: "BRAKE BEFORE CURVE",
     kind: "steep",
     markerKind: "steep",
     speedBonus: 0.48,
@@ -262,19 +267,19 @@ const ROUTE_ZONES: readonly RouteZone[] = [
     exposure: 0.82,
   },
   {
-    start: 0.43,
+    start: SWITCHBACK_START,
     end: RIVER_CROSSING_START,
     shortLabel: "SWITCHBACKS",
-    cue: "SET LINE BEFORE TURN",
+    cue: "BRAKE THEN EXIT",
     kind: "switchback",
     markerKind: "switchback",
-    speedBonus: -0.08,
-    downhillBoostFloor: 1.05,
-    downhillBoostBonus: 0.05,
-    heatMultiplier: 1.1,
-    hydrationMultiplier: 1.03,
-    quadMultiplier: 1.34,
-    technicalPressure: 0.92,
+    speedBonus: -0.14,
+    downhillBoostFloor: 0.98,
+    downhillBoostBonus: 0.02,
+    heatMultiplier: 1.12,
+    hydrationMultiplier: 1.04,
+    quadMultiplier: 1.42,
+    technicalPressure: 1,
     exposure: 0.74,
   },
   {
@@ -474,8 +479,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.1, 0.32, 0.2],
   },
   {
-    start: 0.27,
-    end: 0.42,
+    start: 0.255,
+    end: 0.39,
     minLateral: 0.42,
     maxLateral: 1.78,
     kind: "fast",
@@ -488,8 +493,8 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.86, 0.36, 0.09],
   },
   {
-    start: 0.44,
-    end: 0.6,
+    start: 0.42,
+    end: 0.515,
     minLateral: -1.68,
     maxLateral: -0.3,
     kind: "rocky",
@@ -502,7 +507,7 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     color: [0.63, 0.46, 0.18],
   },
   {
-    start: 0.48,
+    start: 0.468,
     end: RIVER_CROSSING_START,
     minLateral: -0.42,
     maxLateral: 0.48,
@@ -514,6 +519,20 @@ const RISK_LANE_CUES: readonly RiskLaneCue[] = [
     quadMultiplier: 0.7,
     speedBonus: -0.22,
     color: [0.46, 0.58, 0.27],
+  },
+  {
+    start: 0.525,
+    end: RIVER_CROSSING_START,
+    minLateral: 0.54,
+    maxLateral: 1.58,
+    kind: "fast",
+    label: "WIDE EXIT",
+    status: "WIDE EXIT - SPEED HEAT",
+    heatMultiplier: 1.18,
+    hydrationMultiplier: 1.06,
+    quadMultiplier: 1.22,
+    speedBonus: 0.34,
+    color: [0.86, 0.36, 0.09],
   },
   {
     start: RIVER_CROSSING_START,
@@ -996,6 +1015,7 @@ const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createAtmosphereObjects(),
   ...createRouteZoneMarkers(),
+  ...createSwitchbackFlowMarkers(),
   ...createRiverCrossingObjects(),
   ...createSecondAidStationObjects(),
   ...createTrailMarkers(),
@@ -3746,7 +3766,7 @@ function drawMesh(mesh: Mesh, model: Float32Array): void {
 function createTrailMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const segments = 36;
+  const segments = 64;
   const trailColorA: Vec3 = [0.38, 0.23, 0.13];
   const trailColorB: Vec3 = [0.5, 0.31, 0.15];
   const exposedColor: Vec3 = [0.72, 0.39, 0.15];
@@ -3833,7 +3853,7 @@ function createTrailMesh(): Mesh {
 function createTrailAtmosphereMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const marks = 68;
+  const marks = 92;
   const dust: Vec3 = [0.56, 0.32, 0.12];
   const darkCrack: Vec3 = [0.15, 0.09, 0.05];
   const hotScrape: Vec3 = [0.76, 0.31, 0.08];
@@ -4662,6 +4682,58 @@ function createRouteZoneMarkers(): SceneObject[] {
   return markers;
 }
 
+function createSwitchbackFlowMarkers(): SceneObject[] {
+  const markers: SceneObject[] = [];
+  const guidePoints = [
+    { progress: SWITCHBACK_ENTRY_PROGRESS, side: 1, scale: 0.82 },
+    { progress: SWITCHBACK_FIRST_APEX_PROGRESS, side: 1, scale: 1.08 },
+    { progress: 0.516, side: -1, scale: 0.94 },
+    { progress: SWITCHBACK_SECOND_APEX_PROGRESS, side: -1, scale: 1.04 },
+    { progress: SWITCHBACK_EXIT_PROGRESS, side: 1, scale: 0.86 },
+  ] as const;
+
+  for (let index = 0; index < guidePoints.length; index += 1) {
+    const point = guidePoints[index];
+    const z = -TRAIL_LENGTH * point.progress;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const y = trailHeightAt(z);
+    const turnSide = point.side;
+    const edgeX = center + turnSide * (width + 0.36);
+    const tapeX = center + turnSide * (width + 0.08);
+    const rotation = turnSide * (0.32 + index * 0.035);
+
+    markers.push(
+      {
+        mesh: courseStakeMesh,
+        position: [edgeX, y + 0.78 * point.scale, z],
+        scale: [0.14, 1.56 * point.scale, 0.14],
+        rotationY: rotation,
+      },
+      {
+        mesh: zoneSwitchbackMesh,
+        position: [edgeX + turnSide * 0.2, y + 1.34 * point.scale, z - 0.08],
+        scale: [0.5, 0.56 * point.scale, 0.07],
+        rotationY: rotation + turnSide * 0.22,
+      },
+      {
+        mesh: courseTapeMesh,
+        position: [tapeX, y + 0.7 * point.scale, z + 0.46],
+        scale: [0.08, 0.045, 1.18 * point.scale],
+        rotationY: turnSide * 0.12,
+      },
+      {
+        mesh: zoneSwitchbackMesh,
+        position: [center - turnSide * width * 0.18, y + 0.078, z + 0.38],
+        scale: [width * 0.5, 0.035, 0.14],
+        rotationY: -turnSide * 0.22,
+      },
+    );
+  }
+
+  return markers;
+}
+
 function addRouteZoneMarkerCluster(
   markers: SceneObject[],
   kind: RouteMarkerKind,
@@ -5079,8 +5151,18 @@ function requiredBuffer(): WebGLBuffer {
 function trailHeightAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
   const baseDrop = -depth * 34.5;
-  const steepDrop = -smoothRange(depth, 0.23, 0.43) * 8.2;
-  const switchbackDrop = -smoothRange(depth, 0.43, RIVER_CROSSING_START) * 3.7;
+  const rolloutShelf =
+    smoothRange(depth, 0.14, 0.2) * 0.85 -
+    smoothRange(depth, 0.2, 0.255) * 0.85;
+  const steepDrop = -smoothRange(depth, 0.23, SWITCHBACK_START) * 7.4;
+  const steepPocketDrop =
+    -smoothRange(depth, 0.265, 0.335) * 3.1 +
+    smoothRange(depth, 0.36, SWITCHBACK_START) * 1.15;
+  const switchbackDrop =
+    -smoothRange(depth, SWITCHBACK_START, RIVER_CROSSING_START) * 4.6;
+  const switchbackBench =
+    smoothRange(depth, SWITCHBACK_FIRST_APEX_PROGRESS, 0.52) * 0.82 -
+    smoothRange(depth, 0.52, SWITCHBACK_EXIT_PROGRESS) * 0.82;
   const riverDip =
     -smoothRange(depth, RIVER_CROSSING_START - 0.02, RIVER_LOG_CHECK_PROGRESS) *
       1.05 +
@@ -5094,8 +5176,11 @@ function trailHeightAt(z: number): number {
 
   return (
     baseDrop +
+    rolloutShelf +
     steepDrop +
+    steepPocketDrop +
     switchbackDrop +
+    switchbackBench +
     riverDip +
     uphillLift +
     finalDrop +
@@ -5105,28 +5190,83 @@ function trailHeightAt(z: number): number {
 
 function trailCenterAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
-  const broadCurve = Math.sin(depth * Math.PI * 2) * 1.18;
-  const trailWander = Math.sin(depth * Math.PI * 5.1) * 0.62;
+  const broadCurve =
+    Math.sin(depth * Math.PI * 1.7) * 0.88 +
+    Math.sin(depth * Math.PI * 3.4 + 0.4) * 0.42;
+  const trailWander = Math.sin(depth * Math.PI * 7.2) * 0.34;
+  const rolloutBend =
+    smoothRange(depth, 0.08, 0.22) * 0.7 -
+    smoothRange(depth, 0.22, 0.31) * 0.45;
+  const steepEntrySweep =
+    smoothRange(depth, 0.27, 0.37) * 1.05 -
+    smoothRange(depth, 0.37, SWITCHBACK_START) * 0.65;
   const switchbackTurn =
-    smoothRange(depth, 0.38, 0.46) * 2.15 -
-    smoothRange(depth, 0.46, 0.54) * 4.35 +
-    smoothRange(depth, 0.54, RIVER_CROSSING_START) * 2.35;
-  const riverBend = smoothRange(depth, RIVER_CROSSING_START, RIVER_CROSSING_END) * 0.55;
-  const finalBend = smoothRange(depth, 0.76, 0.9) * 1.2;
+    smoothRange(depth, SWITCHBACK_START, SWITCHBACK_FIRST_APEX_PROGRESS) * 2.85 -
+    smoothRange(depth, SWITCHBACK_FIRST_APEX_PROGRESS, 0.515) * 5.7 +
+    smoothRange(depth, 0.515, SWITCHBACK_SECOND_APEX_PROGRESS) * 5.35 -
+    smoothRange(depth, SWITCHBACK_SECOND_APEX_PROGRESS, SWITCHBACK_EXIT_PROGRESS) *
+      2.2;
+  const riverBend =
+    smoothRange(depth, RIVER_CROSSING_START, RIVER_LOG_CHECK_PROGRESS) * 0.7 -
+    smoothRange(depth, RIVER_LOG_CHECK_PROGRESS, RIVER_CROSSING_END + 0.03) *
+      0.35;
+  const finalBend =
+    smoothRange(depth, 0.76, 0.86) * 1.35 -
+    smoothRange(depth, 0.86, 0.96) * 0.9;
 
-  return broadCurve + trailWander + switchbackTurn + riverBend + finalBend;
+  return (
+    broadCurve +
+    trailWander +
+    rolloutBend +
+    steepEntrySweep +
+    switchbackTurn +
+    riverBend +
+    finalBend
+  );
 }
 
 function trailWidthAt(z: number): number {
   const depth = clamp(-z / TRAIL_LENGTH, 0, 1);
-  const base = 3.1 - depth * 0.72;
-  const switchbackPinch =
-    depth > 0.43 && depth < RIVER_CROSSING_START ? 0.48 : 0;
+  const base = 3.18 - depth * 0.58;
+  const rolloutWiden = (1 - smoothRange(depth, 0.16, 0.24)) * 0.28;
+  const curveWiden =
+    (smoothRange(depth, 0.255, 0.31) -
+      smoothRange(depth, 0.36, SWITCHBACK_START)) *
+    0.18;
+  const switchbackEntryWiden =
+    (smoothRange(depth, 0.39, 0.43) - smoothRange(depth, 0.45, 0.47)) *
+    0.34;
+  const firstApexPinch =
+    (smoothRange(depth, 0.455, SWITCHBACK_FIRST_APEX_PROGRESS) -
+      smoothRange(depth, 0.505, 0.525)) *
+    0.54;
+  const recoveryWiden =
+    (smoothRange(depth, 0.505, 0.526) - smoothRange(depth, 0.536, 0.552)) *
+    0.3;
+  const secondApexPinch =
+    (smoothRange(depth, 0.526, SWITCHBACK_SECOND_APEX_PROGRESS) -
+      smoothRange(depth, 0.562, RIVER_CROSSING_START)) *
+    0.42;
   const riverWiden = isInRiverCrossing(depth) ? 0.54 : 0;
   const uphillPinch = depth > RIVER_CROSSING_END && depth < 0.76 ? 0.22 : 0;
   const finalPinch = depth > 0.82 ? 0.18 : 0;
+  const curveBreathing = Math.sin(depth * Math.PI * 9.2) * 0.08;
 
-  return base - switchbackPinch + riverWiden - uphillPinch - finalPinch;
+  return clamp(
+    base +
+      rolloutWiden +
+      curveWiden +
+      switchbackEntryWiden +
+      recoveryWiden +
+      riverWiden +
+      curveBreathing -
+      firstApexPinch -
+      secondApexPinch -
+      uphillPinch -
+      finalPinch,
+    2.15,
+    3.75,
+  );
 }
 
 function playableLateralLimitAt(z: number): number {
