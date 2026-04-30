@@ -991,11 +991,13 @@ const heatTintLocation = requiredUniform(program, "uHeatTint");
 
 const trailMesh = createTrailMesh();
 const trailAtmosphereMesh = createTrailAtmosphereMesh();
+const trailShadowCueMesh = createTrailShadowCueMesh();
 const trailEdgeDetailMesh = createTrailEdgeDetailMesh();
 const riskLaneCueMesh = createRiskLaneCueMesh();
 const riverWaterMesh = createRiverWaterMesh();
 const riverBankMesh = createRiverBankMesh();
 const riverShimmerMesh = createRiverShimmerMesh();
+const riverCurrentMesh = createRiverCurrentMesh();
 const terrainMesh = createTerrainMesh();
 const cubeMesh = createCubeMesh([0.05, 0.045, 0.04]);
 const kitMesh = createCubeMesh([0.01, 0.01, 0.01]);
@@ -1042,6 +1044,8 @@ const markerBoardMesh = createCubeMesh([0.62, 0.38, 0.16]);
 const riverLogMesh = createCubeMesh([0.43, 0.22, 0.08]);
 const riverFoamMesh = createCubeMesh([0.66, 0.88, 0.84]);
 const riverSplashMesh = createCubeMesh([0.72, 0.95, 0.92]);
+const dustPuffMesh = createCubeMesh([0.64, 0.39, 0.16]);
+const heatHazeMesh = createCubeMesh([0.82, 0.35, 0.09]);
 const zoneExposedMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSteepMesh = createCubeMesh([0.95, 0.25, 0.08]);
 const zoneSwitchbackMesh = createCubeMesh([0.95, 0.73, 0.18]);
@@ -1917,6 +1921,7 @@ function render(): void {
   drawMesh(terrainMesh, identityMat4());
   drawMesh(trailMesh, identityMat4());
   drawMesh(trailAtmosphereMesh, identityMat4());
+  drawMesh(trailShadowCueMesh, identityMat4());
   drawMesh(trailEdgeDetailMesh, identityMat4());
   drawMesh(riverWaterMesh, identityMat4());
   drawMesh(riverBankMesh, identityMat4());
@@ -1924,7 +1929,20 @@ function render(): void {
     riverShimmerMesh,
     modelMat4([0, 0, Math.sin(state.elapsedSeconds * 2.7) * 0.18], [1, 1, 1], 0),
   );
+  drawMesh(
+    riverCurrentMesh,
+    modelMat4(
+      [
+        Math.sin(state.elapsedSeconds * 1.6) * 0.08,
+        0,
+        Math.cos(state.elapsedSeconds * 2.2) * 0.22,
+      ],
+      [1, 1, 1],
+      Math.sin(state.elapsedSeconds * 0.9) * 0.015,
+    ),
+  );
   drawMesh(riskLaneCueMesh, identityMat4());
+  drawHeatShimmerBands();
 
   for (const object of sceneObjects) {
     drawMesh(
@@ -1934,6 +1952,7 @@ function render(): void {
   }
 
   drawOtherRunners();
+  drawRunnerDustPuffs(runner.x, runner.z);
   drawRiverSplashFeedback(runner.x, runner.y, runner.z);
   drawRunner(runner.x, runner.y, runner.z);
   updateHud();
@@ -2099,6 +2118,95 @@ function drawOtherRunners(): void {
     const yaw = trailYawAt(z) + clamp(laneMotion * -0.04, -0.12, 0.12);
 
     drawOtherRunner(actor, x, groundY, z, yaw);
+  }
+}
+
+function drawHeatShimmerBands(): void {
+  const routeZone = routeZoneAt(state.progress);
+  const heatPressure = clamp((state.heat - 48) / 52, 0, 1);
+  const zoneBoost =
+    routeZone.kind === "steep" ||
+    routeZone.kind === "uphill" ||
+    routeZone.kind === "exposed"
+      ? 0.26
+      : routeZone.kind === "switchback"
+        ? 0.14
+        : 0;
+  const intensity = clamp(heatPressure * 0.78 + exposureAt(state.progress) * 0.24 + zoneBoost, 0, 1);
+
+  if (intensity < 0.18 || isCoolingActive()) {
+    return;
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const bandProgress = clamp(state.progress + 0.05 + index * 0.034, 0.035, 0.965);
+    const z = -TRAIL_LENGTH * bandProgress;
+    const center = trailCenterAt(z);
+    const width = trailWidthAt(z);
+    const phase = state.elapsedSeconds * (1.45 + index * 0.18) + index * 1.8;
+    const sway = Math.sin(phase) * 0.12 * intensity;
+    const lift = 0.62 + index * 0.18 + intensity * 0.22;
+
+    drawMesh(
+      heatHazeMesh,
+      modelMat4(
+        [
+          center + sway,
+          trailHeightAt(z) + lift,
+          z + Math.cos(phase * 0.7) * 0.08,
+        ],
+        [width * (0.86 - index * 0.08) * intensity, 0.016, 0.12],
+        Math.sin(phase * 0.55) * 0.08,
+      ),
+    );
+  }
+}
+
+function drawRunnerDustPuffs(x: number, z: number): void {
+  if (!isRunnerAnimationActive()) {
+    return;
+  }
+
+  const routeZone = routeZoneAt(state.progress);
+  const riskLane = riskLaneAt(state.progress, state.lateral);
+
+  if (routeZone.kind === "river" || routeZone.kind === "aid" || riskLane.kind === "water") {
+    return;
+  }
+
+  const speedDust = clamp((state.speed - 3.15) / 4.5, 0, 1);
+  const brakeDust = input.brake ? 0.28 : 0;
+  const steepDust = routeZone.kind === "steep" || routeZone.kind === "switchback" ? 0.16 : 0;
+  const intensity = clamp(speedDust + brakeDust + steepDust, 0, 1);
+
+  if (intensity <= 0.08) {
+    return;
+  }
+
+  for (let index = 0; index < 5; index += 1) {
+    const cycle = state.elapsedSeconds * 2.15 + index * 0.23;
+    const life = cycle - Math.floor(cycle);
+    const phase = state.elapsedSeconds * 7.8 + index * 1.34;
+    const puffZ = z + 0.28 + index * 0.2 + life * 0.42;
+    const puffX =
+      x +
+      Math.sin(phase) * (0.1 + index * 0.018) -
+      clamp(state.lateralVelocity, -3, 3) * 0.028;
+    const puffY = trailHeightAt(puffZ) + 0.09 + life * 0.08 * intensity;
+    const fadeScale = (1 - life * 0.42) * intensity;
+
+    drawMesh(
+      dustPuffMesh,
+      modelMat4(
+        [puffX, puffY, puffZ],
+        [
+          0.14 + life * 0.18 * fadeScale,
+          0.022,
+          0.1 + life * 0.16 * fadeScale,
+        ],
+        Math.sin(phase * 0.4) * 0.38,
+      ),
+    );
   }
 }
 
@@ -4221,14 +4329,18 @@ function fogColorForRun(): Vec3 {
 
 function fogNearForRun(): number {
   const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
+  const routeZone = routeZoneAt(state.progress);
+  const waterRelief = routeZone.kind === "river" ? 2.4 : 0;
 
-  return 20 - heatPressure * 4;
+  return 21 - heatPressure * 4.6 - exposureAt(state.progress) * 1.3 + waterRelief;
 }
 
 function fogFarForRun(): number {
   const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
+  const routeZone = routeZoneAt(state.progress);
+  const waterRelief = routeZone.kind === "river" ? 3.8 : 0;
 
-  return 58 - heatPressure * 9;
+  return 60 - heatPressure * 9.8 - exposureAt(state.progress) * 3.2 + waterRelief;
 }
 
 function heatTintForRun(): number {
@@ -4484,6 +4596,54 @@ function createTrailAtmosphereMesh(): Mesh {
       shade(routeTint, 0.8),
       index + 9,
       0.026,
+    );
+  }
+
+  return createMesh(positions, colors);
+}
+
+function createTrailShadowCueMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const slices = 56;
+  const turnShadow: Vec3 = [0.13, 0.075, 0.035];
+  const steepShade: Vec3 = [0.18, 0.07, 0.035];
+  const sunScrape: Vec3 = [0.64, 0.34, 0.1];
+
+  for (let index = 0; index < slices; index += 1) {
+    const progress = 0.035 + (index / slices) * 0.92;
+    const z = -TRAIL_LENGTH * progress;
+    const routeZone = routeZoneAt(progress);
+
+    if (routeZone.kind === "river" || routeZone.kind === "aid") {
+      continue;
+    }
+
+    const curveDelta = trailCenterAt(z - 5.5) - trailCenterAt(z + 5.5);
+    const side = curveDelta >= 0 ? -1 : 1;
+    const width = trailWidthAt(z);
+    const lateral = side * width * (0.44 + (index % 3) * 0.05);
+    const halfWidth =
+      routeZone.kind === "switchback" ? 0.23 : routeZone.kind === "steep" ? 0.19 : 0.13;
+    const length =
+      routeZone.kind === "switchback" || routeZone.kind === "steep" ? 0.0068 : 0.0045;
+    const baseColor =
+      routeZone.kind === "steep" || routeZone.kind === "uphill"
+        ? steepShade
+        : routeZone.kind === "exposed" && index % 2 === 0
+          ? sunScrape
+          : turnShadow;
+
+    addTrailSurfaceQuad(
+      positions,
+      colors,
+      progress,
+      length,
+      lateral,
+      halfWidth,
+      shade(baseColor, 0.78 + (index % 3) * 0.08),
+      index,
+      0.074,
     );
   }
 
@@ -4886,6 +5046,45 @@ function createRiverShimmerMesh(): Mesh {
       laneCenter + halfWidth * 0.8,
       0.105,
       index % 2 === 0 ? shimmerA : shimmerB,
+    );
+  }
+
+  return createMesh(positions, colors);
+}
+
+function createRiverCurrentMesh(): Mesh {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const bands = 12;
+  const currentLight: Vec3 = [0.56, 0.86, 0.78];
+  const currentDark: Vec3 = [0.08, 0.38, 0.42];
+
+  for (let index = 0; index < bands; index += 1) {
+    const progress =
+      RIVER_CROSSING_START +
+      0.008 +
+      ((RIVER_CROSSING_END - RIVER_CROSSING_START - 0.016) * index) / bands;
+    const length = 0.0018 + (index % 4) * 0.0007;
+    const nearProgress = clamp(progress - length * 0.5, RIVER_CROSSING_START, RIVER_CROSSING_END);
+    const farProgress = clamp(progress + length * 0.5, RIVER_CROSSING_START, RIVER_CROSSING_END);
+    const nearZ = -TRAIL_LENGTH * nearProgress;
+    const farZ = -TRAIL_LENGTH * farProgress;
+    const laneCenter =
+      index % 3 === 0 ? -0.92 : index % 3 === 1 ? 0.04 : LOG_CENTER + 0.08;
+    const halfWidth = 0.1 + (index % 3) * 0.045;
+    const color = index % 2 === 0 ? currentLight : currentDark;
+
+    addRiverSurfaceStrip(
+      positions,
+      colors,
+      nearZ,
+      farZ,
+      laneCenter - halfWidth,
+      laneCenter + halfWidth,
+      laneCenter - halfWidth * 0.78,
+      laneCenter + halfWidth * 0.78,
+      0.124,
+      shade(color, 0.86 + (index % 3) * 0.08),
     );
   }
 
