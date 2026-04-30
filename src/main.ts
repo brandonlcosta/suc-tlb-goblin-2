@@ -13,6 +13,21 @@ const STEER_SPEED = 4.2;
 const LATERAL_LIMIT = 1.85;
 const RUNNER_EDGE_BUFFER = 0.48;
 const CAMERA_RESPONSE = 4.8;
+const CAMERA_LOOK_AHEAD_DISTANCE = 14.8;
+const CAMERA_BEHIND_DISTANCE = 11.2;
+const CAMERA_HEIGHT = 5.05;
+const CAMERA_TARGET_HEIGHT = 0.98;
+const STATIC_OBJECT_DRAW_AHEAD_DISTANCE = 88;
+const STATIC_OBJECT_DRAW_BEHIND_DISTANCE = 22;
+const TRAIL_ATMOSPHERE_MARKS = 108;
+const TRAIL_RUT_MARKS = 44;
+const TRAIL_SHADOW_CUE_SLICES = 44;
+const TRAIL_EDGE_DETAIL_SLICES = 66;
+const TRAIL_SURFACE_OBJECT_SPACING = 9.2;
+const ROCK_SPACING = 6.4;
+const TREE_SPACING = 14.5;
+const HEAT_HAZE_BAND_COUNT = 3;
+const DUST_PUFF_COUNT = 3;
 const RESOURCE_MAX = 100;
 const STARTING_HEAT = 22;
 const STARTING_HYDRATION = 88;
@@ -72,12 +87,12 @@ const LOG_ROUTE_SPEED_BONUS = 0.48;
 const LOG_LANE_MIN = 0.66;
 const LOG_LANE_MAX = 1.52;
 const LOG_CENTER = (LOG_LANE_MIN + LOG_LANE_MAX) / 2;
-const LOG_BASE_CLEAN_MARGIN = 0.25;
-const LOG_BRAKE_MARGIN_BONUS = 0.2;
+const LOG_BASE_CLEAN_MARGIN = 0.28;
+const LOG_BRAKE_MARGIN_BONUS = 0.24;
 const LOG_CONTROL_MARGIN_BONUS = 0.08;
-const LOG_CLEAN_SPEED_LIMIT = 6.8;
+const LOG_CLEAN_SPEED_LIMIT = 7.05;
 const LOG_MISS_SPEED = 2.45;
-const LOG_MISS_QUAD_PENALTY = 5.2;
+const LOG_MISS_QUAD_PENALTY = 4.6;
 const LOG_MISS_HEAT_PENALTY = 1.2;
 
 const PACE_SETTINGS = {
@@ -1097,20 +1112,6 @@ const OTHER_RUNNER_ACTORS: readonly OtherRunnerActor[] = [
     accentMesh: otherRunnerAccentBlueMesh,
   },
   {
-    appearAt: 0.46,
-    disappearAt: 0.74,
-    offsetProgress: 0.058,
-    progressDriftPerSecond: -0.00008,
-    lateralBase: LOG_CENTER,
-    lateralSway: 0.06,
-    lateralSwaySpeed: 0.7,
-    phase: 1.3,
-    strideRate: 7.7,
-    scale: 0.76,
-    kitMesh: otherRunnerKitMaroonMesh,
-    accentMesh: otherRunnerAccentBoneMesh,
-  },
-  {
     appearAt: 0.68,
     disappearAt: 1.01,
     offsetProgress: 0.074,
@@ -1945,6 +1946,10 @@ function render(): void {
   drawHeatShimmerBands();
 
   for (const object of sceneObjects) {
+    if (!shouldDrawSceneObject(object, runner.z)) {
+      continue;
+    }
+
     drawMesh(
       object.mesh,
       modelMat4(object.position, object.scale, object.rotationY ?? 0),
@@ -2138,7 +2143,7 @@ function drawHeatShimmerBands(): void {
     return;
   }
 
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < HEAT_HAZE_BAND_COUNT; index += 1) {
     const bandProgress = clamp(state.progress + 0.05 + index * 0.034, 0.035, 0.965);
     const z = -TRAIL_LENGTH * bandProgress;
     const center = trailCenterAt(z);
@@ -2183,7 +2188,7 @@ function drawRunnerDustPuffs(x: number, z: number): void {
     return;
   }
 
-  for (let index = 0; index < 5; index += 1) {
+  for (let index = 0; index < DUST_PUFF_COUNT; index += 1) {
     const cycle = state.elapsedSeconds * 2.15 + index * 0.23;
     const life = cycle - Math.floor(cycle);
     const phase = state.elapsedSeconds * 7.8 + index * 1.34;
@@ -2228,10 +2233,14 @@ function otherRunnerLateralAt(actor: OtherRunnerActor, z: number): number {
 }
 
 function shouldDrawOtherRunner(actorProgress: number, lateral: number): boolean {
+  if (isInRiverCrossing(actorProgress)) {
+    return false;
+  }
+
   const progressDelta = actorProgress - state.progress;
   const lateralDelta = Math.abs(lateral - state.lateral);
 
-  return Math.abs(progressDelta) >= 0.008 || lateralDelta >= 0.62;
+  return Math.abs(progressDelta) >= 0.012 || lateralDelta >= 0.72;
 }
 
 function drawOtherRunner(
@@ -4331,16 +4340,30 @@ function fogNearForRun(): number {
   const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
   const routeZone = routeZoneAt(state.progress);
   const waterRelief = routeZone.kind === "river" ? 2.4 : 0;
+  const technicalRelief = routeZone.kind === "switchback" ? 1.8 : 0;
 
-  return 21 - heatPressure * 4.6 - exposureAt(state.progress) * 1.3 + waterRelief;
+  return (
+    21 -
+    heatPressure * 4.6 -
+    exposureAt(state.progress) * 1.3 +
+    waterRelief +
+    technicalRelief
+  );
 }
 
 function fogFarForRun(): number {
   const heatPressure = clamp((state.heat - 65) / 35, 0, 1);
   const routeZone = routeZoneAt(state.progress);
   const waterRelief = routeZone.kind === "river" ? 3.8 : 0;
+  const technicalRelief = routeZone.kind === "switchback" ? 4.5 : 0;
 
-  return 60 - heatPressure * 9.8 - exposureAt(state.progress) * 3.2 + waterRelief;
+  return (
+    60 -
+    heatPressure * 9.8 -
+    exposureAt(state.progress) * 3.2 +
+    waterRelief +
+    technicalRelief
+  );
 }
 
 function heatTintForRun(): number {
@@ -4396,18 +4419,23 @@ function desiredCameraFor(runner: { x: number; y: number; z: number }, lateral: 
   position: Vec3;
   target: Vec3;
 } {
-  const lookAheadZ = runner.z - 13;
-  const behindZ = runner.z + 10.5;
+  const progress = clamp(-runner.z / TRAIL_LENGTH, 0, 1);
+  const routeZone = routeZoneAt(progress);
+  const technicalLookAhead =
+    routeZone.kind === "switchback" ? 3.2 : routeZone.kind === "river" ? 1.6 : 0;
+  const technicalLift = routeZone.kind === "switchback" ? 0.28 : 0;
+  const lookAheadZ = runner.z - CAMERA_LOOK_AHEAD_DISTANCE - technicalLookAhead;
+  const behindZ = runner.z + CAMERA_BEHIND_DISTANCE;
 
   return {
     position: [
       trailCenterAt(behindZ) + lateral * 0.34,
-      runner.y + 4.9,
+      runner.y + CAMERA_HEIGHT + technicalLift,
       behindZ,
     ],
     target: [
       trailCenterAt(lookAheadZ) + lateral * 0.26,
-      runner.y + 0.95,
+      runner.y + CAMERA_TARGET_HEIGHT,
       lookAheadZ,
     ],
   };
@@ -4422,6 +4450,15 @@ function drawMesh(mesh: Mesh, model: Float32Array): void {
 
   gl.uniformMatrix4fv(modelLocation, false, model);
   gl.drawArrays(gl.TRIANGLES, 0, mesh.vertexCount);
+}
+
+function shouldDrawSceneObject(object: SceneObject, runnerZ: number): boolean {
+  const deltaZ = object.position[2] - runnerZ;
+
+  return (
+    deltaZ <= STATIC_OBJECT_DRAW_BEHIND_DISTANCE &&
+    deltaZ >= -STATIC_OBJECT_DRAW_AHEAD_DISTANCE
+  );
 }
 
 function createTrailMesh(): Mesh {
@@ -4514,7 +4551,7 @@ function createTrailMesh(): Mesh {
 function createTrailAtmosphereMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const marks = 132;
+  const marks = TRAIL_ATMOSPHERE_MARKS;
   const dust: Vec3 = [0.56, 0.32, 0.12];
   const darkCrack: Vec3 = [0.15, 0.09, 0.05];
   const hotScrape: Vec3 = [0.76, 0.31, 0.08];
@@ -4558,8 +4595,8 @@ function createTrailAtmosphereMesh(): Mesh {
     );
   }
 
-  for (let index = 0; index < 58; index += 1) {
-    const progress = 0.035 + (index / 58) * 0.91;
+  for (let index = 0; index < TRAIL_RUT_MARKS; index += 1) {
+    const progress = 0.035 + (index / TRAIL_RUT_MARKS) * 0.91;
     const routeZone = routeZoneAt(progress);
 
     if (routeZone.kind === "river" || routeZone.kind === "aid") {
@@ -4605,7 +4642,7 @@ function createTrailAtmosphereMesh(): Mesh {
 function createTrailShadowCueMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const slices = 56;
+  const slices = TRAIL_SHADOW_CUE_SLICES;
   const turnShadow: Vec3 = [0.13, 0.075, 0.035];
   const steepShade: Vec3 = [0.18, 0.07, 0.035];
   const sunScrape: Vec3 = [0.64, 0.34, 0.1];
@@ -4653,7 +4690,7 @@ function createTrailShadowCueMesh(): Mesh {
 function createTrailEdgeDetailMesh(): Mesh {
   const positions: number[] = [];
   const colors: number[] = [];
-  const slices = 84;
+  const slices = TRAIL_EDGE_DETAIL_SLICES;
   const shoulderDust: Vec3 = [0.42, 0.27, 0.11];
   const dryShoulder: Vec3 = [0.54, 0.38, 0.14];
   const edgeCut: Vec3 = [0.12, 0.075, 0.045];
@@ -5674,7 +5711,6 @@ function addSwitchbackOverlookLife(objects: SceneObject[]): void {
   const baseZ = -TRAIL_LENGTH * SWITCHBACK_FIRST_APEX_PROGRESS;
 
   addTracksideEventFigure(objects, baseZ + 2.1, 1, 1.16, spectatorGreenMesh, null, "wave", -0.46, 0.84);
-  addTracksideEventFigure(objects, baseZ - 0.35, 1, 1.55, spectatorBlueMesh, null, "clap", -0.38, 0.82);
   addTracksideEventFigure(objects, baseZ - 2.45, 1, 1.22, spectatorMaroonMesh, null, "point", -0.42, 0.86);
   addHandheldEventSign(
     objects,
@@ -5691,8 +5727,6 @@ function addRiverEventLife(objects: SceneObject[]): void {
 
   addTracksideEventFigure(objects, riverZ + 3.6, -1, 1.28, crewBodyMesh, volunteerVestMesh, "point", 0.4, 0.86);
   addTracksideEventFigure(objects, riverZ + 1.1, -1, 1.66, spectatorBlueMesh, null, "wave", 0.34, 0.8);
-  addTracksideEventFigure(objects, riverZ - 1.6, 1, 1.44, spectatorGreenMesh, null, "clap", -0.36, 0.84);
-  addTracksideEventFigure(objects, riverZ - 3.7, 1, 1.18, spectatorMaroonMesh, null, "wave", -0.42, 0.8);
   addAidJugCluster(
     objects,
     trailCenterAt(riverZ + 2.2) - trailWidthAt(riverZ + 2.2) - 1.34,
@@ -5720,8 +5754,6 @@ function addSecondAidEventLife(objects: SceneObject[]): void {
   addEventFigure(objects, sideX + 0.92, stationZ - 0.62, -0.38, crewBodyMesh, volunteerVestMesh, "wave", 0.9);
   addEventFigure(objects, sideX - 1.16, stationZ + 0.82, -0.18, crewBodyMesh, volunteerVestMesh, "clap", 0.88);
   addTracksideEventFigure(objects, stationZ - 1.85, -1, 1.18, spectatorBlueMesh, null, "wave", 0.28, 0.86);
-  addTracksideEventFigure(objects, stationZ + 1.75, -1, 1.48, spectatorGreenMesh, null, "clap", 0.22, 0.84);
-  addTracksideEventFigure(objects, stationZ + 3.18, 1, 2.12, spectatorMaroonMesh, null, "point", -0.34, 0.82);
   addAidJugCluster(objects, sideX + 1.14, stationZ + 0.1, -0.24, 0.92);
 
   objects.push(
@@ -6424,7 +6456,11 @@ function createFinishLineObjects(): SceneObject[] {
 function createTrailSurfaceObjects(): SceneObject[] {
   const objects: SceneObject[] = [];
 
-  for (let index = 0, z = -8; z > -TRAIL_LENGTH; index += 1, z -= 7.2) {
+  for (
+    let index = 0, z = -8;
+    z > -TRAIL_LENGTH;
+    index += 1, z -= TRAIL_SURFACE_OBJECT_SPACING
+  ) {
     const progress = clamp(-z / TRAIL_LENGTH, 0, 1);
     const routeZone = routeZoneAt(progress);
     const center = trailCenterAt(z);
@@ -6481,7 +6517,7 @@ function createTrailSurfaceObjects(): SceneObject[] {
 function createRocks(): SceneObject[] {
   const rocks: SceneObject[] = [];
 
-  for (let index = 0, z = -6; z > -TRAIL_LENGTH; index += 1, z -= 5) {
+  for (let index = 0, z = -6; z > -TRAIL_LENGTH; index += 1, z -= ROCK_SPACING) {
     const side = index % 3 === 0 ? -1 : 1;
     const center = trailCenterAt(z);
     const offset = trailWidthAt(z) + 1.1 + ((index * 17) % 9) * 0.28;
@@ -6500,7 +6536,7 @@ function createRocks(): SceneObject[] {
 function createTrees(): SceneObject[] {
   const trees: SceneObject[] = [];
 
-  for (let index = 0, z = -14; z > -TRAIL_LENGTH; index += 1, z -= 12.5) {
+  for (let index = 0, z = -14; z > -TRAIL_LENGTH; index += 1, z -= TREE_SPACING) {
     const side = index % 4 < 2 ? -1 : 1;
     const center = trailCenterAt(z);
 
