@@ -177,7 +177,7 @@ body {
 #hud .hud-route-row {
   grid-template-columns: minmax(0, 0.74fr) minmax(0, 1.45fr) minmax(0, 0.92fr);
   margin-top: auto;
-  margin-bottom: 118px;
+  margin-bottom: 106px;
 }
 
 #hud strong,
@@ -213,7 +213,7 @@ body {
 
   #hud .hud-route-row {
     grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
-    margin-bottom: 108px;
+    margin-bottom: 98px;
   }
 
   #hud .hud-route-row [data-hud-zone] {
@@ -547,9 +547,10 @@ body {
   bottom: 10px;
   z-index: 3;
   display: grid;
-  grid-template-columns: 106px minmax(18px, 1fr) 154px;
+  grid-template-columns: minmax(100px, 0.9fr) minmax(54px, 0.48fr) minmax(150px, 1fr);
   grid-template-rows: auto auto;
-  gap: 6px;
+  align-items: end;
+  gap: 5px 6px;
   color: #efe7cf;
   text-shadow: 2px 2px 0 #080807;
   pointer-events: none;
@@ -561,16 +562,18 @@ body {
 
 #touch-controls button {
   min-width: 0;
-  min-height: 42px;
-  padding: 5px;
+  min-height: 38px;
+  padding: 5px 4px;
   border: 2px solid #5d513f;
   border-radius: 0;
   color: #efe7cf;
-  background: rgba(8, 8, 7, 0.82);
-  box-shadow: inset 0 -2px 0 rgba(156, 255, 58, 0.08);
+  background: rgba(8, 8, 7, 0.76);
+  box-shadow:
+    inset 0 -2px 0 rgba(156, 255, 58, 0.08),
+    0 0 0 1px rgba(8, 8, 7, 0.44);
   font: inherit;
-  font-size: 0.58rem;
-  line-height: 1.02;
+  font-size: 0.56rem;
+  line-height: 1;
   text-align: center;
   text-transform: uppercase;
   cursor: pointer;
@@ -588,18 +591,23 @@ body {
 
 #touch-controls button strong {
   color: inherit;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
 }
 
 #touch-controls button span {
   margin-top: 2px;
   color: #c8bda3;
-  font-size: 0.48rem;
+  font-size: 0.46rem;
 }
 
 #touch-controls button:disabled {
   cursor: default;
-  opacity: 0.46;
+  filter: saturate(0.58);
+  opacity: 0.38;
+}
+
+#touch-controls button:disabled span {
+  color: #837868;
 }
 
 #touch-controls button:focus-visible {
@@ -611,7 +619,11 @@ body {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
+  gap: 4px;
+}
+
+.touch-controls__pace button {
+  min-height: 36px;
 }
 
 .touch-controls__steer {
@@ -622,7 +634,7 @@ body {
 }
 
 .touch-controls__steer button {
-  min-height: 54px;
+  min-height: 50px;
   color: #9cff3a;
   font-weight: 700;
 }
@@ -635,7 +647,23 @@ body {
 }
 
 .touch-controls__actions button {
-  min-height: 54px;
+  min-height: 50px;
+}
+
+#touch-controls [data-touch-pace="control"] {
+  border-color: rgba(143, 210, 255, 0.58);
+}
+
+#touch-controls [data-touch-pace="steady"] {
+  border-color: rgba(156, 255, 58, 0.5);
+}
+
+#touch-controls [data-touch-pace="push"] {
+  border-color: rgba(255, 209, 92, 0.58);
+}
+
+#touch-controls [data-touch-pace="send"] {
+  border-color: rgba(255, 79, 79, 0.62);
 }
 
 #touch-controls [data-active="true"],
@@ -646,6 +674,7 @@ body {
   box-shadow:
     inset 0 0 0 1px rgba(156, 255, 58, 0.36),
     0 0 14px rgba(156, 255, 58, 0.22);
+  transform: translateY(-1px);
 }
 
 #touch-controls [data-selected="true"] span {
@@ -685,6 +714,11 @@ body {
 
 #touch-controls [data-touch-hold][data-active="true"] span {
   color: inherit;
+}
+
+#touch-controls [data-touch-hold="left"][data-active="true"],
+#touch-controls [data-touch-hold="right"][data-active="true"] {
+  background: rgba(17, 36, 12, 0.95);
 }
 
 #touch-controls [data-touch-cooling][data-cooling-state="ready"] {
@@ -1235,27 +1269,31 @@ body {
     left: 8px;
     right: 8px;
     bottom: 8px;
-    grid-template-columns: 94px minmax(8px, 1fr) 142px;
-    gap: 5px;
+    grid-template-columns: minmax(92px, 0.9fr) minmax(40px, 0.44fr) minmax(132px, 1fr);
+    gap: 4px;
   }
 
   #touch-controls button {
-    min-height: 38px;
-    padding: 4px;
-    font-size: 0.5rem;
+    min-height: 36px;
+    padding: 4px 3px;
+    font-size: 0.48rem;
   }
 
   #touch-controls button strong {
-    font-size: 0.56rem;
+    font-size: 0.54rem;
   }
 
   #touch-controls button span {
-    font-size: 0.46rem;
+    font-size: 0.42rem;
+  }
+
+  .touch-controls__pace button {
+    min-height: 34px;
   }
 
   .touch-controls__steer button,
   .touch-controls__actions button {
-    min-height: 50px;
+    min-height: 46px;
   }
 
   .route-intel-panel {

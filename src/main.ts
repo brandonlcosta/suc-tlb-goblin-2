@@ -2018,19 +2018,17 @@ function updateTouchControlsUi(): void {
   touchCoolingButton.dataset.coolingState = coolingState;
 
   if (coolingState === "active") {
-    touchCoolingStatus.textContent = `Heat relief ${Math.ceil(
-      state.coolingRemaining,
-    )}s`;
+    touchCoolingStatus.textContent = `Cooling ${Math.ceil(state.coolingRemaining)}s`;
     touchCoolingButton.setAttribute("aria-label", "Ice cooling active, heat relief running");
   } else if (coolingState === "ready") {
-    touchCoolingStatus.textContent = `Tap heat drop ${state.coolingCharges}`;
+    touchCoolingStatus.textContent = `Drop heat x${state.coolingCharges}`;
     touchCoolingButton.setAttribute(
       "aria-label",
       `Use ice cooling, ${state.coolingCharges} charge${state.coolingCharges === 1 ? "" : "s"} ready`,
     );
   } else {
     touchCoolingStatus.textContent =
-      state.decisionStats.coolingUses > 0 ? "Spent" : "No charge";
+      state.decisionStats.coolingUses > 0 ? "Spent" : "No ice";
     touchCoolingButton.setAttribute(
       "aria-label",
       state.decisionStats.coolingUses > 0 ? "Ice cooling spent" : "No ice charge",
