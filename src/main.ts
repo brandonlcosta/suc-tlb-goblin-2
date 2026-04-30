@@ -619,6 +619,8 @@ interface SceneObject {
   rotationY?: number;
 }
 
+type EventFigurePose = "clap" | "wave" | "point";
+
 interface OtherRunnerActor {
   appearAt: number;
   disappearAt: number;
@@ -1026,6 +1028,12 @@ const crewCoolerMesh = createCubeMesh([0.09, 0.6, 0.82]);
 const crewConeMesh = createPyramidMesh([0.96, 0.32, 0.08]);
 const crewSignMesh = createCubeMesh([0.88, 0.72, 0.28]);
 const crewBodyMesh = createCubeMesh([0.12, 0.15, 0.1]);
+const volunteerVestMesh = createCubeMesh([0.96, 0.55, 0.1]);
+const spectatorBlueMesh = createCubeMesh([0.08, 0.2, 0.5]);
+const spectatorGreenMesh = createCubeMesh([0.12, 0.28, 0.12]);
+const spectatorMaroonMesh = createCubeMesh([0.45, 0.08, 0.09]);
+const waterJugMesh = createCubeMesh([0.78, 0.88, 0.92]);
+const cupStackMesh = createCubeMesh([0.9, 0.88, 0.74]);
 const shadeTentMesh = createPyramidMesh([0.19, 0.15, 0.09]);
 const finishTapeMesh = createCubeMesh([0.93, 0.9, 0.68]);
 const courseStakeMesh = createCubeMesh([0.2, 0.13, 0.07]);
@@ -1117,6 +1125,7 @@ const OTHER_RUNNER_ACTORS: readonly OtherRunnerActor[] = [
 const sceneObjects: SceneObject[] = [
   ...createCrewZoneObjects(),
   ...createAtmosphereObjects(),
+  ...createEventLifeObjects(),
   ...createRouteZoneMarkers(),
   ...createSwitchbackFlowMarkers(),
   ...createRiverCrossingObjects(),
@@ -5429,6 +5438,282 @@ function addCrewSilhouette(
       position: [x + Math.sin(rotationY) * 0.24, y + 0.64, z + Math.cos(rotationY) * 0.2],
       scale: [0.11, 0.48, 0.1],
       rotationY: rotationY + 0.28,
+    },
+  );
+}
+
+function createEventLifeObjects(): SceneObject[] {
+  const objects: SceneObject[] = [];
+
+  addForesthillEventLife(objects);
+  addSwitchbackOverlookLife(objects);
+  addRiverEventLife(objects);
+  addSecondAidEventLife(objects);
+
+  return objects;
+}
+
+function addForesthillEventLife(objects: SceneObject[]): void {
+  addTracksideEventFigure(objects, 2.45, 1, 1.08, spectatorBlueMesh, null, "wave", -0.34, 0.92);
+  addTracksideEventFigure(objects, 1.22, 1, 1.46, spectatorGreenMesh, null, "clap", -0.22, 0.86);
+  addTracksideEventFigure(objects, -1.12, -1, 1.18, crewBodyMesh, volunteerVestMesh, "point", 0.34, 0.94);
+  addTracksideEventFigure(objects, -3.28, 1, 1.1, spectatorMaroonMesh, null, "clap", -0.26, 0.9);
+
+  const jugZ = 0.55;
+  addAidJugCluster(objects, trailCenterAt(jugZ) + trailWidthAt(jugZ) + 1.72, jugZ, -0.26, 1);
+  addHandheldEventSign(
+    objects,
+    trailCenterAt(-2.05) - trailWidthAt(-2.05) - 1.18,
+    -2.05,
+    0.18,
+    zoneAidMesh,
+    0.92,
+  );
+}
+
+function addSwitchbackOverlookLife(objects: SceneObject[]): void {
+  const baseZ = -TRAIL_LENGTH * SWITCHBACK_FIRST_APEX_PROGRESS;
+
+  addTracksideEventFigure(objects, baseZ + 2.1, 1, 1.16, spectatorGreenMesh, null, "wave", -0.46, 0.84);
+  addTracksideEventFigure(objects, baseZ - 0.35, 1, 1.55, spectatorBlueMesh, null, "clap", -0.38, 0.82);
+  addTracksideEventFigure(objects, baseZ - 2.45, 1, 1.22, spectatorMaroonMesh, null, "point", -0.42, 0.86);
+  addHandheldEventSign(
+    objects,
+    trailCenterAt(baseZ - 1.2) + trailWidthAt(baseZ - 1.2) + 1.15,
+    baseZ - 1.2,
+    -0.32,
+    zoneSwitchbackMesh,
+    0.78,
+  );
+}
+
+function addRiverEventLife(objects: SceneObject[]): void {
+  const riverZ = -TRAIL_LENGTH * 0.612;
+
+  addTracksideEventFigure(objects, riverZ + 3.6, -1, 1.28, crewBodyMesh, volunteerVestMesh, "point", 0.4, 0.86);
+  addTracksideEventFigure(objects, riverZ + 1.1, -1, 1.66, spectatorBlueMesh, null, "wave", 0.34, 0.8);
+  addTracksideEventFigure(objects, riverZ - 1.6, 1, 1.44, spectatorGreenMesh, null, "clap", -0.36, 0.84);
+  addTracksideEventFigure(objects, riverZ - 3.7, 1, 1.18, spectatorMaroonMesh, null, "wave", -0.42, 0.8);
+  addAidJugCluster(
+    objects,
+    trailCenterAt(riverZ + 2.2) - trailWidthAt(riverZ + 2.2) - 1.34,
+    riverZ + 2.2,
+    0.28,
+    0.78,
+  );
+  addHandheldEventSign(
+    objects,
+    trailCenterAt(riverZ + 0.2) + trailWidthAt(riverZ + 0.2) + 1.12,
+    riverZ + 0.2,
+    -0.26,
+    zoneRiverMesh,
+    0.74,
+  );
+}
+
+function addSecondAidEventLife(objects: SceneObject[]): void {
+  const stationZ = -TRAIL_LENGTH * SECOND_AID_PROGRESS;
+  const stationCenter = trailCenterAt(stationZ);
+  const stationWidth = trailWidthAt(stationZ);
+  const stationY = trailHeightAt(stationZ);
+  const sideX = stationCenter + stationWidth + 1.25;
+
+  addEventFigure(objects, sideX + 0.92, stationZ - 0.62, -0.38, crewBodyMesh, volunteerVestMesh, "wave", 0.9);
+  addEventFigure(objects, sideX - 1.16, stationZ + 0.82, -0.18, crewBodyMesh, volunteerVestMesh, "clap", 0.88);
+  addTracksideEventFigure(objects, stationZ - 1.85, -1, 1.18, spectatorBlueMesh, null, "wave", 0.28, 0.86);
+  addTracksideEventFigure(objects, stationZ + 1.75, -1, 1.48, spectatorGreenMesh, null, "clap", 0.22, 0.84);
+  addTracksideEventFigure(objects, stationZ + 3.18, 1, 2.12, spectatorMaroonMesh, null, "point", -0.34, 0.82);
+  addAidJugCluster(objects, sideX + 1.14, stationZ + 0.1, -0.24, 0.92);
+
+  objects.push(
+    {
+      mesh: waterJugMesh,
+      position: [sideX - 0.62, stationY + 1.02, stationZ - 0.42],
+      scale: [0.24, 0.42, 0.24],
+      rotationY: -0.24,
+    },
+    {
+      mesh: cupStackMesh,
+      position: [sideX - 0.1, stationY + 0.98, stationZ - 0.48],
+      scale: [0.28, 0.2, 0.24],
+      rotationY: -0.12,
+    },
+  );
+}
+
+function addTracksideEventFigure(
+  objects: SceneObject[],
+  z: number,
+  side: -1 | 1,
+  edgeOffset: number,
+  bodyMesh: Mesh,
+  accessoryMesh: Mesh | null,
+  pose: EventFigurePose,
+  rotationY: number,
+  scale: number,
+): void {
+  const x = trailCenterAt(z) + side * (trailWidthAt(z) + edgeOffset);
+
+  addEventFigure(objects, x, z, rotationY, bodyMesh, accessoryMesh, pose, scale);
+}
+
+function addEventFigure(
+  objects: SceneObject[],
+  x: number,
+  z: number,
+  rotationY: number,
+  bodyMesh: Mesh,
+  accessoryMesh: Mesh | null,
+  pose: EventFigurePose,
+  scale: number,
+): void {
+  const y = trailHeightAt(z);
+  const sideX = Math.cos(rotationY) * 0.21 * scale;
+  const sideZ = -Math.sin(rotationY) * 0.21 * scale;
+  const forwardX = Math.sin(rotationY) * 0.18 * scale;
+  const forwardZ = Math.cos(rotationY) * 0.18 * scale;
+
+  objects.push(
+    {
+      mesh: runnerShadowMesh,
+      position: [x, y + 0.026, z + 0.03],
+      scale: [0.46 * scale, 0.02, 0.32 * scale],
+      rotationY,
+    },
+    {
+      mesh: bodyMesh,
+      position: [x, y + 0.72 * scale, z],
+      scale: [0.28 * scale, 0.58 * scale, 0.18 * scale],
+      rotationY,
+    },
+    {
+      mesh: skinMesh,
+      position: [x, y + 1.18 * scale, z - 0.02 * scale],
+      scale: [0.21 * scale, 0.23 * scale, 0.21 * scale],
+      rotationY,
+    },
+  );
+
+  if (accessoryMesh) {
+    objects.push({
+      mesh: accessoryMesh,
+      position: [x + forwardX * 0.28, y + 0.82 * scale, z + forwardZ * 0.28],
+      scale: [0.22 * scale, 0.32 * scale, 0.055 * scale],
+      rotationY,
+    });
+  }
+
+  if (pose === "wave") {
+    objects.push(
+      {
+        mesh: skinMesh,
+        position: [x + sideX, y + 1.16 * scale, z + sideZ],
+        scale: [0.07 * scale, 0.5 * scale, 0.06 * scale],
+        rotationY: rotationY - 0.12,
+      },
+      {
+        mesh: skinMesh,
+        position: [x - sideX * 0.92, y + 0.82 * scale, z - sideZ * 0.92],
+        scale: [0.07 * scale, 0.28 * scale, 0.06 * scale],
+        rotationY: rotationY + 0.18,
+      },
+    );
+    return;
+  }
+
+  if (pose === "point") {
+    objects.push(
+      {
+        mesh: skinMesh,
+        position: [x + forwardX * 1.9, y + 1.02 * scale, z + forwardZ * 1.9],
+        scale: [0.07 * scale, 0.07 * scale, 0.42 * scale],
+        rotationY,
+      },
+      {
+        mesh: skinMesh,
+        position: [x - sideX * 0.9, y + 0.84 * scale, z - sideZ * 0.9],
+        scale: [0.07 * scale, 0.26 * scale, 0.06 * scale],
+        rotationY: rotationY + 0.16,
+      },
+    );
+    return;
+  }
+
+  objects.push(
+    {
+      mesh: skinMesh,
+      position: [x + sideX * 0.52 + forwardX, y + 1.02 * scale, z + sideZ * 0.52 + forwardZ],
+      scale: [0.06 * scale, 0.27 * scale, 0.055 * scale],
+      rotationY: rotationY - 0.16,
+    },
+    {
+      mesh: skinMesh,
+      position: [x - sideX * 0.52 + forwardX, y + 1.02 * scale, z - sideZ * 0.52 + forwardZ],
+      scale: [0.06 * scale, 0.27 * scale, 0.055 * scale],
+      rotationY: rotationY + 0.16,
+    },
+  );
+}
+
+function addAidJugCluster(
+  objects: SceneObject[],
+  x: number,
+  z: number,
+  rotationY: number,
+  scale: number,
+): void {
+  const y = trailHeightAt(z);
+
+  objects.push(
+    {
+      mesh: crewCoolerMesh,
+      position: [x, y + 0.35 * scale, z],
+      scale: [0.55 * scale, 0.5 * scale, 0.42 * scale],
+      rotationY,
+    },
+    {
+      mesh: waterJugMesh,
+      position: [x - 0.38 * scale, y + 0.72 * scale, z + 0.18 * scale],
+      scale: [0.22 * scale, 0.38 * scale, 0.22 * scale],
+      rotationY: rotationY + 0.14,
+    },
+    {
+      mesh: waterJugMesh,
+      position: [x + 0.12 * scale, y + 0.7 * scale, z - 0.16 * scale],
+      scale: [0.2 * scale, 0.34 * scale, 0.2 * scale],
+      rotationY: rotationY - 0.08,
+    },
+    {
+      mesh: cupStackMesh,
+      position: [x + 0.42 * scale, y + 0.64 * scale, z + 0.12 * scale],
+      scale: [0.2 * scale, 0.22 * scale, 0.18 * scale],
+      rotationY,
+    },
+  );
+}
+
+function addHandheldEventSign(
+  objects: SceneObject[],
+  x: number,
+  z: number,
+  rotationY: number,
+  boardMesh: Mesh,
+  scale: number,
+): void {
+  const y = trailHeightAt(z);
+
+  objects.push(
+    {
+      mesh: courseStakeMesh,
+      position: [x, y + 0.74 * scale, z],
+      scale: [0.08 * scale, 1.06 * scale, 0.08 * scale],
+      rotationY,
+    },
+    {
+      mesh: boardMesh,
+      position: [x, y + 1.35 * scale, z - 0.04 * scale],
+      scale: [0.48 * scale, 0.28 * scale, 0.07 * scale],
+      rotationY,
     },
   );
 }
