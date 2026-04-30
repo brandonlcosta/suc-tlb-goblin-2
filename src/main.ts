@@ -1831,20 +1831,25 @@ function render(): void {
 function drawRunner(x: number, groundY: number, z: number): void {
   const animationActive = isRunnerAnimationActive();
   const runnerZ = -state.progress * TRAIL_LENGTH;
-  const downhillLean = input.brake
-    ? 0.06
-    : -0.24 *
-      clamp(downhillMomentumAt(runnerZ) / 4.8 + state.speed / MAX_RUN_SPEED * 0.18, 0, 1);
-  const brakeCrouch = input.brake ? 0.12 : 0;
+  const speedRatio = clamp(state.speed / MAX_RUN_SPEED, 0, 1);
+  const downhillPressure = clamp(downhillMomentumAt(runnerZ) / 4.8 + speedRatio * 0.18, 0, 1);
+  const brakeCrouch = input.brake ? 0.16 : 0;
   const wobbleIntensity = clamp((state.quadDamage - 62) / 38, 0, 1);
-  const cycle = animationActive ? state.elapsedSeconds * (7.2 + state.speed * 1.15) : 0;
+  const cookedForm = clamp((state.quadDamage - 68) / 32, 0, 1);
+  const cycle = animationActive ? state.elapsedSeconds * (7.6 + state.speed * 1.28) : 0;
+  const stridePhase = Math.sin(cycle);
+  const liftPhase = Math.cos(cycle);
   const strideAmount = animationActive
-    ? (0.1 + state.speed / MAX_RUN_SPEED * 0.18) * (input.brake ? 0.54 : 1)
+    ? (0.2 + speedRatio * 0.28) * (input.brake ? 0.45 : 1) * (1 - cookedForm * 0.2)
     : 0;
-  const stride = Math.sin(cycle) * strideAmount;
-  const oppositeStride = -stride;
-  const leftLift = Math.max(0, stride) * 0.22;
-  const rightLift = Math.max(0, oppositeStride) * 0.22;
+  const armSwingAmount = strideAmount * (input.brake ? 0.72 : 1.12);
+  const stepLift = animationActive
+    ? (0.1 + speedRatio * 0.09) * (input.brake ? 0.5 : 1) * (1 - cookedForm * 0.24)
+    : 0;
+  const leftStride = stridePhase;
+  const rightStride = -stridePhase;
+  const leftLift = Math.max(0, liftPhase) * stepLift;
+  const rightLift = Math.max(0, -liftPhase) * stepLift;
   const wobble =
     animationActive && wobbleIntensity > 0
       ? Math.sin(cycle * 0.72) * 0.08 * wobbleIntensity
@@ -1860,112 +1865,206 @@ function drawRunner(x: number, groundY: number, z: number): void {
       ? Math.sin(cycle * 0.48) * 0.13 * wobbleIntensity
       : 0;
   const bodyYaw = steeringYaw + wobbleYaw;
-  const bodyZ = z + downhillLean;
-  const hipY = groundY + 0.69 - brakeCrouch * 0.55 - stumbleDrop;
-  const torsoY = groundY + 1.16 - brakeCrouch - stumbleDrop;
-  const headY = groundY + 1.76 - brakeCrouch * 0.72 - stumbleDrop;
-  const shoulderWidth = input.brake ? 0.46 : 0.38;
-  const legWidth = input.brake ? 0.24 : 0.18;
-  const legHeight = input.brake ? 0.5 : 0.64;
+  const bodyPitch = input.brake ? 0.16 : -0.1 - downhillPressure * 0.22 - speedRatio * 0.08;
+  const cookedSag = cookedForm * 0.08;
+  const bodyZ = z - downhillPressure * 0.1 + (input.brake ? 0.12 : 0);
+  const hipY = groundY + 0.72 - brakeCrouch * 0.55 - stumbleDrop - cookedSag;
+  const torsoY = groundY + 1.18 - brakeCrouch - stumbleDrop - cookedSag;
+  const shoulderY = torsoY + 0.16;
+  const headY = groundY + 1.74 - brakeCrouch * 0.72 - stumbleDrop - cookedSag;
+  const shoulderWidth = input.brake ? 0.48 : 0.4;
+  const legWidth = input.brake ? 0.25 : 0.19;
   const armBack = input.brake ? 0.16 : 0;
 
   drawMesh(
     runnerShadowMesh,
-    modelMat4([runnerX, groundY + 0.035, z + 0.04], [0.86, 0.035, 0.56], bodyYaw),
+    modelMat4([runnerX, groundY + 0.035, z + 0.04], [0.9, 0.035, 0.62], bodyYaw),
   );
-  drawMesh(kitMesh, modelMat4([runnerX, hipY, z + 0.01], [0.54, 0.36, 0.32], bodyYaw));
   drawMesh(
     kitMesh,
-    modelMat4([runnerX, torsoY, bodyZ], [0.48, 0.76, 0.3], bodyYaw),
+    modelMat4YawPitch([runnerX, hipY, bodyZ + 0.04], [0.56, 0.3, 0.34], bodyYaw, bodyPitch * 0.45),
+  );
+  drawMesh(
+    kitMesh,
+    modelMat4YawPitch([runnerX, torsoY, bodyZ], [0.46, 0.72, 0.28], bodyYaw, bodyPitch),
   );
   drawMesh(
     accentMesh,
-    modelMat4([runnerX, torsoY + 0.16, bodyZ + 0.19], [0.52, 0.08, 0.07], bodyYaw),
+    modelMat4YawPitch(
+      [runnerX, torsoY + 0.18, bodyZ + 0.18],
+      [0.5, 0.08, 0.07],
+      bodyYaw,
+      bodyPitch,
+    ),
   );
   drawMesh(
     runnerBibMesh,
-    modelMat4([runnerX, torsoY - 0.12, bodyZ + 0.21], [0.3, 0.22, 0.06], bodyYaw),
+    modelMat4YawPitch(
+      [runnerX, torsoY - 0.08, bodyZ + 0.2],
+      [0.28, 0.2, 0.055],
+      bodyYaw,
+      bodyPitch,
+    ),
   );
   drawMesh(
     accentMesh,
-    modelMat4([runnerX, torsoY + 0.08, bodyZ - 0.2], [0.2, 0.44, 0.06], bodyYaw),
+    modelMat4YawPitch(
+      [runnerX, torsoY + 0.06, bodyZ - 0.18],
+      [0.16, 0.4, 0.055],
+      bodyYaw,
+      bodyPitch,
+    ),
   );
   drawMesh(
     skinMesh,
-    modelMat4([runnerX, headY, bodyZ - 0.04], [0.34, 0.36, 0.34], bodyYaw),
+    modelMat4YawPitch([runnerX, headY - 0.28, bodyZ - 0.03], [0.16, 0.16, 0.14], bodyYaw, bodyPitch),
+  );
+  drawMesh(
+    skinMesh,
+    modelMat4YawPitch([runnerX, headY, bodyZ - 0.05], [0.34, 0.34, 0.32], bodyYaw, bodyPitch * 0.36),
   );
   drawMesh(
     kitMesh,
-    modelMat4([runnerX, headY + 0.22, bodyZ - 0.06], [0.36, 0.12, 0.36], bodyYaw),
+    modelMat4YawPitch(
+      [runnerX, headY + 0.21, bodyZ - 0.07],
+      [0.36, 0.1, 0.34],
+      bodyYaw,
+      bodyPitch * 0.28,
+    ),
   );
   drawMesh(
     accentMesh,
-    modelMat4([runnerX, headY + 0.2, bodyZ - 0.28], [0.28, 0.06, 0.16], bodyYaw),
+    modelMat4YawPitch(
+      [runnerX, headY + 0.18, bodyZ - 0.26],
+      [0.28, 0.055, 0.15],
+      bodyYaw,
+      bodyPitch * 0.28,
+    ),
   );
 
-  drawRunnerLimb(
-    accentMesh,
-    [runnerX - shoulderWidth, torsoY - 0.12, bodyZ + armBack + oppositeStride * 0.56],
-    [0.14, 0.6, 0.12],
-    bodyYaw + oppositeStride * 0.72 - 0.12,
-  );
-  drawRunnerLimb(
-    accentMesh,
-    [runnerX + shoulderWidth, torsoY - 0.12, bodyZ + armBack + stride * 0.56],
-    [0.14, 0.6, 0.12],
-    bodyYaw + stride * 0.72 + 0.12,
-  );
-  drawRunnerLimb(
-    kitMesh,
-    [runnerX - legWidth, groundY + 0.34 + leftLift - brakeCrouch * 0.5, z + stride * 0.72],
-    [0.16, legHeight, 0.14],
-    bodyYaw + stride * 0.62,
-  );
-  drawRunnerLimb(
-    kitMesh,
-    [
-      runnerX + legWidth,
-      groundY + 0.34 + rightLift - brakeCrouch * 0.5,
-      z + oppositeStride * 0.72,
-    ],
-    [0.16, legHeight, 0.14],
-    bodyYaw + oppositeStride * 0.62,
-  );
-  drawMesh(
-    runnerShoeMesh,
-    modelMat4(
-      [runnerX - legWidth, groundY + 0.08 + leftLift * 0.2, z + stride * 0.9 - 0.04],
-      [0.26, 0.1, 0.3],
-      bodyYaw,
-    ),
-  );
-  drawMesh(
-    runnerShoeMesh,
-    modelMat4(
-      [
-        runnerX + legWidth,
-        groundY + 0.08 + rightLift * 0.2,
-        z + oppositeStride * 0.9 - 0.04,
-      ],
-      [0.26, 0.1, 0.3],
-      bodyYaw,
-    ),
-  );
+  drawRunnerArm(-1, runnerX, shoulderY, bodyZ, bodyYaw, bodyPitch, -leftStride, armSwingAmount, armBack, shoulderWidth);
+  drawRunnerArm(1, runnerX, shoulderY, bodyZ, bodyYaw, bodyPitch, -rightStride, armSwingAmount, armBack, shoulderWidth);
+  drawRunnerLeg(-1, runnerX, groundY, z, bodyZ, bodyYaw, leftStride, leftLift, strideAmount, legWidth, brakeCrouch);
+  drawRunnerLeg(1, runnerX, groundY, z, bodyZ, bodyYaw, rightStride, rightLift, strideAmount, legWidth, brakeCrouch);
 
   if (isCoolingActive()) {
     drawMesh(
       iceMesh,
-      modelMat4([runnerX, torsoY + 0.18, bodyZ - 0.2], [0.5, 0.12, 0.16], bodyYaw),
+      modelMat4YawPitch(
+        [runnerX, torsoY + 0.18, bodyZ - 0.2],
+        [0.5, 0.12, 0.16],
+        bodyYaw,
+        bodyPitch,
+      ),
     );
     drawMesh(
       iceMesh,
-      modelMat4([runnerX, headY + 0.06, bodyZ], [0.22, 0.1, 0.22], bodyYaw),
+      modelMat4YawPitch([runnerX, headY + 0.06, bodyZ], [0.22, 0.1, 0.22], bodyYaw, bodyPitch * 0.28),
     );
   }
 }
 
-function drawRunnerLimb(mesh: Mesh, position: Vec3, scale: Vec3, rotationY: number): void {
-  drawMesh(mesh, modelMat4(position, scale, rotationY));
+function drawRunnerArm(
+  side: number,
+  runnerX: number,
+  shoulderY: number,
+  bodyZ: number,
+  bodyYaw: number,
+  bodyPitch: number,
+  swingPhase: number,
+  swingAmount: number,
+  armBack: number,
+  shoulderWidth: number,
+): void {
+  const handForward = -swingPhase * swingAmount;
+  const shoulderX = runnerX + side * shoulderWidth;
+  const elbowX = runnerX + side * (shoulderWidth + 0.025);
+  const upperPitch = bodyPitch * 0.45 - swingPhase * 0.62;
+  const forearmPitch = bodyPitch * 0.28 + swingPhase * 0.8 - 0.2;
+
+  drawRunnerSegment(
+    skinMesh,
+    [shoulderX, shoulderY - 0.18, bodyZ + armBack + handForward * 0.3],
+    [0.105, 0.34, 0.09],
+    bodyYaw + side * 0.05,
+    upperPitch,
+  );
+  drawRunnerSegment(
+    skinMesh,
+    [elbowX, shoulderY - 0.48, bodyZ + armBack - handForward * 0.36],
+    [0.095, 0.32, 0.085],
+    bodyYaw + side * 0.08,
+    forearmPitch,
+  );
+  drawRunnerSegment(
+    accentMesh,
+    [elbowX, shoulderY - 0.66, bodyZ + armBack - handForward * 0.48],
+    [0.1, 0.055, 0.09],
+    bodyYaw + side * 0.08,
+    forearmPitch,
+  );
+}
+
+function drawRunnerLeg(
+  side: number,
+  runnerX: number,
+  groundY: number,
+  z: number,
+  bodyZ: number,
+  bodyYaw: number,
+  stridePhase: number,
+  lift: number,
+  strideAmount: number,
+  legWidth: number,
+  brakeCrouch: number,
+): void {
+  const footForward = -stridePhase * (0.34 + strideAmount * 0.95);
+  const kneeForward = footForward * 0.44;
+  const hipX = runnerX + side * legWidth;
+  const kneeX = runnerX + side * (legWidth * 0.92);
+  const footX = runnerX + side * (legWidth + 0.02);
+  const thighPitch = -stridePhase * 0.7 - brakeCrouch * 0.8;
+  const shinPitch = stridePhase * 0.86 + brakeCrouch * 0.36;
+  const shoePitch = stridePhase * 0.18;
+
+  drawRunnerSegment(
+    kitMesh,
+    [hipX, groundY + 0.58 + lift * 0.16 - brakeCrouch * 0.35, bodyZ + kneeForward],
+    [0.15, 0.42, 0.14],
+    bodyYaw,
+    thighPitch,
+  );
+  drawRunnerSegment(
+    skinMesh,
+    [kneeX, groundY + 0.28 + lift * 0.54 - brakeCrouch * 0.25, z + footForward * 0.72],
+    [0.12, 0.38, 0.11],
+    bodyYaw,
+    shinPitch,
+  );
+  drawRunnerSegment(
+    runnerShoeMesh,
+    [footX, groundY + 0.08 + lift * 0.16, z + footForward - 0.04],
+    [0.27, 0.1, 0.32],
+    bodyYaw,
+    shoePitch,
+  );
+  drawRunnerSegment(
+    accentMesh,
+    [footX, groundY + 0.12 + lift * 0.16, z + footForward - 0.2],
+    [0.18, 0.035, 0.08],
+    bodyYaw,
+    shoePitch,
+  );
+}
+
+function drawRunnerSegment(
+  mesh: Mesh,
+  position: Vec3,
+  scale: Vec3,
+  rotationY: number,
+  rotationX: number,
+): void {
+  drawMesh(mesh, modelMat4YawPitch(position, scale, rotationY, rotationX));
 }
 
 function drawRiverSplashFeedback(x: number, groundY: number, z: number): void {
@@ -5624,6 +5723,37 @@ function modelMat4(position: Vec3, scale: Vec3, rotationY: number): Float32Array
     sin * scale[2],
     0,
     cos * scale[2],
+    0,
+    position[0],
+    position[1],
+    position[2],
+    1,
+  ]);
+}
+
+function modelMat4YawPitch(
+  position: Vec3,
+  scale: Vec3,
+  rotationY: number,
+  rotationX: number,
+): Float32Array {
+  const cosY = Math.cos(rotationY);
+  const sinY = Math.sin(rotationY);
+  const cosX = Math.cos(rotationX);
+  const sinX = Math.sin(rotationX);
+
+  return new Float32Array([
+    cosY * scale[0],
+    0,
+    -sinY * scale[0],
+    0,
+    sinY * sinX * scale[1],
+    cosX * scale[1],
+    cosY * sinX * scale[1],
+    0,
+    sinY * cosX * scale[2],
+    -sinX * scale[2],
+    cosY * cosX * scale[2],
     0,
     position[0],
     position[1],
